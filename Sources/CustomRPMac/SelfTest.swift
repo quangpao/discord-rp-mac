@@ -31,6 +31,10 @@ enum SelfTest {
             print("after:  \(LaunchAtLogin.debugDescription)")
             return 0
         }
+        if let index = args.firstIndex(of: "--presets") {
+            let directory = index + 1 < args.count && !args[index + 1].hasPrefix("--") ? args[index + 1] : nil
+            return dumpPresetPayloads(directory: directory)
+        }
         let live = args.contains("--live")
         guard args.contains("--self-test") || live else { return nil }
 
@@ -173,6 +177,47 @@ enum SelfTest {
         expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("presets.json.bak").path),
                "corrupt file quarantined to .bak")
         try? FileManager.default.removeItem(at: directory)
+    }
+
+    /// `--presets [support-dir]` prints, for every stored preset, the exact SET_ACTIVITY payload the
+    /// app would send plus its validation issues. Deterministic — no socket, no restart — which is
+    /// what makes it usable to check "does the demo cover every field?".
+    private static func dumpPresetPayloads(directory: String?) -> Int32 {
+        let store = PresetStore(directory: directory.map { URL(fileURLWithPath: $0) })
+        let settings = store.loadSettings()
+        let presets = store.loadPresets()
+        let now = Date()
+        print("appID: \(settings.appID)  presets: \(presets.count)")
+        var report: [[String: Any]] = []
+        for preset in presets {
+            let issues = ActivityRules.validate(preset.activity, appID: settings.appID)
+            let payload = ActivityRules.payload(
+                preset.activity, appID: settings.appID, now: now,
+                appStarted: now.addingTimeInterval(-3600), connectionStarted: now.addingTimeInterval(-2520),
+                presenceStarted: now
+            )
+            let errors = ActivityRules.errors(in: issues)
+            print("--- \(preset.name)")
+            print("    errors: \(errors.count)  warnings: \(issues.count - errors.count)")
+            for issue in issues {
+                print("      \(issue.isError ? "!" : "i") \(issue.message)")
+            }
+            if let payload,
+               let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys, .prettyPrinted]),
+               let text = String(data: data, encoding: .utf8) {
+                print(text.split(separator: "\n").map { "    \($0)" }.joined(separator: "\n"))
+                report.append(["name": preset.name, "payload": payload, "errors": errors.count])
+            } else {
+                print("    (no payload — errors block it)")
+                report.append(["name": preset.name, "payload": NSNull(), "errors": errors.count])
+            }
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]) {
+            let out = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("customrp-presets.json")
+            try? data.write(to: out)
+            print("machine-readable: \(out.path)")
+        }
+        return 0
     }
 
     private static func checkLive(appID: String) {

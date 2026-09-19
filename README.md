@@ -46,6 +46,8 @@ swift test                        # 44 tests (needs the Xcode-selected toolchain
 ./scripts/build-app.sh --install --run
 swift run CustomRPMac --self-test # headless checks that work with CommandLineTools only
 CustomRPMac --version | --login-item status | --live --app-id <ID>
+CustomRPMac --presets              # print the exact payload every stored preset would send
+python3 scripts/seed-demo-presets.py   # (re)write the demo preset set
 ```
 
 ## Design / logo
