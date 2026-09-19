@@ -121,10 +121,10 @@ public struct Activity: Codable, Equatable, Sendable {
         self.kind = kind
     }
 
-    public static func sample(_ name: String = "Default") -> Activity {
+    /// A starter preset. `name` is deliberately empty: Discord then shows the application's own
+    /// name on the card instead of a generic "Default".
+    public static func sample(_ name: String = "") -> Activity {
         var activity = Activity(name: name, details: "Đang code", state: "customrp-mac")
-        activity.largeKey = ""
-        activity.largeText = ""
         return activity
     }
 }
