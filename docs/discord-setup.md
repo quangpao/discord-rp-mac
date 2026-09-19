@@ -80,9 +80,15 @@ python3 scripts/make-animated-logo.py build/anim 30 512     # 30 frames: sparkle
 swift scripts/frames-to-gif.swift build/anim dist/discord/customrp-animated-logo.gif 15
 ```
 
-Then host the file somewhere public and use that URL as the image key. Current host:
-`https://raw.githubusercontent.com/quangpao/customrp-assets/main/customrp-animated-logo.gif`
-(public repo `quangpao/customrp-assets`; 90 chars, `mp:external` budget ≈ 135/256).
+Then host the file somewhere public and use that URL as the image key. Current host: **Giphy** —
+`https://media.giphy.com/media/4QYW7oUfPAHGBX7zWs/giphy.gif` (58 chars, `mp:external` budget ≈ 100/256,
+page: <https://giphy.com/gifs/4QYW7oUfPAHGBX7zWs>), uploaded with `scripts/upload-gif-to-giphy.py`.
+The API key lives **outside the repo** at `~/.giphy/api_key` (mode 600); the script never prints it.
+Fallback host if Giphy ever drops the file: the same GIF in the public repo `quangpao/customrp-assets`
+(`raw.githubusercontent.com/quangpao/customrp-assets/main/customrp-animated-logo.gif`).
+
+Giphy notes: dashboard keys are rate-limited to **10 uploads/day**; without `is_hidden` the upload lands
+in Giphy's public, searchable library; Giphy re-encodes the file (71 KB → ~166 KB).
 
 Caveats worth knowing before shipping an animation:
 

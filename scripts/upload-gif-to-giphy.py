@@ -60,18 +60,31 @@ def multipart(fields: dict[str, str], file_field: tuple[str, pathlib.Path]) -> t
 
 
 def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    flags = {a for a in sys.argv[1:] if a.startswith("--")}
-    source = pathlib.Path(args[0] if args else "dist/discord/customrp-animated-logo.gif")
+    argv = sys.argv[1:]
+    positional: list[str] = []
+    flags: set[str] = set()
+    tags: str | None = None
+    index = 0
+    while index < len(argv):
+        item = argv[index]
+        if item == "--tags":
+            index += 1
+            tags = argv[index] if index < len(argv) else None
+        elif item.startswith("--"):
+            flags.add(item)
+        else:
+            positional.append(item)
+        index += 1
+
+    source = pathlib.Path(positional[0] if positional else "dist/discord/customrp-animated-logo.gif")
     if not source.exists():
         sys.exit(f"missing file: {source}")
 
     fields = {"api_key": api_key(), "source_post_url": "https://quangpao.dev"}
     if "--hidden" in flags:
         fields["is_hidden"] = "true"
-    if "--tags" in flags:
-        i = sys.argv.index("--tags")
-        fields["tags"] = sys.argv[i + 1]
+    if tags:
+        fields["tags"] = tags
 
     body, content_type = multipart(fields, ("file", source))
     request = urllib.request.Request(ENDPOINT, data=body, headers={"Content-Type": content_type})
