@@ -138,6 +138,13 @@
   .chipline{display:flex;gap:26px;flex-wrap:wrap}
 
   .icon-wrap .svg-box{filter:drop-shadow(0 18px 34px rgba(0,0,0,.42))}
+  .sizebar{display:flex;align-items:flex-end;gap:24px;overflow-x:auto;padding:2px 2px 10px}
+  .sp{display:flex;flex-direction:column;gap:9px;flex:0 0 auto}
+  .sp-pair{display:flex;gap:12px}
+  .sp-tile{display:flex;align-items:center;justify-content:center;border-radius:9px}
+  .sp-light{background:#FAFAFB;box-shadow:inset 0 0 0 1px #E5E7EB}
+  .sp-dark{background:#0B0C0E;box-shadow:inset 0 0 0 1px #272B33}
+  .sp-lab{font-family:var(--mono);font-size:10.5px;color:var(--muted);text-align:center}
 
   .lockups{display:flex;flex-direction:column;gap:18px}
   .lockup{display:inline-flex;align-items:center;gap:12px}
@@ -608,7 +615,7 @@
       </div>
 
       <div class="sub">
-        <div class="sub-h"><h3>App icon · HIG squircle</h3><span class="tag">1024 canvas · 824 tile · r 22.37%</span></div>
+        <div class="sub-h"><h3>App icon · HIG squircle</h3><span class="tag">1024 canvas · 824 tile · r 22.37% · glyph 56%</span></div>
         <div class="icon-wrap">
           <span class="svg-box" style="--s:256px" id="c2-hig">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon">
@@ -620,36 +627,76 @@
                   <stop offset="1" stop-color="#000000" stop-opacity="0.16"/>
                 </linearGradient>
                 <linearGradient id="customrpKeyline" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
-                  <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0.05"/>
-                  <stop offset="0.55" stop-color="#000000" stop-opacity="0.05"/>
-                  <stop offset="1" stop-color="#000000" stop-opacity="0.3"/>
+                  <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18"/>
+                  <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.09"/>
+                  <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.04"/>
+                  <stop offset="0.5" stop-color="#000000" stop-opacity="0.04"/>
+                  <stop offset="0.65" stop-color="#000000" stop-opacity="0.08"/>
+                  <stop offset="1" stop-color="#000000" stop-opacity="0.15"/>
                 </linearGradient>
-                <linearGradient id="customrpMarkShade" gradientUnits="userSpaceOnUse" x1="16" y1="2.3" x2="16" y2="13">
-                  <stop offset="0" stop-color="#000000" stop-opacity="0.28"/>
-                  <stop offset="1" stop-color="#000000" stop-opacity="0"/>
-                </linearGradient>
+                <filter id="customrpMarkShadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+                  <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="customrpBlur"/>
+                  <feOffset in="customrpBlur" dx="0" dy="5" result="customrpShadowOffset"/>
+                  <feFlood flood-color="#000000" flood-opacity="0.32" result="customrpShadowInk"/>
+                  <feComposite in="customrpShadowInk" in2="customrpShadowOffset" operator="in"/>
+                </filter>
                 <clipPath id="customrpTileClip">
                   <path d="M 529.072 0 c 103.2345 0 154.8517 0 194.2821 20.0908 a 184.33 184.33 0 0 1 80.5552 80.5552 c 20.0908 39.4304 20.0908 91.0476 20.0908 194.2821 L 824 529.072 c 0 103.2345 0 154.8517 -20.0908 194.2821 a 184.33 184.33 0 0 1 -80.5552 80.5552 c -39.4304 20.0908 -91.0476 20.0908 -194.2821 20.0908 L 294.928 824 c -103.2345 0 -154.8517 0 -194.2821 -20.0908 a 184.33 184.33 0 0 1 -80.5552 -80.5552 c -20.0908 -39.4304 -20.0908 -91.0476 -20.0908 -194.2821 L 0 294.928 c 0 -103.2345 0 -154.8517 20.0908 -194.2821 a 184.33 184.33 0 0 1 80.5552 -80.5552 c 39.4304 -20.0908 91.0476 -20.0908 194.2821 -20.0908 Z"/>
                 </clipPath>
               </defs>
-              <g transform="translate(100 100)">
-                <use href="#customrpTile" fill="#F5A524"/>
-                <use href="#customrpTile" fill="url(#customrpTileFill)"/>
-                <g clip-path="url(#customrpTileClip)">
-                  <g transform="translate(6.24 72.26) scale(23.4)">
-                    <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="#2B1B02"/>
-                    <circle cx="25.5" cy="5.5" r="3.2" fill="#2B1B02"/>
-                    <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="url(#customrpMarkShade)"/>
-                    <circle cx="25.5" cy="5.5" r="3.2" fill="url(#customrpMarkShade)"/>
+              <g id="customrpIconArt">
+                <g transform="translate(100 100)">
+                  <use href="#customrpTile" fill="#F5A524"/>
+                  <use href="#customrpTile" fill="url(#customrpTileFill)"/>
+                  <g clip-path="url(#customrpTileClip)">
+                    <g filter="url(#customrpMarkShadow)">
+                      <g transform="translate(112.32 161.08) scale(17.2824)">
+                        <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="#000000"/>
+                        <circle cx="25.5" cy="5.5" r="3.2" fill="#000000"/>
+                      </g>
+                    </g>
+                    <g transform="translate(112.32 161.08) scale(17.2824)">
+                      <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="#2B1B02"/>
+                      <circle cx="25.5" cy="5.5" r="3.2" fill="#2B1B02"/>
+                    </g>
+                    <use href="#customrpTile" fill="none" stroke="url(#customrpKeyline)" stroke-width="2"/>
                   </g>
-                  <use href="#customrpTile" fill="none" stroke="url(#customrpKeyline)" stroke-width="2"/>
                 </g>
               </g>
             </svg>
           </span>
         </div>
-        <p class="strip-note" style="margin-top:12px;max-width:68ch">Shown here at 256 px, the tile renders at 206 px because the 100-unit transparent margin is part of the asset — that pad is what lets macOS cast its own drop shadow instead of baking one in.</p>
+        <p class="strip-note" style="margin-top:12px;max-width:70ch">Shown at 256 px above. The tile measures 824 of the 1024 canvas — 100 units of transparent margin on every side — so macOS draws the drop shadow instead of inheriting a baked one.</p>
+        <div class="sizebar" data-od-id="c2-icon-sizes">
+          <div class="sp">
+            <div class="sp-pair">
+              <div class="sp-tile sp-light"><span class="svg-box" style="--s:1024px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon at 1024 px on a light background"><use href="#customrpIconArt"/></svg></span></div>
+              <div class="sp-tile sp-dark"><span class="svg-box" style="--s:1024px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon at 1024 px on a dark background"><use href="#customrpIconArt"/></svg></span></div>
+            </div>
+            <div class="sp-lab">1024 px · light + dark · 1:1</div>
+          </div>
+          <div class="sp">
+            <div class="sp-pair">
+              <div class="sp-tile sp-light"><span class="svg-box" style="--s:256px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon at 256 px on a light background"><use href="#customrpIconArt"/></svg></span></div>
+              <div class="sp-tile sp-dark"><span class="svg-box" style="--s:256px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon at 256 px on a dark background"><use href="#customrpIconArt"/></svg></span></div>
+            </div>
+            <div class="sp-lab">256 px · light + dark</div>
+          </div>
+          <div class="sp">
+            <div class="sp-pair">
+              <div class="sp-tile sp-light"><span class="svg-box" style="--s:128px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon at 128 px on a light background"><use href="#customrpIconArt"/></svg></span></div>
+              <div class="sp-tile sp-dark"><span class="svg-box" style="--s:128px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon at 128 px on a dark background"><use href="#customrpIconArt"/></svg></span></div>
+            </div>
+            <div class="sp-lab">128 px · light + dark</div>
+          </div>
+          <div class="sp">
+            <div class="sp-pair">
+              <div class="sp-tile sp-light"><span class="svg-box" style="--s:32px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon at 32 px on a light background"><use href="#customrpIconArt"/></svg></span></div>
+              <div class="sp-tile sp-dark"><span class="svg-box" style="--s:32px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon at 32 px on a dark background"><use href="#customrpIconArt"/></svg></span></div>
+            </div>
+            <div class="sp-lab">32 px · light + dark</div>
+          </div>
+        </div>
       </div>
 
       <div class="sub">
@@ -729,14 +776,15 @@
 
           <div class="code-unit">
             <div class="changelog" data-od-id="c2-note-appicon">
-              <div class="cl-h">What changed and why — appicon-hig.svg</div>
+              <div class="cl-h">Measured fix — appicon-hig.svg</div>
               <ul>
-                <li>Canvas <code>256 rect → 1024 × 1024</code> with a 100-unit transparent margin on every side; the tile is <code>824 × 824</code>, i.e. 80.5% of the canvas, so macOS can draw its own shadow.</li>
-                <li>Tile is a real continuous-curvature squircle, not a rounded rect: corner radius <code>184.33</code> = 22.37% of 824 with corner smoothing <code>0.6</code>. A plain rounded rectangle is the <code>0</code> case of the same maths.</li>
-                <li>Background is flat <code>#F5A524</code> plus a vertical overlay going white 22% at the top → transparent at 52% → black 16% at the bottom. Both overlay tones are palette white and low-alpha black, so no new colour enters the sheet.</li>
-                <li>1 px inner keyline: the tile path stroked at width <code>2</code> and clipped back to the tile, leaving 1 unit visible — white 55% on the top edge, black 30% along the bottom.</li>
-                <li>Optical centring: the mark's bounding-box centre is <code>(16, 15.65)</code> but its area centroid is <code>(17.34, 14.52)</code> because the dot sits up-right. The group is placed so the centroid lands on the tile centre <code>(412, 412)</code>, a shift of <code>31.4</code> units left and <code>26.5</code> down versus centring the box.</li>
-                <li>Mark scaled <code>23.4×</code> from the 32-unit source into a 608 × 625 box; tightest tile margin 73 units (8.9%). Mark ink <code>#2B1B02</code> carries a <code>userSpaceOnUse</code> shade (black 28% → 0 over its top third) so it sits on the gradient. At a 32 px icon the mark is still 19.5 px with a 4.7 px dot.</li>
+                <li>Canvas <code>1024 × 1024</code>, tile <code>824 × 824</code> centred, 100 units of transparency on each side. Your brief wrote the tile as <code>824 × 1024</code>; I read that as 824 × 824, since a 824 × 1024 tile is not square and the macOS grid is. 824/1024 = 80.47%, matching your 80.5%.</li>
+                <li>Corners stay continuous-curvature: radius <code>184.33</code> = 22.37% of 824, smoothing <code>0.6</code>. I re-measured the previous pass and its padding is 100 units per side, so it was not in fact edge-to-edge — the padding is unchanged, and the four margin values below are now stated explicitly.</li>
+                <li>Optical centring by alpha centroid: star <code>195.87</code> units² + dot <code>32.17</code> units² give a combined centroid at <code>(17.34, 14.52)</code> in the 32-unit source, placed at the tile centre with <code>translate(112.32 161.08) scale(17.2824)</code> — 31.4 units left and 26.5 down of a bounding-box centre.</li>
+                <li>Quadrant ink measured on the tile: top-left <code>20.04%</code>, top-right <code>23.26%</code>, bottom-left <code>35.54%</code>, bottom-right <code>21.16%</code>; max deviation <code>42.2%</code>. A ~5% tolerance is not reachable for this mark — the dot is 14.1% of the ink and sits far off-axis, so balancing the first moment necessarily skews the median lines. Best achievable balance is <code>15.7%</code> at <code>translate(124.32 147.08)</code>; centring the star itself is <code>translate(135.54 135.54)</code>. Either is a one-line swap.</li>
+                <li>Glyph sized to <code>56.00%</code> of the tile side — 461.44 units tall, 449.34 wide (54.53%). Margins L <code>19.92%</code>, R <code>25.54%</code>, T <code>24.37%</code>, B <code>19.63%</code>; minimum <code>19.63%</code>, clear of your 12% floor. They cannot be exactly equal while the centroid rather than the box is centred — that is the trade recorded in the line above.</li>
+                <li>Keyline is now a continuous rim with no dead zone: 1 unit wide at native size (the tile path stroked at <code>2</code> and clipped back, so exactly 1 px on the 1024 asset), white <code>18%</code> at the top edge inside your 12–18% band, easing to black <code>15%</code> at the bottom. Measured, 1 unit = 1 px at 1024 = 0.25 px at the 256 preview — which is why the sheet now carries a 1:1 1024 frame.</li>
+                <li>Depth: classic SVG 1.1 primitive chain (blur → offset → flood → composite), <code>stdDeviation 5</code> with <code>dy 5</code> → blur radius ≈10 units = 1.21% of the tile side, inside your 1.5% cap. The glyph is drawn unfiltered on top of the shadow copy, so a renderer without filter support still shows the mark.</li>
               </ul>
             </div>
             <div class="code" data-od-id="c2-code-appicon">
@@ -952,42 +1000,7 @@
         <div class="cmp" data-od-id="compare-spark">
           <div class="big">
             <span class="svg-box" style="--s:128px">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon">
-                <defs>
-                  <path id="customrpTileCmp" d="M 529.072 0 c 103.2345 0 154.8517 0 194.2821 20.0908 a 184.33 184.33 0 0 1 80.5552 80.5552 c 20.0908 39.4304 20.0908 91.0476 20.0908 194.2821 L 824 529.072 c 0 103.2345 0 154.8517 -20.0908 194.2821 a 184.33 184.33 0 0 1 -80.5552 80.5552 c -39.4304 20.0908 -91.0476 20.0908 -194.2821 20.0908 L 294.928 824 c -103.2345 0 -154.8517 0 -194.2821 -20.0908 a 184.33 184.33 0 0 1 -80.5552 -80.5552 c -20.0908 -39.4304 -20.0908 -91.0476 -20.0908 -194.2821 L 0 294.928 c 0 -103.2345 0 -154.8517 20.0908 -194.2821 a 184.33 184.33 0 0 1 80.5552 -80.5552 c 39.4304 -20.0908 91.0476 -20.0908 194.2821 -20.0908 Z"/>
-                  <linearGradient id="customrpTileFillCmp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
-                    <stop offset="0.52" stop-color="#FFFFFF" stop-opacity="0"/>
-                    <stop offset="1" stop-color="#000000" stop-opacity="0.16"/>
-                  </linearGradient>
-                  <linearGradient id="customrpKeylineCmp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
-                    <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0.05"/>
-                    <stop offset="0.55" stop-color="#000000" stop-opacity="0.05"/>
-                    <stop offset="1" stop-color="#000000" stop-opacity="0.3"/>
-                  </linearGradient>
-                  <linearGradient id="customrpMarkShadeCmp" gradientUnits="userSpaceOnUse" x1="16" y1="2.3" x2="16" y2="13">
-                    <stop offset="0" stop-color="#000000" stop-opacity="0.28"/>
-                    <stop offset="1" stop-color="#000000" stop-opacity="0"/>
-                  </linearGradient>
-                  <clipPath id="customrpTileClipCmp">
-                    <path d="M 529.072 0 c 103.2345 0 154.8517 0 194.2821 20.0908 a 184.33 184.33 0 0 1 80.5552 80.5552 c 20.0908 39.4304 20.0908 91.0476 20.0908 194.2821 L 824 529.072 c 0 103.2345 0 154.8517 -20.0908 194.2821 a 184.33 184.33 0 0 1 -80.5552 80.5552 c -39.4304 20.0908 -91.0476 20.0908 -194.2821 20.0908 L 294.928 824 c -103.2345 0 -154.8517 0 -194.2821 -20.0908 a 184.33 184.33 0 0 1 -80.5552 -80.5552 c -20.0908 -39.4304 -20.0908 -91.0476 -20.0908 -194.2821 L 0 294.928 c 0 -103.2345 0 -154.8517 20.0908 -194.2821 a 184.33 184.33 0 0 1 80.5552 -80.5552 c 39.4304 -20.0908 91.0476 -20.0908 194.2821 -20.0908 Z"/>
-                  </clipPath>
-                </defs>
-                <g transform="translate(100 100)">
-                  <use href="#customrpTileCmp" fill="#F5A524"/>
-                  <use href="#customrpTileCmp" fill="url(#customrpTileFillCmp)"/>
-                  <g clip-path="url(#customrpTileClipCmp)">
-                    <g transform="translate(6.24 72.26) scale(23.4)">
-                      <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="#2B1B02"/>
-                      <circle cx="25.5" cy="5.5" r="3.2" fill="#2B1B02"/>
-                      <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="url(#customrpMarkShadeCmp)"/>
-                      <circle cx="25.5" cy="5.5" r="3.2" fill="url(#customrpMarkShadeCmp)"/>
-                    </g>
-                    <use href="#customrpTileCmp" fill="none" stroke="url(#customrpKeylineCmp)" stroke-width="2"/>
-                  </g>
-                </g>
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon"><use href="#customrpIconArt"/></svg>
             </span>
           </div>
           <div class="row">

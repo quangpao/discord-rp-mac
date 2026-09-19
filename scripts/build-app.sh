@@ -68,7 +68,17 @@ fi
 echo "==> built $APP_BUNDLE"
 if [ "$RUN" = "1" ]; then
   pkill -x "$EXECUTABLE" 2>/dev/null || true
-  open "$APP_BUNDLE"
+  # Replacing the bundle under LaunchServices' feet can make `open` fail with -600
+  # (procNotFound). Re-register the bundle and retry once — this bit us twice.
+  LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+  [ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$APP_BUNDLE" >/dev/null 2>&1
+  sleep 1
+  if ! open "$APP_BUNDLE" 2>/dev/null; then
+    echo "    open failed once, re-registering and retrying"
+    [ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$APP_BUNDLE" >/dev/null 2>&1
+    sleep 2
+    open "$APP_BUNDLE" || true
+  fi
   sleep 1
   echo "==> running:"
   pgrep -lx "$EXECUTABLE" || echo "    (not running?)"
