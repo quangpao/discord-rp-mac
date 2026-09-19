@@ -142,14 +142,10 @@ struct ActivityEditorView: View {
             }
             Divider()
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Button(giphyUploading ? "Uploading…" : "Upload GIF to Giphy…") { uploadToGiphy() }
-                        .disabled(giphyUploading)
-                    Toggle("Private on Giphy", isOn: $giphyHidden)
-                        .toggleStyle(.checkbox)
-                        .font(.caption)
-                }
-                Text("Uploads the chosen file and puts Giphy's CDN URL into Large image. Animation only renders through an external URL (a portal upload stays static).")
+                Toggle("Private on Giphy", isOn: $giphyHidden)
+                    .toggleStyle(.checkbox)
+                    .font(.caption)
+                Text("“Upload…” next to each row pushes the file to Giphy and puts its CDN URL into that slot. Large = the big card image; Small = the tiny circular overlay in its corner (an animation there is barely visible — a static asset usually reads better). Animation only renders through an external URL; a portal upload stays static.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if let giphyStatus {
@@ -166,6 +162,9 @@ struct ActivityEditorView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 TextField("\(title) key or URL", text: key)
+                Button("Upload…") { uploadToGiphy(into: key, slot: title) }
+                    .font(.caption)
+                    .disabled(giphyUploading)
                 if !assetNames.isEmpty {
                     Menu("Assets") {
                         ForEach(assetNames, id: \.self) { name in
@@ -244,8 +243,8 @@ struct ActivityEditorView: View {
         }
     }
 
-    /// Pick a file, push it to Giphy, and drop the CDN URL into Large image.
-    private func uploadToGiphy() {
+    /// Pick a file, push it to Giphy, and drop the CDN URL into the given image slot.
+    private func uploadToGiphy(into slot: Binding<String>, slot slotName: String) {
         guard let key = GiphyUploader.apiKey() else {
             giphyStatus = "✗ No API key. Save one at \(GiphyUploader.defaultKeyPath()) (chmod 600)."
             return
@@ -254,32 +253,32 @@ struct ActivityEditorView: View {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.message = "Choose an animated GIF (or MP4/WebM) to upload to Giphy"
+        panel.message = "Choose an animated GIF (or MP4/WebM) to upload to Giphy for the \(slotName) image"
         if let gif = UTType(filenameExtension: "gif"), let mp4 = UTType(filenameExtension: "mp4") {
             panel.allowedContentTypes = [gif, mp4]
         }
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
         giphyUploading = true
-        giphyStatus = "Uploading \(url.lastPathComponent)…"
+        giphyStatus = "Uploading \(url.lastPathComponent) for \(slotName)…"
         Task {
             do {
                 let result = try await GiphyUploader.upload(
                     file: url, apiKey: key, hidden: giphyHidden, tags: "customrp,quangpao"
                 )
                 await MainActor.run {
-                    draft.largeKey = result.mediaURL
-                    giphyStatus = "✓ Uploaded → \(result.mediaURL)"
+                    slot.wrappedValue = result.mediaURL
+                    giphyStatus = "✓ Uploaded → \(result.mediaURL) (\(slotName))"
                     giphyUploading = false
                 }
             } catch let error as GiphyError {
                 await MainActor.run {
-                    giphyStatus = "✗ \(error.message)"
+                    giphyStatus = "✗ \(slotName): \(error.message)"
                     giphyUploading = false
                 }
             } catch {
                 await MainActor.run {
-                    giphyStatus = "✗ \(error.localizedDescription)"
+                    giphyStatus = "✗ \(slotName): \(error.localizedDescription)"
                     giphyUploading = false
                 }
             }
