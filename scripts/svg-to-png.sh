@@ -19,9 +19,16 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 MARKUP="$(cat "$SVG")"
+if [ "$BACKGROUND" = "transparent" ]; then
+  CSS_BG="transparent"
+  CHROME_BG="00000000"
+else
+  CSS_BG="$BACKGROUND"
+  CHROME_BG="FFFFFFFF"
+fi
 {
   echo "<!doctype html><html><head><meta charset=\"utf-8\"><style>"
-  echo "html,body{margin:0;padding:0;background:${BACKGROUND}}"
+  echo "html,body{margin:0;padding:0;background:${CSS_BG}}"
   echo "body>div{width:${SIZE}px;height:${SIZE}px;display:flex;align-items:center;justify-content:center}"
   echo "svg{width:100%;height:100%}"
   echo "</style></head><body><div>"
@@ -32,7 +39,7 @@ MARKUP="$(cat "$SVG")"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 if [ -x "$CHROME" ]; then
   "$CHROME" --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
-    --default-background-color=FFFFFFFF \
+    --default-background-color="$CHROME_BG" \
     --screenshot="$PNG" --window-size="${SIZE},${SIZE}" "file://$TMP/wrap.html" >/dev/null 2>&1
 elif command -v rsvg-convert >/dev/null 2>&1; then
   rsvg-convert -w "$SIZE" -h "$SIZE" "$SVG" -o "$PNG"

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon">
+              <defs>
+                <path id="customrpTile" d="M 529.072 0 c 103.2345 0 154.8517 0 194.2821 20.0908 a 184.33 184.33 0 0 1 80.5552 80.5552 c 20.0908 39.4304 20.0908 91.0476 20.0908 194.2821 L 824 529.072 c 0 103.2345 0 154.8517 -20.0908 194.2821 a 184.33 184.33 0 0 1 -80.5552 80.5552 c -39.4304 20.0908 -91.0476 20.0908 -194.2821 20.0908 L 294.928 824 c -103.2345 0 -154.8517 0 -194.2821 -20.0908 a 184.33 184.33 0 0 1 -80.5552 -80.5552 c -20.0908 -39.4304 -20.0908 -91.0476 -20.0908 -194.2821 L 0 294.928 c 0 -103.2345 0 -154.8517 20.0908 -194.2821 a 184.33 184.33 0 0 1 80.5552 -80.5552 c 39.4304 -20.0908 91.0476 -20.0908 194.2821 -20.0908 Z"/>
+                <linearGradient id="customrpTileFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+                  <stop offset="0.52" stop-color="#FFFFFF" stop-opacity="0"/>
+                  <stop offset="1" stop-color="#000000" stop-opacity="0.16"/>
+                </linearGradient>
+                <linearGradient id="customrpKeyline" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+                  <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0.05"/>
+                  <stop offset="0.55" stop-color="#000000" stop-opacity="0.05"/>
+                  <stop offset="1" stop-color="#000000" stop-opacity="0.3"/>
+                </linearGradient>
+                <linearGradient id="customrpMarkShade" gradientUnits="userSpaceOnUse" x1="16" y1="2.3" x2="16" y2="13">
+                  <stop offset="0" stop-color="#000000" stop-opacity="0.28"/>
+                  <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+                </linearGradient>
+                <clipPath id="customrpTileClip">
+                  <path d="M 529.072 0 c 103.2345 0 154.8517 0 194.2821 20.0908 a 184.33 184.33 0 0 1 80.5552 80.5552 c 20.0908 39.4304 20.0908 91.0476 20.0908 194.2821 L 824 529.072 c 0 103.2345 0 154.8517 -20.0908 194.2821 a 184.33 184.33 0 0 1 -80.5552 80.5552 c -39.4304 20.0908 -91.0476 20.0908 -194.2821 20.0908 L 294.928 824 c -103.2345 0 -154.8517 0 -194.2821 -20.0908 a 184.33 184.33 0 0 1 -80.5552 -80.5552 c -20.0908 -39.4304 -20.0908 -91.0476 -20.0908 -194.2821 L 0 294.928 c 0 -103.2345 0 -154.8517 20.0908 -194.2821 a 184.33 184.33 0 0 1 80.5552 -80.5552 c 39.4304 -20.0908 91.0476 -20.0908 194.2821 -20.0908 Z"/>
+                </clipPath>
+              </defs>
+              <g transform="translate(100 100)">
+                <use href="#customrpTile" fill="#F5A524"/>
+                <use href="#customrpTile" fill="url(#customrpTileFill)"/>
+                <g clip-path="url(#customrpTileClip)">
+                  <g transform="translate(6.24 72.26) scale(23.4)">
+                    <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="#2B1B02"/>
+                    <circle cx="25.5" cy="5.5" r="3.2" fill="#2B1B02"/>
+                    <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="url(#customrpMarkShade)"/>
+                    <circle cx="25.5" cy="5.5" r="3.2" fill="url(#customrpMarkShade)"/>
+                  </g>
+                  <use href="#customrpTile" fill="none" stroke="url(#customrpKeyline)" stroke-width="2"/>
+                </g>
+              </g>
+            </svg>

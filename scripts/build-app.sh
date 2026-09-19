@@ -33,6 +33,13 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
 cp "$BIN" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
 cp "$ROOT/Resources/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 
+# Menu bar template image (22 px @1x / 44 px @2x). The app falls back to an SF Symbol when absent.
+for icon in MenuBarIcon.png MenuBarIcon@2x.png; do
+  if [ -f "$ROOT/Resources/$icon" ]; then
+    cp "$ROOT/Resources/$icon" "$APP_BUNDLE/Contents/Resources/$icon"
+  fi
+done
+
 # A status app with a Dock icon is the classic tell that it is not native — refuse to ship that.
 if ! /usr/libexec/PlistBuddy -c "Print :LSUIElement" "$APP_BUNDLE/Contents/Info.plist" >/dev/null 2>&1; then
   echo "ERROR: Info.plist is missing LSUIElement" >&2

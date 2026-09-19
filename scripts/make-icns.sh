@@ -5,9 +5,21 @@ cd "$(dirname "$0")/.."
 
 MASTER="build/icon-1024.png"
 ICONSET="build/AppIcon.iconset"
+SOURCE_SVG="${1:-}"
 
 mkdir -p build
-swift scripts/render-icon.swift "$MASTER"
+if [ -n "$SOURCE_SVG" ] && [ -f "$SOURCE_SVG" ]; then
+  ./scripts/svg-to-png.sh "$SOURCE_SVG" "$MASTER" 1024
+elif [ -f Resources/logo/c2-appicon-hig.svg ]; then
+  echo "==> using Resources/logo/c2-appicon-hig.svg"
+  ./scripts/svg-to-png.sh Resources/logo/c2-appicon-hig.svg "$MASTER" 1024
+elif [ -f Resources/logo/c2-appicon.svg ]; then
+  echo "==> using Resources/logo/c2-appicon.svg"
+  ./scripts/svg-to-png.sh Resources/logo/c2-appicon.svg "$MASTER" 1024
+else
+  # No designed logo yet: fall back to the SF Symbol renderer.
+  swift scripts/render-icon.swift "$MASTER"
+fi
 
 # The renderer can come out at the backing scale; normalise to exactly 1024 px.
 sips -z 1024 1024 "$MASTER" --out "$MASTER" >/dev/null
