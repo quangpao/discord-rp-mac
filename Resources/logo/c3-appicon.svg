@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="CustomRP app icon">
+              <rect width="256" height="256" rx="57.3" fill="#2AA8F2"/>
+              <g transform="translate(54.4 54.4) scale(4.6)">
+                <circle cx="14.75" cy="14.75" r="8.5" fill="none" stroke="#05202F" stroke-width="5.5"/>
+                <path d="M19.25 19.25L25.75 25.75" fill="none" stroke="#05202F" stroke-width="5.5" stroke-linecap="round"/>
+              </g>
+            </svg>
