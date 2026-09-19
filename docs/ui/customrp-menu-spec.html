@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CustomRP — Menu Bar &amp; Editor Spec</title>
+<style>
+/* ============================================================
+   CustomRP spec page — dark-first editorial frame.
+   Page palette bound from the editorial-monocle direction
+   (light values in :root), inverted for body.dark.
+   macOS mock tokens (--mac-*, --menu-*, --win-*) are separate
+   and switch with the same body.dark class.
+   ============================================================ */
+:root{
+  --bg:      oklch(98% 0.004 95);
+  --surface: oklch(100% 0.002 95);
+  --fg:      oklch(20% 0.018 70);
+  --muted:   oklch(48% 0.012 70);
+  --border:  oklch(90% 0.006 95);
+  --accent:  oklch(52% 0.10 28);
+  --tint:    oklch(96% 0.008 80);
+  --card-shadow: 0 1px 2px rgba(28,24,20,.05), 0 14px 40px rgba(28,24,20,.07);
+  --font-display: 'Iowan Old Style','Charter',Georgia,serif;
+  --font-body: -apple-system,'SF Pro Text',BlinkMacSystemFont,system-ui,sans-serif;
+  --font-mono: 'SF Mono',ui-monospace,Menlo,monospace;
+
+  /* ---- macOS mock tokens : light ---- */
+  --mac-accent: #007AFF;
+  --mac-accent-fg: #FFFFFF;
+  --menu-bg: rgba(250,250,250,.80);
+  --menu-fg: rgba(0,0,0,.86);
+  --menu-icon: rgba(0,0,0,.62);
+  --menu-muted: rgba(0,0,0,.48);
+  --menu-disabled: rgba(0,0,0,.26);
+  --menu-sep: rgba(0,0,0,.13);
+  --menu-border: rgba(0,0,0,.12);
+  --menu-shadow: 0 12px 34px rgba(0,0,0,.22), 0 1px 2px rgba(0,0,0,.16);
+  --menubar-bg: rgba(246,246,247,.72);
+  --menubar-fg: rgba(0,0,0,.86);
+  --menubar-solid: #f1f1f3;
+  --danger: #FF3B30;
+  --dot-green:#34C759; --dot-amber:#FF9F0A; --dot-grey:#8E8E93;
+  --field-bg:#FFFFFF; --field-fg:rgba(0,0,0,.88); --field-border:rgba(0,0,0,.16);
+  --field-placeholder:rgba(0,0,0,.34);
+  --win-bg:#ECECEC; --win-border:rgba(0,0,0,.16); --win-titlebar:rgba(246,246,246,.94);
+  --ctrl-bg:rgba(0,0,0,.06); --ctrl-fg:rgba(0,0,0,.72);
+  --seg-on:#FFFFFF; --seg-on-fg:rgba(0,0,0,.88);
+  --label-fg:rgba(0,0,0,.52);
+  --wallpaper: linear-gradient(118deg,#aebccd 0%,#c8c2cf 46%,#cbb9c4 72%,#b7c2cb 100%);
+}
+body.dark{
+  --bg:      oklch(21% 0.008 80);
+  --surface: oklch(25.5% 0.008 80);
+  --fg:      oklch(95% 0.004 95);
+  --muted:   oklch(72% 0.010 80);
+  --border:  oklch(33% 0.008 80);
+  --accent:  oklch(72% 0.11 28);
+  --tint:    oklch(23.5% 0.010 80);
+  --card-shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 46px rgba(0,0,0,.34);
+
+  --mac-accent: #0A84FF;
+  --menu-bg: rgba(39,39,42,.82);
+  --menu-fg: rgba(255,255,255,.92);
+  --menu-icon: rgba(255,255,255,.70);
+  --menu-muted: rgba(255,255,255,.55);
+  --menu-disabled: rgba(255,255,255,.28);
+  --menu-sep: rgba(255,255,255,.14);
+  --menu-border: rgba(255,255,255,.13);
+  --menu-shadow: 0 16px 44px rgba(0,0,0,.6), 0 1px 2px rgba(0,0,0,.5);
+  --menubar-bg: rgba(30,30,33,.62);
+  --menubar-fg: rgba(255,255,255,.90);
+  --menubar-solid: #2a2a2e;
+  --danger: #FF453A;
+  --dot-green:#30D158; --dot-amber:#FF9F0A; --dot-grey:#98989D;
+  --field-bg:rgba(255,255,255,.07); --field-fg:rgba(255,255,255,.92); --field-border:rgba(255,255,255,.17);
+  --field-placeholder:rgba(255,255,255,.34);
+  --win-bg:#1F1F21; --win-border:rgba(255,255,255,.12); --win-titlebar:rgba(44,44,47,.94);
+  --ctrl-bg:rgba(255,255,255,.09); --ctrl-fg:rgba(255,255,255,.72);
+  --seg-on:rgba(255,255,255,.16); --seg-on-fg:rgba(255,255,255,.95);
+  --label-fg:rgba(255,255,255,.54);
+  --wallpaper: linear-gradient(118deg,#242a35 0%,#332e3b 46%,#3d3038 72%,#28313a 100%);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background .25s ease,color .25s ease}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+h1,h2,h3{margin:0;font-family:var(--font-display);font-weight:600;letter-spacing:-.012em;line-height:1.12}
+code,.tok{font-family:var(--font-mono)}
+a{color:var(--accent)}
+
+/* ---------- page chrome ---------- */
+.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px clamp(20px,4.5vw,56px);
+  background:color-mix(in oklab,var(--bg) 80%,transparent);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:baseline;gap:12px;min-width:0}
+.brand b{font-family:var(--font-display);font-size:19px;font-weight:600;letter-spacing:-.01em}
+.brand span{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.toggle{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--fg);font:inherit;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
+.toggle:hover{background:var(--tint);border-color:color-mix(in oklab,var(--border) 60%,var(--fg))}
+.toggle svg{width:15px;height:15px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(20px,4.5vw,56px) 96px}
+
+/* ---------- masthead ---------- */
+.masthead{padding:64px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.eyebrow{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.masthead h1{font-size:clamp(38px,5.2vw,60px);max-width:19ch}
+.masthead p{color:var(--muted);max-width:62ch;font-size:16.5px;margin:18px 0 0}
+.specmeta{display:flex;flex-wrap:wrap;gap:8px 26px;margin:26px 0 30px;font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.specmeta b{color:var(--fg);font-weight:500}
+
+/* ---------- sections ---------- */
+.sec{padding:60px 0 4px}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:12px}
+.sec-num{font-family:var(--font-mono);font-size:12px;color:var(--accent);padding-top:9px;letter-spacing:.08em}
+.sec-head h2{font-size:clamp(26px,3.2vw,36px)}
+.sec-lede{color:var(--muted);max-width:70ch;margin:0 0 30px;padding-left:44px}
+h3.sub{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:500;margin:38px 0 14px}
+
+/* ---------- mock shells ---------- */
+.mockrow{display:flex;flex-wrap:wrap;gap:26px}
+.mock{flex:1 1 480px;min-width:0;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:var(--card-shadow)}
+.mock-narrow{flex:1 1 calc(50% - 13px);min-width:250px}
+.mock.statecard{flex:0 1 366px;min-width:280px;display:flex;flex-direction:column;gap:16px;padding:18px}
+.mock-cap{display:flex;gap:10px;align-items:baseline;padding:11px 15px;border-top:1px solid var(--border);background:var(--tint);font-size:12.5px;color:var(--muted);line-height:1.5}
+.mock-cap b{color:var(--fg);font-weight:600}
+.mock-cap .sym{font-family:var(--font-mono);font-size:11.5px;color:var(--fg);background:color-mix(in oklab,var(--border) 55%,transparent);padding:1px 6px;border-radius:5px;white-space:nowrap}
+.stripwrap{background:var(--wallpaper);padding-bottom:20px}
+
+/* ---------- macOS menu bar strip ---------- */
+.mbs{position:relative;z-index:3;height:24px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 13px;
+  background:var(--menubar-bg);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+  color:var(--menubar-fg);font-size:13px;line-height:1;font-weight:400;letter-spacing:-.1px}
+.mbs-l,.mbs-r{display:flex;align-items:center}
+.mbs-l{gap:19px}
+.mbs-r{gap:11px}
+.mbs-l .app{font-weight:600}
+.mbs svg{display:block}
+.stitem{position:relative;display:flex;align-items:center;justify-content:center;height:18px;min-width:21px;padding:0 3px;border-radius:5px;color:var(--menubar-fg)}
+.stitem svg{width:16px;height:16px}
+.stitem.open{background:var(--mac-accent);color:#fff}
+.stitem.active{color:var(--mac-accent)}
+.stitem.dim svg{opacity:.6}
+.stitem.muted{color:var(--dot-grey)}
+.badge{position:absolute;right:0;bottom:0;width:6px;height:6px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 1.5px var(--menubar-solid)}
+
+/* ---------- menu panels ---------- */
+.menu-area{position:relative;z-index:1;display:flex;justify-content:flex-end;align-items:flex-start;padding:8px 6px 20px;background:var(--wallpaper)}
+.menu-cluster{display:flex;align-items:flex-start}
+.mpanel{background:var(--menu-bg);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);
+  border:1px solid var(--menu-border);border-radius:6px;padding:4px 5px;min-width:242px;color:var(--menu-fg);
+  font-family:var(--font-body);font-size:13px;box-shadow:var(--menu-shadow)}
+.mpanel.sub{margin-left:-3px;margin-top:33px;z-index:2;min-width:238px}
+.mrow{height:22px;display:flex;align-items:center;padding:0 6px 0 3px;border-radius:4px;line-height:1;letter-spacing:-.1px;color:var(--menu-fg);white-space:nowrap}
+.mi{flex:0 0 16px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;margin-right:6px;color:var(--menu-icon)}
+.mi svg{width:16px;height:16px}
+.mlabel{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis}
+.mshort{flex:0 0 auto;margin-left:20px;color:var(--menu-muted)}
+.marrow{flex:0 0 auto;margin-left:16px;display:flex;align-items:center;color:var(--menu-muted)}
+.marrow svg{width:10px;height:14px}
+.mrow:not(.status):not(.disabled):not(.empty):hover,.mrow.is-open{background:var(--mac-accent);color:var(--mac-accent-fg)}
+.mrow:not(.status):not(.disabled):not(.empty):hover .mi,.mrow.is-open .mi,
+.mrow:not(.status):not(.disabled):not(.empty):hover .mshort,.mrow.is-open .mshort,
+.mrow:not(.status):not(.disabled):not(.empty):hover .marrow,.mrow.is-open .marrow{color:var(--mac-accent-fg)}
+.mrow.disabled,.mrow.disabled .mi,.mrow.disabled .mshort,.mrow.disabled .marrow{color:var(--menu-disabled)}
+.mrow.status{cursor:default}
+.mrow.status .mlabel{color:var(--menu-muted)}
+.mrow.status.error .mlabel{color:var(--danger)}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.dot-green{background:var(--dot-green)}.dot-amber{background:var(--dot-amber)}.dot-grey{background:var(--dot-grey)}.dot-red{background:var(--danger)}
+.msep{height:1px;margin:5px 4px;background:var(--menu-sep)}
+.mrow.checkbox .mi{color:var(--menu-fg)}
+.mrow.empty{cursor:default}
+.mrow.empty .mlabel{color:var(--menu-muted)}
+
+/* ---------- spec tables ---------- */
+.tablecard{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:var(--card-shadow)}
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:500;
+  padding:11px 14px;background:var(--tint);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+tbody tr:last-child td{border-bottom:0}
+td code,th code{font-size:12px;background:color-mix(in oklab,var(--border) 42%,transparent);padding:1px 5px;border-radius:4px;white-space:nowrap}
+td .muted{color:var(--muted)}
+.tok{font-size:12px;color:var(--accent)}
+.num{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.rowsep td{background:color-mix(in oklab,var(--tint) 70%,transparent);font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:7px 14px}
+
+/* ---------- token block ---------- */
+.tokenwrap{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:6px}
+@media (max-width:820px){.tokenwrap{grid-template-columns:1fr}}
+.codeblock{font-family:var(--font-mono);font-size:12px;line-height:1.72;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;overflow:auto;margin:0;color:var(--fg);box-shadow:var(--card-shadow)}
+.codeblock .c{color:var(--muted)}
+.codeblock .k{color:var(--accent)}
+.codeblock .v{color:var(--fg)}
+
+/* ---------- bullets ---------- */
+ul.rules{margin:6px 0 0;padding-left:0;list-style:none;display:grid;gap:10px;max-width:92ch}
+ul.rules li{position:relative;padding-left:22px;color:var(--fg)}
+ul.rules li::before{content:"";position:absolute;left:4px;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+ul.rules li code{font-size:12px;background:color-mix(in oklab,var(--border) 42%,transparent);padding:1px 5px;border-radius:4px}
+ul.rules.cut li::before{background:var(--muted);border-radius:1.5px;width:7px;height:2px;top:.82em}
+.note{color:var(--muted);font-size:13.5px;max-width:76ch;margin:16px 0 0}
+
+/* ---------- editor window mock ---------- */
+.window{width:480px;max-width:100%;min-height:560px;display:flex;flex-direction:column;background:var(--win-bg);border:1px solid var(--win-border);border-radius:12px;overflow:hidden;
+  box-shadow:var(--card-shadow);font-size:13px;color:var(--field-fg)}
+.titlebar{position:relative;height:28px;flex:0 0 28px;display:flex;align-items:center;padding:0 12px;background:var(--win-titlebar);border-bottom:1px solid var(--win-border)}
+.lights{display:flex;gap:8px;z-index:2}
+.light{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.18)}
+.light.r{background:#FF5F57}.light.y{background:#FEBC2E}.light.g{background:#28C840}
+.wintitle{position:absolute;left:0;right:0;text-align:center;font-size:13px;font-weight:600;color:var(--field-fg);pointer-events:none}
+.winbody{flex:1 1 auto;display:flex;flex-direction:column;gap:11px;padding:12px 14px}
+.fld{display:flex;flex-direction:column;gap:3px;min-width:0}
+.fld>label{font-size:11px;font-weight:600;letter-spacing:.01em;color:var(--label-fg)}
+.inp{height:24px;display:flex;align-items:center;padding:0 8px;border-radius:6px;border:1px solid var(--field-border);background:var(--field-bg);color:var(--field-fg);font-size:13px;line-height:1;font-family:var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inp.ph{color:var(--field-placeholder)}
+.inp.err{border-color:var(--danger)}
+.inp svg{width:14px;height:14px;flex:0 0 auto;color:var(--field-placeholder);margin-left:auto}
+.inp .grow{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis}
+.hint{font-size:11px;color:var(--danger);line-height:1.35}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;gap:2px;padding:2px;height:24px;border-radius:7px;background:var(--ctrl-bg)}
+.seg>b{flex:1 1 0;display:flex;align-items:center;justify-content:center;border-radius:5.5px;font-size:11.5px;font-weight:500;color:var(--ctrl-fg);white-space:nowrap;overflow:hidden}
+.seg>b.on{background:var(--seg-on);color:var(--seg-on-fg);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.sechead{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--label-fg);margin-bottom:-4px}
+.irow{display:flex;align-items:center;gap:7px}
+.irow .tag{flex:0 0 auto;font-size:11px;color:var(--label-fg);width:34px}
+.irow .sel,.irow .inp{min-width:0}
+.irow .sel{flex:0 0 128px}
+.irow .inp.txt{flex:0 0 92px}
+.irow .inp.url{flex:1 1 auto;color:var(--field-placeholder)}
+.chipx{flex:0 0 24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--field-border);background:var(--field-bg);color:var(--label-fg)}
+.chipx svg{width:12px;height:12px}
+.addrow{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--field-placeholder);padding-left:2px}
+.addrow svg{width:14px;height:14px}
+.winfoot{margin-top:auto;display:flex;align-items:center;gap:9px;padding:11px 14px;border-top:1px solid var(--win-border);background:color-mix(in oklab,var(--win-bg) 82%,var(--field-bg))}
+.btn{height:26px;display:inline-flex;align-items:center;justify-content:center;padding:0 15px;border-radius:6px;font-size:13px;font-weight:500;border:1px solid transparent;font-family:var(--font-body)}
+.btn.primary{background:var(--mac-accent);color:#fff}
+.btn.secondary{background:var(--field-bg);border-color:var(--field-border);color:var(--field-fg)}
+.footnote{margin-left:auto;font-size:11px;color:var(--danger);display:flex;align-items:center;gap:6px}
+.footnote .dot{width:6px;height:6px}
+
+/* state card */
+.statecard{display:flex;flex-direction:column;gap:14px}
+.statebox{border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--bg)}
+.statebox .cap{font-size:11px;font-weight:600;color:var(--label-fg);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
+
+footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:8px 28px;justify-content:space-between}
+
+@media (max-width:780px){
+  .mock{flex-basis:100%}
+  .mock-narrow{flex-basis:100%;min-width:0}
+  .mock.statecard{flex-basis:100%;min-width:0}
+  .mockrow{gap:20px}
+  .menu-area{overflow-x:auto}
+  .sec-head{flex-direction:column;gap:2px}
+  .sec-num{padding-top:0}
+  .sec-lede{padding-left:0}
+  .grid2{grid-template-columns:1fr}
+  .irow .tag{width:30px}
+  .irow .sel{flex-basis:86px}
+  .irow .inp.txt{flex-basis:62px}
+  .specmeta{gap:8px 18px}
+}
+</style>
+</head>
+<body class="dark">
+<script>
+(function(){try{var s=localStorage.getItem('customrp-theme');if(s==='light'||s==='dark'){if(s==='light')document.body.classList.remove('dark');}else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches){document.body.classList.remove('dark');}}catch(e){}})();
+</script>
+
+<!-- ======== hand-drawn SF-style icon sprite (stroke 1.5, 16x16) ======== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-bolt" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="8" r="6.25"/><path d="M4 9 L7.3 9 L6.5 11.2 L12 7 L8.7 7 L9.5 4.8 Z"/>
+    </symbol>
+    <symbol id="i-stack" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2.8" y="6.2" width="7.6" height="7.6" rx="1.7"/><path d="M5.6 6.2V4.3a1.7 1.7 0 0 1 1.7-1.7h4.1a1.7 1.7 0 0 1 1.7 1.7v4.1a1.7 1.7 0 0 1-1.7 1.7H9.6"/>
+    </symbol>
+    <symbol id="i-slider" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2.4 5h11.2M2.4 8h11.2M2.4 11h11.2"/><circle cx="6.1" cy="5" r="1.35" fill="currentColor"/><circle cx="10.4" cy="8" r="1.35" fill="currentColor"/><circle cx="5.2" cy="11" r="1.35" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-refresh" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12.7 8a4.7 4.7 0 1 1-1.42-3.36"/><path d="M11.6 2.5v3.4H8.2"/>
+    </symbol>
+    <symbol id="i-xcircle" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="8" r="6.25"/><path d="M5.9 5.9l4.2 4.2M10.1 5.9l-4.2 4.2"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.6 8.4l3 3 5.8-6.8"/>
+    </symbol>
+    <symbol id="i-power" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 2.1V8"/><path d="M11.5 4.2a5 5 0 1 1-7 0"/>
+    </symbol>
+    <symbol id="i-gear" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="8" r="2.5"/><path d="M8 1.7v1.6M8 12.7v1.6M1.7 8h1.6M12.7 8h1.6M3.55 3.55l1.15 1.15M11.3 11.3l1.15 1.15M12.45 3.55l-1.15 1.15M4.7 11.3l-1.15 1.15"/>
+    </symbol>
+    <symbol id="i-pluscircle" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="8" r="6.25"/><path d="M8 4.9v6.2M4.9 8h6.2"/>
+    </symbol>
+    <symbol id="i-list" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2.2" y="3.1" width="11.6" height="9.8" rx="1.9"/>
+      <circle cx="4.95" cy="6.4" r=".8" fill="currentColor" stroke="none"/><circle cx="4.95" cy="9.6" r=".8" fill="currentColor" stroke="none"/>
+      <path d="M7.5 6.4h4M7.5 9.6h4"/>
+    </symbol>
+    <symbol id="i-openapp" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11.6 8.6v2.5a1.7 1.7 0 0 1-1.7 1.7H4.9a1.7 1.7 0 0 1-1.7-1.7V6.1a1.7 1.7 0 0 1 1.7-1.7h2.5"/><path d="M9.4 3.5h3.1v3.1"/><path d="M12.5 3.5 7.8 8.2"/>
+    </symbol>
+    <symbol id="i-chev" viewBox="0 0 10 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2.6 1.6 8 7l-5.4 5.4"/>
+    </symbol>
+    <symbol id="i-chevd" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1.6 1.6 7 6.4l5.4-4.8"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3.6v8.8M3.6 8h8.8"/>
+    </symbol>
+    <symbol id="i-x" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.2 4.2l7.6 7.6M11.8 4.2l-7.6 7.6"/>
+    </symbol>
+    <symbol id="i-wifi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M1.4 5.1a9.3 9.3 0 0 1 13.2 0"/><path d="M3.7 7.7a5.9 5.9 0 0 1 8.6 0"/><path d="M6.1 10.3a2.6 2.6 0 0 1 3.8 0"/><circle cx="8" cy="12.7" r=".85" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-battery" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="1.2" y="4.6" width="11.4" height="6.8" rx="2.1"/><path d="M14.1 6.9v2.2" stroke-linecap="round"/><rect x="2.7" y="6.1" width="7.2" height="3.8" rx="1" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path fill="currentColor" d="M16.37 1.43c0 1.14-.42 2.2-1.25 3.18-1 1.17-2.2 1.85-3.51 1.75-.05-1.1.42-2.27 1.25-3.2.9-1.02 2.13-1.72 3.51-1.73zM20.9 17.15c-.5 1.15-.75 1.66-1.4 2.68-.9 1.42-2.17 3.2-3.74 3.21-1.4.01-1.76-.9-3.66-.89-1.9.01-2.3.9-3.7.89-1.57-.01-2.77-1.6-3.67-3.02-2.5-3.97-2.77-8.63-1.22-11.11 1.1-1.76 2.83-2.79 4.46-2.79 1.66 0 2.7.91 4.07.91 1.33 0 2.14-.91 4.06-.91 1.45 0 2.99.79 4.09 2.15-3.6 1.97-3.01 7.11.71 8.88z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.3v1.7M8 13v1.7M1.3 8h1.7M13 8h1.7M3.3 3.3l1.2 1.2M11.5 11.5l1.2 1.2M12.7 3.3l-1.2 1.2M4.5 11.5l-1.2 1.2"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 9.7A5.8 5.8 0 0 1 6.3 2.6 5.8 5.8 0 1 0 13.4 9.7z"/></symbol>
+  </defs>
+</svg>
+
+<!-- =========================================================
+     MENU BAR MACRO (reused): left app menus, right status icons
+     ========================================================= -->
+
+<header class="topbar" data-od-id="spec-header">
+  <div class="brand">
+    <b>CustomRP</b><span>Menu Bar &amp; Editor — Design Spec</span>
+  </div>
+  <button class="toggle" id="themeToggle" type="button" aria-pressed="true" data-od-id="appearance-toggle">
+    <svg id="toggleIcon" aria-hidden="true"><use href="#i-sun"/></svg>
+    <span>Dark</span>
+  </button>
+</header>
+
+<div class="wrap">
+
+  <div class="masthead" data-od-id="masthead">
+    <div class="eyebrow">macOS menu bar utility · spec v1.0</div>
+    <h1>A custom Discord Rich Presence, told through the menu bar.</h1>
+    <p>Two surfaces carry the product: the status-item dropdown and the compact editor window. This page is a redline spec — every metric below is the literal value the build must ship, and every panel is a 1:1 mock rendered with those values.</p>
+    <div class="specmeta">
+      <span>Panel radius <b>6 px</b></span><span>Row height <b>22 px</b></span><span>Font <b>SF Pro Text 13 px</b></span>
+      <span>Icon column <b>16 px + 6 px</b></span><span>Max rows <b>11</b></span><span>Submenus <b>1</b></span>
+    </div>
+  </div>
+
+  <!-- ================= SECTION 1 ================= -->
+  <section class="sec" id="sec1" data-od-id="section-menubar">
+    <div class="sec-head"><div class="sec-num">01</div><h2>Menu bar strip — four states</h2></div>
+    <p class="sec-lede">A 24 px translucent strip. Left: Apple logo, Finder, File, Edit, View. Right: the CustomRP status item, then Wi‑Fi, battery and the clock. The icon is a template image, so its tint — not its shape — carries the state. Below each strip: the tooltip string and the SF Symbol the shape maps to.</p>
+
+    <div class="mockrow">
+      <div class="mock mock-narrow" data-od-id="strip-connected">
+        <div class="stripwrap">
+          <div class="mbs">
+            <div class="mbs-l">
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-apple"/></svg>
+              <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
+            </div>
+            <div class="mbs-r">
+              <span class="stitem active" title="CustomRP — Connected as kun#0"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
+              <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
+              <span>Wed 00:41</span>
+            </div>
+          </div>
+        </div>
+        <div class="mock-cap"><b>Connected</b><span>Tooltip “CustomRP — Connected as kun#0”</span><span class="sym">bolt.horizontal.circle.fill</span></div>
+      </div>
+
+      <div class="mock mock-narrow" data-od-id="strip-connecting">
+        <div class="stripwrap">
+          <div class="mbs">
+            <div class="mbs-l">
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-apple"/></svg>
+              <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
+            </div>
+            <div class="mbs-r">
+              <span class="stitem dim" title="CustomRP — Connecting…"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
+              <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
+              <span>Wed 00:41</span>
+            </div>
+          </div>
+        </div>
+        <div class="mock-cap"><b>Connecting</b><span>Tooltip “CustomRP — Connecting…” · icon at 60% opacity</span><span class="sym">bolt.horizontal.circle</span></div>
+      </div>
+
+      <div class="mock mock-narrow" data-od-id="strip-disconnected">
+        <div class="stripwrap">
+          <div class="mbs">
+            <div class="mbs-l">
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-apple"/></svg>
+              <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
+            </div>
+            <div class="mbs-r">
+              <span class="stitem muted" title="CustomRP — Discord not running"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
+              <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
+              <span>Wed 00:41</span>
+            </div>
+          </div>
+        </div>
+        <div class="mock-cap"><b>Disconnected</b><span>Tooltip “CustomRP — Discord not running” · secondary grey</span><span class="sym">bolt.horizontal.circle</span></div>
+      </div>
+
+      <div class="mock mock-narrow" data-od-id="strip-error">
+        <div class="stripwrap">
+          <div class="mbs">
+            <div class="mbs-l">
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-apple"/></svg>
+              <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
+            </div>
+            <div class="mbs-r">
+              <span class="stitem muted" title="CustomRP — Invalid Application ID"><svg aria-hidden="true"><use href="#i-bolt"/></svg><span class="badge"></span></span>
+              <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
+              <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
+              <span>Wed 00:41</span>
+            </div>
+          </div>
+        </div>
+        <div class="mock-cap"><b>Error</b><span>Tooltip “CustomRP — Invalid Application ID” · grey + red dot badge</span><span class="sym">bolt.horizontal.circle</span></div>
+      </div>
+    </div>
+    <p class="note">The badge is a 6 px red dot with a 1.5 px ring in the menu bar’s solid fallback colour so it reads against any wallpaper. It is the only place colour is added to the icon; the glyph itself stays a template image.</p>
+  </section>
+
+  <!-- ================= SECTION 2 ================= -->
+  <section class="sec" id="sec2" data-od-id="section-dropdown">
+    <div class="sec-head"><div class="sec-num">02</div><h2>The open dropdown menu</h2></div>
+    <p class="sec-lede">The centrepiece. Rows are 22 px, the panel is 6 px radius with 4 px vertical / 5 px horizontal inner padding, and separators are 1 px lines with 5 px vertical margin. Presets live in exactly one submenu; nothing else nests. Panels open right-aligned to the screen edge, as status-item menus do on macOS.</p>
+
+    <div class="mockrow">
+
+      <!-- (a) connected + submenu -->
+      <div class="mock" data-od-id="panel-a-mock">
+        <div class="stripwrap" style="padding-bottom:0">
+          <div class="mbs">
+            <div class="mbs-l">
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-apple"/></svg>
+              <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
+            </div>
+            <div class="mbs-r">
+              <span class="stitem open" title="CustomRP — Connected as kun#0"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
+              <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
+              <span>Wed 00:41</span>
+            </div>
+          </div>
+        </div>
+        <div class="menu-area">
+          <div class="menu-cluster">
+            <div class="mpanel" data-od-id="menu-panel-connected">
+              <div class="mrow status"><span class="mi"><span class="dot dot-green"></span></span><span class="mlabel">Connected as kun#0</span></div>
+              <div class="msep"></div>
+              <div class="mrow is-open"><span class="mi"><svg aria-hidden="true"><use href="#i-stack"/></svg></span><span class="mlabel">Presets</span><span class="marrow"><svg aria-hidden="true"><use href="#i-chev"/></svg></span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-slider"/></svg></span><span class="mlabel">Edit This Preset…</span><span class="mshort">⌘,</span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="mlabel">Reapply Now</span><span class="mshort">⌘R</span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear Presence</span></div>
+              <div class="msep"></div>
+              <div class="mrow checkbox"><span class="mi"><svg aria-hidden="true"><use href="#i-check"/></svg></span><span class="mlabel">Launch at Login</span></div>
+              <div class="msep"></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-power"/></svg></span><span class="mlabel">Quit CustomRP</span><span class="mshort">⌘Q</span></div>
+            </div>
+            <div class="mpanel sub" data-od-id="submenu-presets">
+              <div class="mrow is-open"><span class="mi"><svg aria-hidden="true"><use href="#i-check"/></svg></span><span class="mlabel">Gaming</span></div>
+              <div class="mrow"><span class="mi"></span><span class="mlabel">Working</span></div>
+              <div class="mrow"><span class="mi"></span><span class="mlabel">Streaming</span></div>
+              <div class="msep"></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-pluscircle"/></svg></span><span class="mlabel">Save current as new preset…</span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-list"/></svg></span><span class="mlabel">Manage presets…</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-cap"><b>(a) Connected · 3 presets</b><span>“Gaming” is active (checkmark) and hovered; the Presets parent row stays accent while its submenu is open.</span></div>
+      </div>
+
+      <!-- (b) discord not running -->
+      <div class="mock" data-od-id="panel-b-mock">
+        <div class="stripwrap" style="padding-bottom:0">
+          <div class="mbs">
+            <div class="mbs-l"><svg width="15" height="15" aria-hidden="true"><use href="#i-apple"/></svg><span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span></div>
+            <div class="mbs-r">
+              <span class="stitem open"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
+              <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span><span>Wed 00:41</span>
+            </div>
+          </div>
+        </div>
+        <div class="menu-area">
+          <div class="menu-cluster">
+            <div class="mpanel" data-od-id="menu-panel-disconnected">
+              <div class="mrow status"><span class="mi"><span class="dot dot-grey"></span></span><span class="mlabel">Discord not running</span></div>
+              <div class="msep"></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-stack"/></svg></span><span class="mlabel">Presets</span><span class="marrow"><svg aria-hidden="true"><use href="#i-chev"/></svg></span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-slider"/></svg></span><span class="mlabel">Edit This Preset…</span><span class="mshort">⌘,</span></div>
+              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="mlabel">Reapply Now</span><span class="mshort">⌘R</span></div>
+              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear Presence</span></div>
+              <div class="msep"></div>
+              <div class="mrow checkbox"><span class="mi"><svg aria-hidden="true"><use href="#i-check"/></svg></span><span class="mlabel">Launch at Login</span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-openapp"/></svg></span><span class="mlabel">Open Discord</span></div>
+              <div class="msep"></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-power"/></svg></span><span class="mlabel">Quit CustomRP</span><span class="mshort">⌘Q</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-cap"><b>(b) Discord not running</b><span>“Open Discord” appears only here; Reapply and Clear are disabled because there is no connection.</span></div>
+      </div>
+
+      <!-- (c) error -->
+      <div class="mock" data-od-id="panel-c-mock">
+        <div class="stripwrap" style="padding-bottom:0">
+          <div class="mbs">
+            <div class="mbs-l"><svg width="15" height="15" aria-hidden="true"><use href="#i-apple"/></svg><span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span></div>
+            <div class="mbs-r">
+              <span class="stitem open"><svg aria-hidden="true"><use href="#i-bolt"/></svg><span class="badge"></span></span>
+              <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
+              <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span><span>Wed 00:41</span>
+            </div>
+          </div>
+        </div>
+        <div class="menu-area">
+          <div class="menu-cluster">
+            <div class="mpanel" data-od-id="menu-panel-error">
+              <div class="mrow status error"><span class="mi"><span class="dot dot-red"></span></span><span class="mlabel">Invalid Application ID</span></div>
+              <div class="msep"></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-gear"/></svg></span><span class="mlabel">Fix in Settings…</span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-stack"/></svg></span><span class="mlabel">Presets</span><span class="marrow"><svg aria-hidden="true"><use href="#i-chev"/></svg></span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-slider"/></svg></span><span class="mlabel">Edit This Preset…</span><span class="mshort">⌘,</span></div>
+              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="mlabel">Reapply Now</span><span class="mshort">⌘R</span></div>
+              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear Presence</span></div>
+              <div class="msep"></div>
+              <div class="mrow checkbox"><span class="mi"><svg aria-hidden="true"><use href="#i-check"/></svg></span><span class="mlabel">Launch at Login</span></div>
+              <div class="msep"></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-power"/></svg></span><span class="mlabel">Quit CustomRP</span><span class="mshort">⌘Q</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-cap"><b>(c) Invalid Application ID</b><span>The status line turns accent-red and a “Fix in Settings…” row is injected directly under it — the shortest path to the fix. No “Open Discord”, because Discord is running.</span></div>
+      </div>
+
+      <!-- (d) first run -->
+      <div class="mock" data-od-id="panel-d-mock">
+        <div class="stripwrap" style="padding-bottom:0">
+          <div class="mbs">
+            <div class="mbs-l"><svg width="15" height="15" aria-hidden="true"><use href="#i-apple"/></svg><span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span></div>
+            <div class="mbs-r">
+              <span class="stitem open"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
+              <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span><span>Wed 00:41</span>
+            </div>
+          </div>
+        </div>
+        <div class="menu-area">
+          <div class="menu-cluster">
+            <div class="mpanel" data-od-id="menu-panel-firstrun">
+              <div class="mrow status"><span class="mi"><span class="dot dot-green"></span></span><span class="mlabel">Connected as kun#0</span></div>
+              <div class="msep"></div>
+              <div class="mrow is-open"><span class="mi"><svg aria-hidden="true"><use href="#i-stack"/></svg></span><span class="mlabel">Presets</span><span class="marrow"><svg aria-hidden="true"><use href="#i-chev"/></svg></span></div>
+              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-slider"/></svg></span><span class="mlabel">Edit This Preset…</span><span class="mshort">⌘,</span></div>
+              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="mlabel">Reapply Now</span><span class="mshort">⌘R</span></div>
+              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear Presence</span></div>
+              <div class="msep"></div>
+              <div class="mrow checkbox"><span class="mi"><svg aria-hidden="true"><use href="#i-check"/></svg></span><span class="mlabel">Launch at Login</span></div>
+              <div class="msep"></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-power"/></svg></span><span class="mlabel">Quit CustomRP</span><span class="mshort">⌘Q</span></div>
+            </div>
+            <div class="mpanel sub" data-od-id="submenu-presets-empty">
+              <div class="mrow empty"><span class="mi"></span><span class="mlabel">No presets yet</span></div>
+              <div class="msep"></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-pluscircle"/></svg></span><span class="mlabel">Save current as new preset…</span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-list"/></svg></span><span class="mlabel">Manage presets…</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-cap"><b>(d) First run · no presets</b><span>Preset-dependent rows are disabled, never hidden, so the menu keeps a stable shape. The empty state sits one level down, inside the submenu, and is muted + non-interactive.</span></div>
+      </div>
+
+    </div>
+    <p class="note">The Presets row is the single submenu. In (a) and (d) it is exploded to the right of its parent so its row styling is legible; single-panel states (b, c) sit right-aligned under the status item exactly as the open menu does on screen. Bringing the submenu up twice is intentional — (a) specifies the populated styling, (d) specifies the empty state, which lives in the same submenu.</p>
+  </section>
+
+  <!-- ================= SECTION 3 ================= -->
+  <section class="sec" id="sec3" data-od-id="section-anatomy">
+    <div class="sec-head"><div class="sec-num">03</div><h2>Row &amp; element anatomy</h2></div>
+    <p class="sec-lede">The authoritative metrics table. “Colour token” cells name the CSS custom properties declared in the token block underneath; no raw hex is permitted anywhere else in the build.</p>
+
+    <div class="tablecard" data-od-id="anatomy-table">
+      <div class="tscroll">
+      <table>
+        <thead><tr><th>Row / element</th><th>Height</th><th>Font</th><th>Colour token (light)</th><th>Colour token (dark)</th><th>Icon (SF Symbol)</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><b>Menu panel</b></td><td>auto</td><td>—</td><td><span class="tok">--menu-bg</span> / <span class="tok">--menu-border</span></td><td>same tokens</td><td>—</td><td>Radius 6 px, padding 4 px / 5 px, blur 34 px saturate 180%, min-width 242 px.</td></tr>
+          <tr><td><b>Status row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--menu-muted</span> + <span class="tok">--dot-*</span></td><td>same tokens</td><td><code>circle.fill</code></td><td>Non-clickable. 7 px colour-coded dot in the icon cell. Red text via <span class="tok">--danger</span> in the error state.</td></tr>
+          <tr><td><b>Normal row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--menu-fg</span> / <span class="tok">--menu-icon</span></td><td>same tokens</td><td>per item</td><td>Radius 4 px, padding 0 6 px 0 3 px, icon cell 16 px + 6 px gap.</td></tr>
+          <tr><td><b>Hover / selected row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--mac-accent</span> bg, <span class="tok">--mac-accent-fg</span></td><td>same tokens</td><td>—</td><td>Whole row inverts to accent + white; icon, shortcut and arrow all go white in the same rule.</td></tr>
+          <tr><td><b>Disabled row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--menu-disabled</span></td><td>same tokens</td><td>per item</td><td>Label, icon, shortcut and arrow all drop to the disabled token. Never hover-highlights.</td></tr>
+          <tr><td><b>Checkbox row</b></td><td>22 px</td><td>13 px regular</td><td>tick <span class="tok">--menu-fg</span>, no tick = empty cell</td><td>same tokens</td><td><code>checkmark</code></td><td>State occupies the leading icon cell (macOS convention). “Launch at Login” is the only one.</td></tr>
+          <tr><td><b>Separator</b></td><td>1 px (+5 px above/below)</td><td>—</td><td><span class="tok">--menu-sep</span></td><td>same tokens</td><td>—</td><td>Margin 5 px 4 px. Three groups only: status / presets+actions / login / quit.</td></tr>
+          <tr><td><b>Shortcut label</b></td><td>—</td><td>13 px regular</td><td><span class="tok">--menu-muted</span></td><td>same tokens</td><td>—</td><td>Right-aligned, ≥20 px clear of the label. ⌘, / ⌘R / ⌘Q. White when the row is selected.</td></tr>
+          <tr><td><b>Submenu arrow</b></td><td>10 × 14 px</td><td>—</td><td><span class="tok">--menu-muted</span></td><td>same tokens</td><td><code>chevron.right</code></td><td>Hand-drawn stroke 1.5 px, inline-end, ≥16 px from the label.</td></tr>
+          <tr><td><b>Icon cell</b></td><td>16 × 16 px</td><td>—</td><td><span class="tok">--menu-icon</span></td><td>same tokens</td><td>per item</td><td>Fixed 16 px column, 6 px gap to the label. Empty but reserved when a row has no icon.</td></tr>
+          <tr><td><b>Empty-state row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--menu-muted</span></td><td>same tokens</td><td>—</td><td>Non-interactive, no hover. Used only for “No presets yet” inside the Presets submenu.</td></tr>
+          <tr><td><b>Error row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--danger</span></td><td>same tokens</td><td><code>circle.fill</code> (red)</td><td>Status line in the error state. Red dot + red label; paired with the “Fix in Settings…” gear row.</td></tr>
+          <tr><td><b>Checkmark column</b></td><td>16 px</td><td>—</td><td><span class="tok">--menu-fg</span></td><td>same tokens</td><td><code>checkmark</code></td><td>Same 16 px leading cell as icons. Active preset is checked; every other preset keeps the cell empty so labels align.</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <h3 class="sub">Colour tokens</h3>
+    <div class="tokenwrap">
+      <pre class="codeblock"><span class="c">/* :root — light appearance (page + macOS mock) */</span>
+<span class="k">--bg</span>:      <span class="v">oklch(98% 0.004 95)</span>;
+<span class="k">--surface</span>: <span class="v">oklch(100% 0.002 95)</span>;
+<span class="k">--fg</span>:      <span class="v">oklch(20% 0.018 70)</span>;
+<span class="k">--muted</span>:   <span class="v">oklch(48% 0.012 70)</span>;
+<span class="k">--border</span>:  <span class="v">oklch(90% 0.006 95)</span>;
+<span class="k">--accent</span>:  <span class="v">oklch(52% 0.10 28)</span>;
+
+<span class="c">/* macOS mock — light */</span>
+<span class="k">--mac-accent</span>:    <span class="v">#007AFF</span>;
+<span class="k">--mac-accent-fg</span>: <span class="v">#FFFFFF</span>;
+<span class="k">--menu-bg</span>:        <span class="v">rgba(250,250,250,.80)</span>;
+<span class="k">--menu-fg</span>:        <span class="v">rgba(0,0,0,.86)</span>;
+<span class="k">--menu-icon</span>:      <span class="v">rgba(0,0,0,.62)</span>;
+<span class="k">--menu-muted</span>:     <span class="v">rgba(0,0,0,.48)</span>;
+<span class="k">--menu-disabled</span>:  <span class="v">rgba(0,0,0,.26)</span>;
+<span class="k">--menu-sep</span>:       <span class="v">rgba(0,0,0,.13)</span>;
+<span class="k">--menu-border</span>:    <span class="v">rgba(0,0,0,.12)</span>;
+<span class="k">--menubar-bg</span>:     <span class="v">rgba(246,246,247,.72)</span>;
+<span class="k">--danger</span>:         <span class="v">#FF3B30</span>;
+<span class="k">--dot-green</span>: <span class="v">#34C759</span>; <span class="k">--dot-amber</span>: <span class="v">#FF9F0A</span>; <span class="k">--dot-grey</span>: <span class="v">#8E8E93</span>;</pre>
+      <pre class="codeblock"><span class="c">/* body.dark — dark appearance */</span>
+<span class="k">--bg</span>:      <span class="v">oklch(21% 0.008 80)</span>;
+<span class="k">--surface</span>: <span class="v">oklch(25.5% 0.008 80)</span>;
+<span class="k">--fg</span>:      <span class="v">oklch(95% 0.004 95)</span>;
+<span class="k">--muted</span>:   <span class="v">oklch(72% 0.010 80)</span>;
+<span class="k">--border</span>:  <span class="v">oklch(33% 0.008 80)</span>;
+<span class="k">--accent</span>:  <span class="v">oklch(72% 0.11 28)</span>;
+
+<span class="c">/* macOS mock — dark */</span>
+<span class="k">--mac-accent</span>:    <span class="v">#0A84FF</span>;
+<span class="k">--mac-accent-fg</span>: <span class="v">#FFFFFF</span>;
+<span class="k">--menu-bg</span>:        <span class="v">rgba(39,39,42,.82)</span>;
+<span class="k">--menu-fg</span>:        <span class="v">rgba(255,255,255,.92)</span>;
+<span class="k">--menu-icon</span>:      <span class="v">rgba(255,255,255,.70)</span>;
+<span class="k">--menu-muted</span>:     <span class="v">rgba(255,255,255,.55)</span>;
+<span class="k">--menu-disabled</span>:  <span class="v">rgba(255,255,255,.28)</span>;
+<span class="k">--menu-sep</span>:       <span class="v">rgba(255,255,255,.14)</span>;
+<span class="k">--menu-border</span>:    <span class="v">rgba(255,255,255,.13)</span>;
+<span class="k">--menubar-bg</span>:     <span class="v">rgba(30,30,33,.62)</span>;
+<span class="k">--danger</span>:         <span class="v">#FF453A</span>;
+<span class="k">--dot-green</span>: <span class="v">#30D158</span>; <span class="k">--dot-amber</span>: <span class="v">#FF9F0A</span>; <span class="k">--dot-grey</span>: <span class="v">#98989D</span>;</pre>
+    </div>
+    <p class="note">Editor-window tokens (<span class="tok">--win-bg</span>, <span class="tok">--win-titlebar</span>, <span class="tok">--field-*</span>, <span class="tok">--ctrl-*</span>, <span class="tok">--seg-*</span>, <span class="tok">--label-fg</span>) follow the same two-block pattern and are declared alongside these; they are shown in the file itself rather than repeated here.</p>
+  </section>
+
+  <!-- ================= SECTION 4 ================= -->
+  <section class="sec" id="sec4" data-od-id="section-editor">
+    <div class="sec-head"><div class="sec-num">04</div><h2>Editor window — 480 × 560</h2></div>
+    <p class="sec-lede">The compact editor. Titlebar traffic lights, a type segmented control, name and text fields, a time section, image keys, up to two buttons, and an Apply / Save footer. The mock shows the invalid state of Details; the card beside it isolates the field’s three visual states.</p>
+
+    <div class="mockrow">
+      <div class="window" data-od-id="editor-window">
+        <div class="titlebar" data-od-id="editor-titlebar">
+          <div class="lights"><span class="light r"></span><span class="light y"></span><span class="light g"></span></div>
+          <div class="wintitle">CustomRP — Edit Preset</div>
+        </div>
+        <div class="winbody">
+          <div class="fld">
+            <label>Activity type</label>
+            <div class="seg" data-od-id="editor-type-picker"><b class="on">Playing</b><b>Listening</b><b>Watching</b><b>Competing</b></div>
+          </div>
+
+          <div class="fld">
+            <label>Preset name</label>
+            <div class="inp" data-od-id="field-preset-name">Gaming</div>
+          </div>
+
+          <div class="grid2">
+            <div class="fld">
+              <label>Details</label>
+              <div class="inp err" data-od-id="field-details">A</div>
+              <div class="inp ph">https URL (optional)</div>
+              <div class="hint">Details needs at least 2 characters</div>
+            </div>
+            <div class="fld">
+              <label>State</label>
+              <div class="inp" data-od-id="field-state">In queue</div>
+              <div class="inp ph">https URL (optional)</div>
+            </div>
+          </div>
+
+          <div class="fld">
+            <label>Time</label>
+            <div class="seg" data-od-id="editor-time-picker"><b>Off</b><b>Since launch</b><b>Total time</b><b>Local time</b><b class="on">Custom</b></div>
+          </div>
+          <div class="irow">
+            <div class="inp" style="flex:1 1 0">2026-09-20 00:41:07</div>
+            <span style="color:var(--label-fg);font-size:12px;flex:0 0 auto">→</span>
+            <div class="inp" style="flex:1 1 0">2026-09-20 04:00:00</div>
+          </div>
+
+          <div>
+            <div class="sechead">Images</div>
+            <div class="irow" style="margin-top:8px">
+              <span class="tag">Large</span>
+              <div class="sel inp" data-od-id="image-key-large"><span class="grow">playing_large</span><svg aria-hidden="true"><use href="#i-chevd"/></svg></div>
+              <div class="inp txt">Ranked</div>
+              <div class="inp url">https://…</div>
+            </div>
+            <div class="irow" style="margin-top:6px">
+              <span class="tag">Small</span>
+              <div class="sel inp" data-od-id="image-key-small"><span class="grow">rank_gold</span><svg aria-hidden="true"><use href="#i-chevd"/></svg></div>
+              <div class="inp txt">Gold</div>
+              <div class="inp url ph">https://…</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sechead">Buttons</div>
+            <div class="irow" style="margin-top:8px">
+              <div class="inp" style="flex:1 1 auto"><span class="grow">Join queue</span></div>
+              <div class="inp url" style="flex:1 1 auto">https://discord.gg/…</div>
+              <span class="chipx"><svg aria-hidden="true"><use href="#i-x"/></svg></span>
+            </div>
+            <div class="irow" style="margin-top:6px">
+              <div class="inp" style="flex:1 1 auto"><span class="grow">Leaderboard</span></div>
+              <div class="inp url" style="flex:1 1 auto">https://…</div>
+              <span class="chipx"><svg aria-hidden="true"><use href="#i-x"/></svg></span>
+            </div>
+            <div class="addrow" style="margin-top:7px"><svg aria-hidden="true"><use href="#i-plus"/></svg>Add button (2/2 — maximum reached)</div>
+          </div>
+        </div>
+        <div class="winfoot" data-od-id="editor-footer">
+          <span class="btn primary">Apply</span>
+          <span class="btn secondary">Save</span>
+          <span class="footnote"><span class="dot dot-red"></span>1 field needs attention</span>
+        </div>
+      </div>
+
+      <div class="mock statecard" data-od-id="editor-field-states">
+        <div class="statebox">
+          <div class="cap">Default</div>
+          <div class="inp ph">Details</div>
+        </div>
+        <div class="statebox">
+          <div class="cap">Focused</div>
+          <div class="inp" style="box-shadow:0 0 0 3px color-mix(in oklab,var(--mac-accent) 30%,transparent);border-color:var(--mac-accent)">Ranked grind</div>
+        </div>
+        <div class="statebox">
+          <div class="cap">Invalid</div>
+          <div class="inp err">A</div>
+          <div class="hint" style="margin-top:5px">Details needs at least 2 characters</div>
+        </div>
+        <p class="note" style="margin:0">Focus ring: 3 px <span class="tok">--mac-accent</span> at 30% outside the 1 px border. Invalid swaps the border to <span class="tok">--danger</span> and appends the hint; the hint is never the only signal.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SECTION 5 ================= -->
+  <section class="sec" id="sec5" data-od-id="section-handoff">
+    <div class="sec-head"><div class="sec-num">05</div><h2>Handoff — implementation table</h2></div>
+    <p class="sec-lede">One row per menu item, in exact render order. Indices 1–7 plus the conditional rows are the main level; <code>S*</code> rows live in the Presets submenu. “Enabled when” names the state predicate the item observes.</p>
+
+    <div class="tablecard" data-od-id="handoff-table">
+      <div class="tscroll">
+      <table>
+        <thead><tr><th>#</th><th>Label (exact string)</th><th>SF Symbol</th><th>Enabled when</th><th>Action</th><th>Shortcut</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="num">0</td><td>— status line</td><td><code>circle.fill</code></td><td>always (not interactive)</td><td>none</td><td>—</td><td>“Connected as &lt;user&gt;” / “Discord not running” / “Invalid Application ID”. Dot: green / grey / red.</td></tr>
+          <tr><td class="num">1</td><td>Presets</td><td><code>square.stack</code></td><td>always</td><td>open submenu</td><td><code>→</code></td><td>Only submenu in the app. Rendered title-case from the brief’s “PRESETS ▸”.</td></tr>
+          <tr><td class="num">2</td><td>Edit This Preset…</td><td><code>slider.horizontal.3</code></td><td>active preset exists</td><td>open editor window</td><td><code>⌘,</code></td><td>Disabled on first run.</td></tr>
+          <tr><td class="num">3</td><td>Reapply Now</td><td><code>arrow.clockwise</code></td><td>discord connected</td><td>re-send current presence</td><td><code>⌘R</code></td><td>Disabled unless connected.</td></tr>
+          <tr><td class="num">4</td><td>Clear Presence</td><td><code>xmark.circle</code></td><td>discord connected</td><td>clear Discord activity</td><td>—</td><td>Disabled unless connected.</td></tr>
+          <tr class="rowsep"><td colspan="7">separator · 1 px · 5 px vertical margin</td></tr>
+          <tr><td class="num">5</td><td>Launch at Login</td><td><code>checkmark</code></td><td>always</td><td>toggle SMAppService login item</td><td>—</td><td>Checkbox row; tick in the leading cell when on.</td></tr>
+          <tr><td class="num">6</td><td>Open Discord</td><td><code>arrow.up.forward.app</code></td><td>Discord not running</td><td>open <code>discord://</code></td><td>—</td><td>Rendered only when Discord is not running.</td></tr>
+          <tr class="rowsep"><td colspan="7">separator · 1 px · 5 px vertical margin</td></tr>
+          <tr><td class="num">7</td><td>Quit CustomRP</td><td><code>power</code></td><td>always</td><td>terminate app</td><td><code>⌘Q</code></td><td>Last row, always present.</td></tr>
+          <tr class="rowsep"><td colspan="7">conditional · error state only</td></tr>
+          <tr><td class="num">E1</td><td>Fix in Settings…</td><td><code>gearshape</code></td><td>invalid Application ID</td><td>open Settings ▸ Application</td><td>—</td><td>Injected immediately after the status line; not present in any other state.</td></tr>
+          <tr class="rowsep"><td colspan="7">Presets submenu (level 2)</td></tr>
+          <tr><td class="num">S1</td><td>&lt;preset name&gt;</td><td><code>checkmark</code> (state cell)</td><td>preset exists</td><td>activate preset</td><td>—</td><td>Active preset checked; others keep an empty 16 px cell.</td></tr>
+          <tr><td class="num">S2</td><td>Save current as new preset…</td><td><code>plus.circle</code></td><td>discord connected</td><td>save current RP as a preset</td><td>—</td><td>Opens a naming sheet with the preset-name validation.</td></tr>
+          <tr><td class="num">S3</td><td>Manage presets…</td><td><code>list.bullet.rectangle</code></td><td>always</td><td>open presets manager</td><td>—</td><td>Reordering, rename, duplicate, delete live here — not in the menu.</td></tr>
+          <tr><td class="num">S0</td><td>No presets yet</td><td>—</td><td>never (empty state)</td><td>none</td><td>—</td><td>Muted, non-hover. Shown only when there are zero presets.</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <h3 class="sub">Validation rules to surface in the UI</h3>
+    <ul class="rules">
+      <li><b>Details</b> and <b>State</b> must each be at least 2 characters when non-empty; the inline hint reads “Details needs at least 2 characters”.</li>
+      <li><b>Button label</b> must be ≤ 32 UTF-8 bytes (Discord’s limit); count bytes, not glyphs.</li>
+      <li><b>Timestamps</b> are clamped to <code>1970-01-01T00:00:01Z</code> … <code>5138-11-16T09:46:39Z</code>; values outside the range are rejected, not silently truncated.</li>
+      <li><b>Image key</b> is either an uploaded asset name or an absolute <code>https</code> URL; the resulting <code>mp:external</code> form must be ≤ 256 characters.</li>
+      <li><b>Party</b> (size / max / current) is only valid for the <b>Playing</b> activity type.</li>
+      <li><b>Competing</b> activity accepts <b>no timestamps</b>; the Time section is hidden and its values cleared when Competing is selected.</li>
+      <li>Maximum <b>two buttons</b>; the “+ Add button” affordance disables at 2 and reports “2/2 — maximum reached”.</li>
+    </ul>
+
+    <h3 class="sub">Deliberately cut for compactness</h3>
+    <p class="note" style="margin-top:0">The menu is capped at 11 rows and exactly one status line. These items were removed; each either duplicates an action reachable elsewhere or is too rare to earn a permanent row.</p>
+    <ul class="rules cut">
+      <li><b>About CustomRP / version</b> — moved to the standard About panel in Settings.</li>
+      <li><b>Check for Updates…</b> — Sparkle handles it automatically; manual check lives in Settings.</li>
+      <li><b>Copy / Paste presence JSON</b> — developer affordance, moved to Settings ▸ Advanced.</li>
+      <li><b>Pause / Resume presence</b> — collapsed into Clear Presence + Reapply Now.</li>
+      <li><b>Auto-reconnect toggle</b> — always on; exposing it invited a broken state.</li>
+      <li><b>Refresh preset list</b> — presets are file-observed and refresh themselves.</li>
+      <li><b>Inline per-preset Edit / Duplicate / Delete</b> — would force a third submenu level; all moved to “Manage presets…”.</li>
+      <li><b>“Recent presets” nested submenu</b> — a second submenu; presets already fit in one.</li>
+      <li><b>Second live status line / presence preview</b> — breaks the one-status-line rule.</li>
+      <li><b>Set as default preset</b> — the checkmark on activation already communicates this.</li>
+      <li><b>Export / Import all presets</b> — Settings ▸ Presets.</li>
+      <li><b>Open Logs / Report an issue / Support</b> — help menu in the app itself.</li>
+      <li><b>Keyboard-shortcut cheat sheet</b> — the three shortcuts are inline where they apply.</li>
+    </ul>
+  </section>
+
+  <footer class="deliver" data-od-id="footer">
+    <span>CustomRP — menu bar &amp; editor spec · v1.0</span>
+    <span>Single self-contained file · no external assets · light + dark</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var b=document.body, btn=document.getElementById('themeToggle'),
+      icon=document.getElementById('toggleIcon'), label=btn.querySelector('span'),
+      use=icon.querySelector('use');
+  function sync(){
+    var dark=b.classList.contains('dark');
+    btn.setAttribute('aria-pressed', dark?'true':'false');
+    label.textContent = dark?'Dark':'Light';
+    use.setAttribute('href', dark?'#i-sun':'#i-moon');
+    document.documentElement.style.colorScheme = dark?'dark':'light';
+  }
+  btn.addEventListener('click', function(){
+    b.classList.toggle('dark');
+    try{localStorage.setItem('customrp-theme', b.classList.contains('dark')?'dark':'light');}catch(e){}
+    sync();
+  });
+  sync();
+})();
+</script>
+</body>
+</html>

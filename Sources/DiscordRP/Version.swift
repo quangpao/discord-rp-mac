@@ -1,0 +1,6 @@
+import Foundation
+
+public enum Version {
+    public static let string = "1.0.0"
+    public static let bundleIdentifier = "dev.kun.customrp"
+}
