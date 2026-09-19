@@ -12,7 +12,9 @@ SUPPORT.mkdir(parents=True, exist_ok=True)
 #                4 local time · 5 custom (start/end)
 # ActivityKind:  0 playing · 1 streaming · 2 listening · 3 watching · 5 competing
 # DisplayType:   0 name · 1 details · 2 state
-IMAGE = "2-asset-logo-1024"   # uploaded art asset → large_image (name is the file name, Discord's default)
+IMAGE = "https://raw.githubusercontent.com/quangpao/customrp-assets/main/customrp-animated-logo.gif"
+# ↑ animated logo (GIF): Discord renders animation only for EXTERNAL URLs, not for uploaded assets.
+#   Static alternative if animation is unwanted: "2-asset-logo-1024" (uploaded portal asset).
 SMALL = "3-asset-small-512"   # uploaded art asset → small_image overlay
 LINK = "https://quangpao.dev"
 GH = "https://github.com/quangpao"

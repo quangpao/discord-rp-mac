@@ -64,6 +64,34 @@ Menu bar item → **Edit This Preset…** (or ⌘,):
 Alternatively set the keys by hand in
 `~/Library/Application Support/CustomRPMac/presets.json` (`largeKey` / `smallKey`) and restart the app.
 
+## Animated images (GIF / animated WebP / AVIF)
+
+Discord's rule (docs.discord.com · Rich Presence → Setting Rich Presence):
+
+> Uploaded assets (added via the developer portal) support PNG, JPEG, and WebP only — **animated images
+> are not supported for uploaded assets**. Unlike uploaded assets, **external URLs also support GIF,
+> animated WebP, and AVIF**.
+
+So an animated card image has exactly one route: an **https URL**, not a portal upload. The app already
+ships one, built from our own mark:
+
+```bash
+python3 scripts/make-animated-logo.py build/anim 30 512     # 30 frames: sparkle breathes, dot floats
+swift scripts/frames-to-gif.swift build/anim dist/discord/customrp-animated-logo.gif 15
+```
+
+Then host the file somewhere public and use that URL as the image key. Current host:
+`https://raw.githubusercontent.com/quangpao/customrp-assets/main/customrp-animated-logo.gif`
+(public repo `quangpao/customrp-assets`; 90 chars, `mp:external` budget ≈ 135/256).
+
+Caveats worth knowing before shipping an animation:
+
+- Discord **caches** external images; a changed file at the same URL may not refresh quickly — version
+  the filename (`…-logo-v2.gif`) when you replace it.
+- Keep it small and slow: 512×512, ~2 s loop, well under ~1 MB. A 15 fps loop of 30 frames is ~70 KB.
+- The URL must stay publicly reachable forever — delete the repo and the card image breaks.
+- Uploaded assets remain the better choice for a static image (no external dependency).
+
 ## Step 4 — Verify without looking at Discord
 
 ```bash
