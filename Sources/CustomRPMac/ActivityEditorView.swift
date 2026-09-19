@@ -1,6 +1,7 @@
 import AppKit
 import DiscordRP
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The editor lives in a plain AppKit window: an agent app with a `Window` scene can pop it
 /// open on launch, and this way the window is created only when asked for.
@@ -38,6 +39,9 @@ struct ActivityEditorView: View {
     @State private var pipeIndex: Int = 0
     @State private var assetNames: [String] = []
     @State private var assetError: String?
+    @State private var giphyStatus: String?
+    @State private var giphyUploading = false
+    @State private var giphyHidden = false
 
     var body: some View {
         Form {
@@ -136,6 +140,25 @@ struct ActivityEditorView: View {
                     Text("\(assetNames.count) assets").font(.caption).foregroundStyle(.secondary)
                 }
             }
+            Divider()
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Button(giphyUploading ? "Uploading…" : "Upload GIF to Giphy…") { uploadToGiphy() }
+                        .disabled(giphyUploading)
+                    Toggle("Private on Giphy", isOn: $giphyHidden)
+                        .toggleStyle(.checkbox)
+                        .font(.caption)
+                }
+                Text("Uploads the chosen file and puts Giphy's CDN URL into Large image. Animation only renders through an external URL (a portal upload stays static).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let giphyStatus {
+                    Text(giphyStatus)
+                        .font(.caption)
+                        .foregroundStyle(giphyStatus.hasPrefix("✓") ? Color.green : Color.red)
+                        .textSelection(.enabled)
+                }
+            }
         }
     }
 
@@ -218,6 +241,48 @@ struct ActivityEditorView: View {
             assetError = assetNames.isEmpty ? "No art assets uploaded for this app yet." : nil
         } catch {
             assetError = "Could not load assets: \(error.localizedDescription)"
+        }
+    }
+
+    /// Pick a file, push it to Giphy, and drop the CDN URL into Large image.
+    private func uploadToGiphy() {
+        guard let key = GiphyUploader.apiKey() else {
+            giphyStatus = "✗ No API key. Save one at \(GiphyUploader.defaultKeyPath()) (chmod 600)."
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.message = "Choose an animated GIF (or MP4/WebM) to upload to Giphy"
+        if let gif = UTType(filenameExtension: "gif"), let mp4 = UTType(filenameExtension: "mp4") {
+            panel.allowedContentTypes = [gif, mp4]
+        }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        giphyUploading = true
+        giphyStatus = "Uploading \(url.lastPathComponent)…"
+        Task {
+            do {
+                let result = try await GiphyUploader.upload(
+                    file: url, apiKey: key, hidden: giphyHidden, tags: "customrp,quangpao"
+                )
+                await MainActor.run {
+                    draft.largeKey = result.mediaURL
+                    giphyStatus = "✓ Uploaded → \(result.mediaURL)"
+                    giphyUploading = false
+                }
+            } catch let error as GiphyError {
+                await MainActor.run {
+                    giphyStatus = "✗ \(error.message)"
+                    giphyUploading = false
+                }
+            } catch {
+                await MainActor.run {
+                    giphyStatus = "✗ \(error.localizedDescription)"
+                    giphyUploading = false
+                }
+            }
         }
     }
 }

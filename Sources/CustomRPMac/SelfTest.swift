@@ -35,6 +35,12 @@ enum SelfTest {
             let directory = index + 1 < args.count && !args[index + 1].hasPrefix("--") ? args[index + 1] : nil
             return dumpPresetPayloads(directory: directory)
         }
+        if let index = args.firstIndex(of: "--giphy-upload") {
+            let file = index + 1 < args.count && !args[index + 1].hasPrefix("--")
+                ? args[index + 1]
+                : "dist/discord/customrp-animated-logo.gif"
+            return uploadToGiphy(file: file, hidden: args.contains("--hidden"))
+        }
         let live = args.contains("--live")
         guard args.contains("--self-test") || live else { return nil }
 
@@ -218,6 +224,38 @@ enum SelfTest {
             print("machine-readable: \(out.path)")
         }
         return 0
+    }
+
+    /// `--giphy-upload [file] [--hidden]` — the same code path the editor's button uses, so the
+    /// real upload can be verified from the shell.
+    private static func uploadToGiphy(file: String, hidden: Bool) -> Int32 {
+        guard let key = GiphyUploader.apiKey() else {
+            print("no API key at \(GiphyUploader.defaultKeyPath()) and GIPHY_API_KEY is unset")
+            return 1
+        }
+        let semaphore = DispatchSemaphore(value: 0)
+        var output = "timeout"
+        Task {
+            do {
+                let result = try await GiphyUploader.upload(
+                    file: URL(fileURLWithPath: file), apiKey: key, hidden: hidden, tags: "customrp,quangpao"
+                )
+                output = """
+                id:        \(result.id)
+                media url: \(result.mediaURL)
+                page:      \(result.pageURL)
+                key length: \(result.mediaURL.count) chars
+                """
+            } catch let error as GiphyError {
+                output = "error: \(error.message)"
+            } catch {
+                output = "error: \(error)"
+            }
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .now() + 150)
+        print(output)
+        return output.hasPrefix("error") || output == "timeout" ? 1 : 0
     }
 
     private static func checkLive(appID: String) {
