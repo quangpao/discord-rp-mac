@@ -92,15 +92,6 @@ presets = [
             timestampMode=0,
         ),
     },
-    {
-        "name": "6 · Meo meo",
-        "activity": activity(
-            kind=0, details="đang meo meo 🐱", state="meo meo meo",
-            timestampMode=1, largeKey=IMAGE, largeText="quangpao",
-            smallKey=SMALL, smallText="meo",
-            buttons=[{"label": "quangpao.dev", "url": LINK}],
-        ),
-    },
 ]
 
 payload = [{"id": str(uuid.uuid4()).upper(), "name": p["name"], "activity": p["activity"]} for p in presets]
