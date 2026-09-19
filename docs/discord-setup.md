@@ -34,11 +34,14 @@ why an app with no uploaded icon shows Discord's grey "?" placeholder.
 ## Step 2 — Rich Presence → Art Assets
 
 1. Left sidebar → **Rich Presence** → **Art Assets**.
-2. **Add Image(s)** and upload, one at a time:
-   | File | Suggested asset name (this is the key you type in the app) | Used as |
+2. **Add Image(s)** and upload, one at a time. Discord defaults the asset name to the **file name**,
+   so the keys currently in use are:
+   | File | Asset name Discord assigned (this is the key) | Used as |
    |---|---|---|
-   | `dist/discord/2-asset-logo-1024.png` | `logo` | `large_image` |
-   | `dist/discord/3-asset-small-512.png` | `mark` | `small_image` (small overlay on the big image) |
+   | `dist/discord/2-asset-logo-1024.png` | `2-asset-logo-1024` | `large_image` |
+   | `dist/discord/3-asset-small-512.png` | `3-asset-small-512` | `small_image` (small overlay on the big image) |
+   Renaming them in the portal (to e.g. `logo` / `mark`) is cosmetic — the card never shows the key —
+   but then every preset must be pointed at the new keys.
 3. **Save Changes**, then wait a few minutes.
 4. Sanity check from the shell — the same call the app's “Load asset names” button makes:
    ```bash
@@ -52,9 +55,9 @@ Portal accepts PNG/JPG at ≥512×512; the files here are 512–1024 px and 10�
 
 Menu bar item → **Edit This Preset…** (or ⌘,):
 
-- **Images → Large key**: `logo` · **Large text**: `quangpao` (leave *Large link* empty if you do not
-  want the image clickable)
-- **Images → Small key**: `mark` · **Small text**: whatever short label you want
+- **Images → Large key**: `2-asset-logo-1024` · **Large text**: `quangpao` (leave *Large link* empty if
+  you do not want the image clickable)
+- **Images → Small key**: `3-asset-small-512` · **Small text**: whatever short label you want
 - **Load asset names** opens a dropdown of the portal's assets — use it to confirm the key spelling.
 - **Apply** pushes immediately; the card updates in about two seconds.
 
@@ -68,5 +71,6 @@ Alternatively set the keys by hand in
 cat ~/Library/Logs/CustomRP/last-presence.json   # the payload Discord actually received
 ```
 
-Expect `"assets":{"large_image":"logo","small_image":"mark"}`. External URLs (`https://…`) stay valid
-as keys — Discord rewrites them to `mp:external/…`, which must stay under 256 characters.
+Expect `"assets":{"large_image":"2-asset-logo-1024","small_image":"3-asset-small-512"}`. External URLs
+(`https://…`) stay valid as keys — Discord rewrites them to `mp:external/…`, which must stay under 256
+characters.

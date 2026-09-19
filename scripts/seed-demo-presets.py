@@ -12,7 +12,8 @@ SUPPORT.mkdir(parents=True, exist_ok=True)
 #                4 local time · 5 custom (start/end)
 # ActivityKind:  0 playing · 1 streaming · 2 listening · 3 watching · 5 competing
 # DisplayType:   0 name · 1 details · 2 state
-IMAGE = "https://github.com/quangpao.png"  # public, stable, 31 chars (mp:external budget 75/256)
+IMAGE = "2-asset-logo-1024"   # uploaded art asset → large_image (name is the file name, Discord's default)
+SMALL = "3-asset-small-512"   # uploaded art asset → small_image overlay
 LINK = "https://quangpao.dev"
 GH = "https://github.com/quangpao"
 
@@ -53,7 +54,7 @@ presets = [
         "name": "1 · Coding",
         "activity": activity(
             details="Đang code", state="customrp-mac",
-            largeKey=IMAGE, largeText="quangpao", largeURL=LINK,
+            largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
             buttons=[{"label": "quangpao.dev", "url": LINK}, {"label": "GitHub", "url": GH}],
         ),
     },
@@ -61,7 +62,7 @@ presets = [
         "name": "2 · Nghe nhạc",
         "activity": activity(
             kind=2, details="Lo-fi beats to code to", state="Focus mode",
-            timestampMode=4, largeKey=IMAGE, largeText="quangpao",
+            timestampMode=4, largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
             buttons=[{"label": "quangpao.dev", "url": LINK}],
         ),
     },
@@ -69,7 +70,7 @@ presets = [
         "name": "3 · Chơi game (party 3/5)",
         "activity": activity(
             kind=0, details="Ranked", state="Đang vào trận",
-            partySize=3, partyMax=5, largeKey=IMAGE, largeText="quangpao",
+            partySize=3, partyMax=5, largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
             buttons=[{"label": "GitHub", "url": GH}],
         ),
     },
@@ -78,7 +79,7 @@ presets = [
         "activity": activity(
             kind=0, details="Sprint sắp hết", state="Còn lại",
             timestampMode=5, customEndEnabled=True,
-            largeKey=IMAGE, largeText="quangpao",
+            largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
             buttons=[{"label": "quangpao.dev", "url": LINK}],
         ),
     },
