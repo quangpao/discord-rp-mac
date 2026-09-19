@@ -121,10 +121,12 @@ public struct Activity: Codable, Equatable, Sendable {
         self.kind = kind
     }
 
-    /// A starter preset. `name` is deliberately empty: Discord then shows the application's own
-    /// name on the card instead of a generic "Default".
-    public static func sample(_ name: String = "") -> Activity {
+    /// Starter preset. The name carries the credit line on purpose — Discord renders `name`
+    /// instead of the application's own name, so this is the visible byline on every profile.
+    public static func sample(_ name: String = "CustomRP by quangpao") -> Activity {
         var activity = Activity(name: name, details: "Đang code", state: "customrp-mac")
+        activity.timestampMode = .sinceConnection
+        activity.buttons = [Button(label: "quangpao.dev", url: "https://quangpao.dev")]
         return activity
     }
 }

@@ -277,6 +277,7 @@ private final class Worker: @unchecked Sendable {
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
             try client.setActivity(data)
             presenceStarted = now
+            PresenceLog.record(payload: data, error: nil)
             onIssues?([])
         } catch let error as IPCError {
             if case .discordRejected(let code, let message) = error {
@@ -286,9 +287,11 @@ private final class Worker: @unchecked Sendable {
                 teardown()
                 scheduleRetry()
             }
+            PresenceLog.record(payload: nil, error: "\(error)")
         } catch {
             teardown()
             scheduleRetry()
+            PresenceLog.record(payload: nil, error: "\(error)")
         }
     }
 
