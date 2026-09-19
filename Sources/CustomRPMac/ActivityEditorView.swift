@@ -82,7 +82,8 @@ struct ActivityEditorView: View {
 
     private var contentSection: some View {
         Section("Presence") {
-            TextField("Preset name", text: $presetName)
+            TextField("Preset name (this app only)", text: $presetName)
+            TextField("Shown as (Discord app name)", text: $draft.name)
             Picker("Type", selection: $draft.kind) {
                 ForEach(ActivityKind.allCases) { kind in Text(kind.label).tag(kind) }
             }
