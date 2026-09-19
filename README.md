@@ -48,6 +48,33 @@ swift run CustomRPMac --self-test # headless checks that work with CommandLineTo
 CustomRPMac --version | --login-item status | --live --app-id <ID>
 ```
 
+## Design / logo
+
+The canonical mark is the **Activity Spark** from the Open Design logo sheet
+(`docs/ui/customrp-logo-sheet.html`): a four-pointed sparkle with a satellite dot, amber `#F5A524`
+on a `#2B1B02` ink. Decision (Kun): the **original geometry** is canonical everywhere — the menu bar
+glyph and the silhouette inside the app-icon tile are the same shape, so the Dock and the menu bar
+read as one logo.
+
+| Asset | File | Used for |
+|---|---|---|
+| mark | `Resources/logo/c2-mark.svg` | menu bar template image (22 px / 44 px PNG pair in the bundle) |
+| app icon | `Resources/logo/c2-appicon-hig.svg` | `Resources/AppIcon.icns` (squircle + gradient + keyline, mark centred by measurement) |
+| micro variant | `Resources/logo/c2-mark-16.svg` | optically fattened version OD drew for 1x menu bars; **not used** — kept for non-retina displays |
+
+Regenerating after a new design run:
+
+```bash
+python3 scripts/extract-svgs.py docs/ui/customrp-logo-sheet.html Resources/logo
+python3 scripts/centre-appicon.py     # re-applies the measured geometry nudge to the icon mark
+./scripts/make-menubar-icon.sh        # mark.svg  → MenuBarIcon.png + @2x (template, transparent)
+./scripts/make-icns.sh               # appicon-hig.svg → AppIcon.icns
+./scripts/build-app.sh --install --run
+```
+
+`scripts/svg-to-png.sh` rasterises any of these SVGs (it forces the small intrinsic size to the
+requested one — without that, a 32 px viewBox lands as a speck in the corner of a 1024 px canvas).
+
 ## Known gaps
 
 - **Memory**: ~74 MB resident, not the < 30 MB the plan assumed. That is SwiftUI/AppKit baseline
