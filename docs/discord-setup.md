@@ -92,6 +92,17 @@ Caveats worth knowing before shipping an animation:
 - The URL must stay publicly reachable forever — delete the repo and the card image breaks.
 - Uploaded assets remain the better choice for a static image (no external dependency).
 
+## Buttons are invisible to you (by design)
+
+Discord's own documentation, Rich Presence → *Setting Buttons*:
+
+> **Buttons are only visible to other users — you cannot see buttons on your own Rich Presence.**
+
+CustomRP's FAQ says the same thing ("you can't see your own buttons, but others will see them"). So a missing
+button on your own profile card is **not** a payload bug — the app sends them correctly
+(`buttons:[{label,url}]`, label ≤ 32 UTF-8 bytes, https URL). To verify: have someone else open your
+profile, or log in a second account (mobile or web) and look at the main account.
+
 ## Step 4 — Verify without looking at Discord
 
 ```bash
