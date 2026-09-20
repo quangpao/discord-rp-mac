@@ -86,11 +86,17 @@ struct ActivityEditorView: View {
     // MARK: - grid primitives
 
     /// The single row primitive: label in the fixed column, control in the control column.
+    ///
+    /// Alignment is `.top`, **not** `.firstTextBaseline`: a tall child without a text baseline
+    /// (the image preview box) gets its top edge dropped onto the label's baseline under baseline
+    /// alignment, which pushed the whole preview ~100 pt below its label and left a blank block
+    /// where the content should have been.
     private func row<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: columnGap) {
+        HStack(alignment: .top, spacing: columnGap) {
             Text(label)
                 .foregroundStyle(.secondary)
                 .frame(width: labelColumn, alignment: .trailing)
+                .padding(.top, 3)
             content()
             Spacer(minLength: 0)
         }
