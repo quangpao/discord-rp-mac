@@ -33,6 +33,20 @@ enum SelfTest {
             print("after:  \(LaunchAtLogin.debugDescription)")
             return 0
         }
+        if args.contains("--giphy-library") {
+            let library = GiphyLibrary.shared.load()
+            if library.isEmpty {
+                print("no uploads recorded yet")
+            } else {
+                print("\(library.count) upload(s), newest first:")
+                for upload in library {
+                    print("  \(upload.id)  \(upload.filename)  \(upload.hidden ? "private" : "public")  "
+                          + upload.uploadedAt.formatted(date: .abbreviated, time: .shortened))
+                    print("      \(upload.mediaURL)")
+                }
+            }
+            return 0
+        }
         if let index = args.firstIndex(of: "--presets") {
             let directory = index + 1 < args.count && !args[index + 1].hasPrefix("--") ? args[index + 1] : nil
             return dumpPresetPayloads(directory: directory)

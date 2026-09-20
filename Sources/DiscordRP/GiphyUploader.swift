@@ -141,6 +141,17 @@ public enum GiphyUploader {
             throw GiphyError.http(status: http.statusCode,
                                   body: String(decoding: responseData.prefix(300), as: UTF8.self))
         }
-        return try parse(responseData)
+        let result = try parse(responseData)
+        // Keep a local record: the Giphy API cannot list your own uploads, so this is the only way
+        // back to an upload (especially a hidden one) without re-uploading it.
+        GiphyLibrary.shared.record(GiphyUpload(
+            id: result.id,
+            mediaURL: result.mediaURL,
+            pageURL: result.pageURL,
+            filename: file.lastPathComponent,
+            bytes: data.count,
+            hidden: hidden
+        ))
+        return result
     }
 }

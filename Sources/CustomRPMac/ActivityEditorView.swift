@@ -55,6 +55,8 @@ struct ActivityEditorView: View {
     @State private var giphyStatus: String?
     @State private var giphyUploading = false
     @State private var giphyHidden = false
+    /// Local history of Giphy uploads — an upload is done once and can be re-picked afterwards.
+    @State private var uploads: [GiphyUpload] = []
 
     /// One grid for the whole window.
     private let labelColumn: CGFloat = 140
@@ -283,6 +285,11 @@ struct ActivityEditorView: View {
                 .disabled(giphyUploading)
                 Menu("From uploaded assets") { assetButtons(into: $draft.largeKey) }
             }
+            row("Large GIFs") {
+                Menu("From my uploads") { libraryButtons(into: $draft.largeKey) }
+                Button("Copy key") { copyKey(draft.largeKey) }
+                    .disabled(draft.largeKey.isEmpty)
+            }
             row("Small key") {
                 field("Small key or URL", text: $draft.smallKey)
             }
@@ -298,6 +305,11 @@ struct ActivityEditorView: View {
                 }
                 .disabled(giphyUploading)
                 Menu("From uploaded assets") { assetButtons(into: $draft.smallKey) }
+            }
+            row("Small GIFs") {
+                Menu("From my uploads") { libraryButtons(into: $draft.smallKey) }
+                Button("Copy key") { copyKey(draft.smallKey) }
+                    .disabled(draft.smallKey.isEmpty)
             }
             row("Giphy") {
                 Toggle("Private", isOn: $giphyHidden)
@@ -335,6 +347,27 @@ struct ActivityEditorView: View {
                 Button(name) { key.wrappedValue = name }
             }
         }
+    }
+
+    /// Every GIF this app has uploaded, newest first: pick one instead of uploading it again
+    /// (an upload costs one of the 10/day the dashboard key allows, and a hidden upload is not
+    /// findable on giphy.com either).
+    @ViewBuilder
+    private func libraryButtons(into key: Binding<String>) -> some View {
+        if uploads.isEmpty {
+            Text("Nothing uploaded yet")
+        } else {
+            ForEach(uploads) { upload in
+                Button("\(upload.filename) — \(upload.uploadedAt.formatted(date: .abbreviated, time: .shortened))\(upload.hidden ? " · private" : "")") {
+                    key.wrappedValue = upload.mediaURL
+                }
+            }
+        }
+    }
+
+    private func copyKey(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
     }
 
     private var buttonCard: some View {
@@ -396,6 +429,7 @@ struct ActivityEditorView: View {
     private func load() {
         appIDField = model.settings.appID
         pipeIndex = model.settings.pipeIndex
+        uploads = GiphyLibrary.shared.load()
         if let preset = model.activePreset {
             draft = preset.activity
             presetName = preset.name
@@ -448,6 +482,7 @@ struct ActivityEditorView: View {
                 )
                 await MainActor.run {
                     slot.wrappedValue = result.mediaURL
+                    uploads = GiphyLibrary.shared.load()
                     giphyStatus = "✓ Uploaded → \(result.mediaURL) (\(slotName))"
                     giphyUploading = false
                 }
