@@ -55,6 +55,20 @@ final class AppModel: ObservableObject {
         }
 
         guard startEngine else { return }
+
+        // Launch-at-login: the registration is the source of truth, not the stored flag. Replacing
+        // the app bundle (every rebuild) can silently drop an SMAppService registration, and the
+        // CLI toggle does not write settings — so reconcile both ways and persist what is real.
+        let loginItemEnabled = LaunchAtLogin.isEnabled
+        launchAtLogin = loginItemEnabled
+        if loginItemEnabled {
+            settings.launchAtLogin = true
+        } else if settings.launchAtLogin {
+            try? LaunchAtLogin.setEnabled(true)
+            launchAtLogin = LaunchAtLogin.isEnabled
+        }
+        persistSettings()
+
         // Keep the keepalive timer alive while the app sits idle in the menu bar.
         activityToken = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep],
