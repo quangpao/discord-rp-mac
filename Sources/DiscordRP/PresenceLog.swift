@@ -4,7 +4,12 @@ import Foundation
 /// be verified from the shell (`~/Library/Logs/DiscordRP/last-presence.json`). No telemetry, no
 /// network — the plan's logging decision.
 public enum PresenceLog {
+    /// Overridable so tests never write into the developer's real log directory (a test run used to
+    /// clobber `last-presence.json` with its own fixture payload).
+    nonisolated(unsafe) public static var directoryOverride: URL?
+
     public static var directory: URL {
+        if let directoryOverride { return directoryOverride }
         let base = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library")
         return base.appendingPathComponent("Logs/DiscordRP", isDirectory: true)
