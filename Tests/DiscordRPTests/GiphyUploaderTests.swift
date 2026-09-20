@@ -4,14 +4,27 @@ import XCTest
 
 final class GiphyUploaderTests: XCTestCase {
     private var directory: URL!
+    private var previousStorage: GiphyKeyStorage!
+
+    /// Never let a test read the developer's real Keychain, and never let a failure message print a
+    /// key value: an open-source CI log is public, and `XCTAssertEqual`/`XCTAssertNil` include the
+    /// actual value on failure. Assertions about key material use booleans on purpose.
+    private final class EmptyStorage: GiphyKeyStorage, @unchecked Sendable {
+        func read() -> String? { nil }
+        func write(_ value: String) throws {}
+        func delete() {}
+    }
 
     override func setUpWithError() throws {
         directory = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("giphy-tests-\(UUID().uuidString)")
+            .appendingPathComponent("customrp-giphy-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        previousStorage = GiphyKeyStore.storage
+        GiphyKeyStore.storage = EmptyStorage()
     }
 
     override func tearDownWithError() throws {
+        GiphyKeyStore.storage = previousStorage
         try? FileManager.default.removeItem(at: directory)
     }
 
@@ -47,13 +60,15 @@ final class GiphyUploaderTests: XCTestCase {
     }
 
     func testAPIKeyMissingIsNil() {
-        XCTAssertNil(GiphyUploader.apiKey(path: "\(directory.path)/nope", environment: [:]))
+        XCTAssertTrue(GiphyUploader.apiKey(path: "\(directory.path)/nope", environment: [:]) == nil,
+                      "an empty environment and a missing file must yield no key")
     }
 
     func testAPIKeyReadFromFile() throws {
         let file = directory.appendingPathComponent("api_key")
         try "  my-key\n".write(to: file, atomically: true, encoding: .utf8)
-        XCTAssertEqual(GiphyUploader.apiKey(path: file.path, environment: [:]), "my-key")
+        XCTAssertTrue(GiphyUploader.apiKey(path: file.path, environment: [:]) == "my-key",
+                      "the file value is used when the Keychain is empty")
     }
 
     func testUnsupportedExtensionIsRejected() async throws {
