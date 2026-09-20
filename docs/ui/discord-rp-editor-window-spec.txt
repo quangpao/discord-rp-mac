@@ -1,3 +1,4 @@
+<!-- Renamed after this document was written: the app was called “customrp-mac” / “CustomRP” while it was being designed. It is now **Discord RP**; mentions of CustomRP in this file refer either to that earlier working name or to the Windows app it was modelled on. Not affiliated with CustomRP. -->
 CustomRP — Editor Window Redesign · SwiftUI Handoff Spec
 Native macOS · SwiftUI handoff
 CustomRP Editor Window — Redesign Spec

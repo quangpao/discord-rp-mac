@@ -76,7 +76,7 @@ def main() -> int:
             positional.append(item)
         index += 1
 
-    source = pathlib.Path(positional[0] if positional else "dist/discord/customrp-animated-logo.gif")
+    source = pathlib.Path(positional[0] if positional else "dist/discord/discord-rp-animated-logo.gif")
     if not source.exists():
         sys.exit(f"missing file: {source}")
 

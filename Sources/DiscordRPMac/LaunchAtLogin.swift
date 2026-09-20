@@ -5,7 +5,7 @@ import ServiceManagement
 /// LaunchAgent fallback because an ad-hoc-signed bundle can be refused with
 /// "Operation not permitted".
 enum LaunchAtLogin {
-    static let agentLabel = "dev.kun.customrp"
+    static let agentLabel = "dev.quangpao.discordrp"
 
     private static var agentURL: URL {
         FileManager.default.homeDirectoryForCurrentUser

@@ -1,13 +1,13 @@
 import Foundation
 
 /// Minimal file logging: the payload Discord actually received is written to disk so a push can
-/// be verified from the shell (`~/Library/Logs/CustomRP/last-presence.json`). No telemetry, no
+/// be verified from the shell (`~/Library/Logs/DiscordRP/last-presence.json`). No telemetry, no
 /// network — the plan's logging decision.
 public enum PresenceLog {
     public static var directory: URL {
         let base = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library")
-        return base.appendingPathComponent("Logs/CustomRP", isDirectory: true)
+        return base.appendingPathComponent("Logs/DiscordRP", isDirectory: true)
     }
 
     public static var lastPayloadURL: URL { directory.appendingPathComponent("last-presence.json") }

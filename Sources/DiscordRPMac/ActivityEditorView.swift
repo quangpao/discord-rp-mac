@@ -14,7 +14,7 @@ final class EditorWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "CustomRP — Preset"
+        window.title = "Discord RP — Preset"
         window.minSize = NSSize(width: 560, height: 600)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: ActivityEditorView(model: model))

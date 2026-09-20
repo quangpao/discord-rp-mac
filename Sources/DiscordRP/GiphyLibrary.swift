@@ -25,7 +25,7 @@ public struct GiphyUpload: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-/// Local history of Giphy uploads (`~/Library/Application Support/CustomRPMac/giphy-uploads.json`).
+/// Local history of Giphy uploads (`~/Library/Application Support/DiscordRPMac/giphy-uploads.json`).
 ///
 /// Why this exists: the Giphy API has **no** "list my uploads" endpoint, and a private
 /// (`is_hidden`) upload does not show up on the account page either — without a local record the
@@ -44,7 +44,7 @@ public final class GiphyLibrary: @unchecked Sendable {
         } else {
             let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
                 ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-            self.directory = base.appendingPathComponent("CustomRPMac", isDirectory: true)
+            self.directory = base.appendingPathComponent("DiscordRPMac", isDirectory: true)
         }
     }
 

@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The menu bar dropdown.
 ///
-/// Structure is taken from the Open Design spec (`docs/ui/customrp-menu-spec.html`,
+/// Structure is taken from the Open Design spec (`docs/ui/discord-rp-menu-spec.html`,
 /// section 5 “Handoff”): one status line, presets in exactly one submenu, maximum 11 rows,
 /// no other nesting. Row order, labels, SF Symbols and shortcuts match the handoff table.
 struct MenuContentView: View {
@@ -108,7 +108,7 @@ struct MenuContentView: View {
         Button {
             NSApp.terminate(nil)
         } label: {
-            Label("Quit CustomRP", systemImage: "power")
+            Label("Quit Discord RP", systemImage: "power")
         }
         .keyboardShortcut("q", modifiers: .command)
     }

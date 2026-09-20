@@ -10,7 +10,7 @@ enum SingleInstance {
     private static var lockURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        let directory = base.appendingPathComponent("CustomRPMac", isDirectory: true)
+        let directory = base.appendingPathComponent("DiscordRPMac", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory.appendingPathComponent("instance.lock")
     }

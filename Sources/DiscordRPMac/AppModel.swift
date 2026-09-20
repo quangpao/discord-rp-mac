@@ -23,6 +23,10 @@ final class AppModel: ObservableObject {
     private var wakeObserver: NSObjectProtocol?
 
     init(startEngine: Bool = true) {
+        // Before anything reads presets/settings: move data + the Giphy key over from the
+        // pre-rename names (`CustomRP` → `Discord RP`). Copies only, never destructive.
+        Migration.runIfNeeded()
+
         let store = PresetStore()
         var settings = store.loadSettings()
         var presets = store.loadPresets()

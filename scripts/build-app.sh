@@ -5,9 +5,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
-APP_NAME="CustomRP"
-EXECUTABLE="CustomRPMac"
-BUNDLE_ID="dev.kun.customrp"
+APP_NAME="Discord RP"
+EXECUTABLE="DiscordRPMac"
+BUNDLE_ID="dev.quangpao.discordrp"
 BUILD_DIR="$ROOT/build"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
 

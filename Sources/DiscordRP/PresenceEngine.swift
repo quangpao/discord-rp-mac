@@ -112,7 +112,7 @@ private final class StatusBox {
 // MARK: - worker
 
 private final class Worker: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "dev.kun.customrp.ipc")
+    private let queue = DispatchQueue(label: "dev.quangpao.discordrp.ipc")
     private var timer: DispatchSourceTimer?
     private var client: DiscordIPCClient?
 

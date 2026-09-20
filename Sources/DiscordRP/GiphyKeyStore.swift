@@ -51,16 +51,25 @@ public protocol GiphyKeyStorage: Sendable {
 }
 
 public struct KeychainGiphyKeyStorage: GiphyKeyStorage {
-    public static let service = "dev.kun.customrp.giphy"
+    public static let service = "dev.quangpao.discordrp.giphy"
     public static let account = "api-key"
 
-    public init() {}
+    private let service: String
+    private let account: String
+
+    /// The service is a parameter so the pre-rename item (`dev.kun.customrp.giphy`) can be read for
+    /// the one-time migration.
+    public init(service: String = KeychainGiphyKeyStorage.service,
+                account: String = KeychainGiphyKeyStorage.account) {
+        self.service = service
+        self.account = account
+    }
 
     private var query: [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.service,
-            kSecAttrAccount as String: Self.account,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
         ]
     }
 

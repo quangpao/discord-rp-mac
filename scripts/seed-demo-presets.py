@@ -8,7 +8,7 @@ import sys
 import uuid
 from datetime import datetime, timedelta
 
-SUPPORT = pathlib.Path.home() / "Library/Application Support/CustomRPMac"
+SUPPORT = pathlib.Path.home() / "Library/Application Support/DiscordRPMac"
 SUPPORT.mkdir(parents=True, exist_ok=True)
 
 # TimestampMode: 0 off · 1 since connection · 2 since app start · 3 since presence update
@@ -33,17 +33,17 @@ end = int((now + timedelta(hours=3)).timestamp() * 1000)
 # A running app holds its presets in memory and rewrites presets.json on save/quit, which silently
 # undoes a seed written underneath it. Refuse unless --force.
 if "--force" not in sys.argv:
-    running = subprocess.run(["pgrep", "-x", "CustomRPMac"], capture_output=True, text=True).stdout.split()
+    running = subprocess.run(["pgrep", "-x", "DiscordRPMac"], capture_output=True, text=True).stdout.split()
     if running:
         raise SystemExit(
-            f"CustomRP is running (pid {', '.join(running)}) — quit it first, or pass --force.\n"
+            f"Discord RP is running (pid {', '.join(running)}) — quit it first, or pass --force.\n"
             "A running app rewrites presets.json from memory and will undo this seed."
         )
 
 
 def activity(**overrides):
     base = {
-        "name": "CustomRP by quangpao",
+        "name": "Discord RP by quangpao",
         "kind": 0,
         "display": 1,
         "details": "",
@@ -72,7 +72,7 @@ presets = [
     {
         "name": "1 · Coding",
         "activity": activity(
-            details="Đang code", state="customrp-mac",
+            details="Đang code", state="discord-rp-mac",
             largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
             buttons=[{"label": "quangpao.dev", "url": LINK}, {"label": "GitHub", "url": GH}],
         ),

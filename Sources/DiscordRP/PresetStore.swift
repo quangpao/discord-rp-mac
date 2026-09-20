@@ -22,7 +22,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public init() {}
 }
 
-/// JSON persistence in `~/Library/Application Support/CustomRPMac/`.
+/// JSON persistence in `~/Library/Application Support/DiscordRPMac/`.
 /// A corrupt file is moved aside to `<name>.bak` and replaced by defaults, mirroring
 /// CustomRP's corrupt-settings recovery (`Program.cs:128-145`).
 public final class PresetStore: @unchecked Sendable {
@@ -34,7 +34,7 @@ public final class PresetStore: @unchecked Sendable {
         } else {
             let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
                 ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-            self.directory = base.appendingPathComponent("CustomRPMac", isDirectory: true)
+            self.directory = base.appendingPathComponent("DiscordRPMac", isDirectory: true)
         }
     }
 
@@ -97,7 +97,7 @@ public final class PresetStore: @unchecked Sendable {
         try Self.encoder().encode(settings).write(to: settingsURL, options: .atomic)
     }
 
-    /// Single-file preset import/export (`open -a CustomRP preset.json`).
+    /// Single-file preset import/export (`open -a "Discord RP" preset.json`).
     public func exportPreset(_ preset: Preset, to url: URL) throws {
         try Self.encoder().encode(preset).write(to: url, options: .atomic)
     }

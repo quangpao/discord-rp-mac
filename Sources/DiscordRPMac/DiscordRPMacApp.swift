@@ -3,7 +3,7 @@ import DiscordRP
 import SwiftUI
 
 @main
-struct CustomRPMacApp: App {
+struct DiscordRPMacApp: App {
     @StateObject private var model: AppModel
 
     init() {

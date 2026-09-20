@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>CustomRPMac</string>
+	<string>DiscordRPMac</string>
 	<key>CFBundleIdentifier</key>
-	<string>dev.kun.customrp</string>
+	<string>dev.quangpao.discordrp</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>CustomRP</string>
+	<string>Discord RP</string>
 	<key>CFBundleDisplayName</key>
-	<string>CustomRP</string>
+	<string>Discord RP</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

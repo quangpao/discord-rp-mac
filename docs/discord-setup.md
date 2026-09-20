@@ -7,10 +7,10 @@ the asset **names** you choose. Files to upload are pre-rendered in `dist/discor
 
 | Field | Source | Current demo value |
 |---|---|---|
-| card name (byline) | the activity `name` field | `CustomRP by quangpao` (overrides the portal app name) |
+| card name (byline) | the activity `name` field | `Discord RP by quangpao` (overrides the portal app name) |
 | big image | `large_image` key **or** an https URL | `https://github.com/quangpao.png` (used because no art asset is uploaded yet) |
 | subtitle | `details` (with `status_display_type = details`) | `Đang code` |
-| second line | `state` | `customrp-mac` |
+| second line | `state` | `discord-rp-mac` |
 | buttons | up to 2 label/URL pairs | `quangpao.dev`, `GitHub` |
 
 If no `large_image` is set, Discord falls back to the **application icon** from the portal — which is
@@ -21,7 +21,7 @@ why an app with no uploaded icon shows Discord's grey "?" placeholder.
 1. Open <https://discord.com/developers/applications> and pick your app (ID `<your-application-id>`).
 2. **General Information**:
    - **Name** — this is what Discord shows when the activity has no `name` override. `CustomRP` is the
-     clean choice; `CustomRP by quangpao` also works if you want the credit line here instead.
+     clean choice; `Discord RP by quangpao` also works if you want the credit line here instead.
    - **App Icon** — drag `dist/discord/0-app-icon-square-1024.png` (1024×1024, tile filling the frame).
    - **Description / Tags** — fill anything sensible; the portal wants a description before it lets
      you save some fields.
@@ -62,7 +62,7 @@ Menu bar item → **Edit This Preset…** (or ⌘,):
 - **Apply** pushes immediately; the card updates in about two seconds.
 
 Alternatively set the keys by hand in
-`~/Library/Application Support/CustomRPMac/presets.json` (`largeKey` / `smallKey`) and restart the app.
+`~/Library/Application Support/DiscordRPMac/presets.json` (`largeKey` / `smallKey`) and restart the app.
 
 ## Animated images (GIF / animated WebP / AVIF)
 
@@ -77,7 +77,7 @@ ships one, built from our own mark:
 
 ```bash
 python3 scripts/make-animated-logo.py build/anim 30 512     # 30 frames: sparkle breathes, dot floats
-swift scripts/frames-to-gif.swift build/anim dist/discord/customrp-animated-logo.gif 15
+swift scripts/frames-to-gif.swift build/anim dist/discord/discord-rp-animated-logo.gif 15
 ```
 
 Then host the file somewhere public and use that URL as the image key. Current host: **Giphy** —
@@ -85,7 +85,7 @@ Then host the file somewhere public and use that URL as the image key. Current h
 page: <https://giphy.com/gifs/<your-gif-id>>), uploaded with `scripts/upload-gif-to-giphy.py`.
 The API key lives **outside the repo** at `~/.giphy/api_key` (mode 600); the script never prints it.
 Fallback host if Giphy ever drops the file: the same GIF in the public repo `quangpao/customrp-assets`
-(`raw.githubusercontent.com/quangpao/customrp-assets/main/customrp-animated-logo.gif`).
+(`raw.githubusercontent.com/quangpao/customrp-assets/main/discord-rp-animated-logo.gif`).
 
 Giphy notes: dashboard keys are rate-limited to **10 uploads/day**; without `is_hidden` the upload lands
 in Giphy's public, searchable library; Giphy re-encodes the file (71 KB → ~166 KB).
@@ -112,8 +112,8 @@ profile, or log in a second account (mobile or web) and look at the main account
 ## Step 4 — Verify without looking at Discord
 
 ```bash
-./build/CustomRPMac --presets        # prints the payload each preset would send + validation issues
-cat ~/Library/Logs/CustomRP/last-presence.json   # the payload Discord actually received
+./build/DiscordRPMac --presets        # prints the payload each preset would send + validation issues
+cat ~/Library/Logs/DiscordRP/last-presence.json   # the payload Discord actually received
 ```
 
 Expect `"assets":{"large_image":"2-asset-logo-1024","small_image":"3-asset-small-512"}`. External URLs

@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "CustomRPMac",
+    name: "DiscordRPMac",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "CustomRPMac", targets: ["CustomRPMac"]),
+        .executable(name: "DiscordRPMac", targets: ["DiscordRPMac"]),
         .library(name: "DiscordRP", targets: ["DiscordRP"]),
     ],
     targets: [
@@ -14,7 +14,7 @@ let package = Package(
         // SwiftUI + AppKit glue: language mode 5 (SwiftUI/NSApp bridging is not
         // concurrency-clean yet); the DiscordRP API it consumes is already checked.
         .executableTarget(
-            name: "CustomRPMac",
+            name: "DiscordRPMac",
             dependencies: ["DiscordRP"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),

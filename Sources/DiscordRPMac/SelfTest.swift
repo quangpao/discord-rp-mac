@@ -6,7 +6,7 @@ import SwiftUI
 /// Headless checks that need no XCTest (the CommandLineTools toolchain has no test runner),
 /// plus a live probe against the real Discord client.
 ///
-/// `CustomRPMac --self-test` · `CustomRPMac --version` · `CustomRPMac --live --app-id <ID>`
+/// `DiscordRPMac --self-test` · `DiscordRPMac --version` · `DiscordRPMac --live --app-id <ID>`
 enum SelfTest {
     private static var failures = 0
 
@@ -39,6 +39,13 @@ enum SelfTest {
             case "status":
                 print("source: \(GiphyKeyStore.source().description)")
                 return 0
+            case "migrate":
+                let outcome = Migration.migrateKeychain()
+                let copied = Migration.migrateDataDirectory()
+                print("key: \(outcome.rawValue)")
+                print("data: copied \(copied.isEmpty ? "nothing" : copied.joined(separator: ", "))")
+                print("source: \(GiphyKeyStore.source().description)")
+                return 0
             case "clear":
                 GiphyKeyStore.clear()
                 print("cleared — source: \(GiphyKeyStore.source().description)")
@@ -60,7 +67,7 @@ enum SelfTest {
                     return 1
                 }
             default:
-                print("usage: --giphy-key status|set|clear   (set reads the key from stdin)")
+                print("usage: --giphy-key status|set|clear|migrate   (set reads the key from stdin)")
                 return 1
             }
         }
@@ -93,7 +100,7 @@ enum SelfTest {
         if let index = args.firstIndex(of: "--giphy-upload") {
             let file = index + 1 < args.count && !args[index + 1].hasPrefix("--")
                 ? args[index + 1]
-                : "dist/discord/customrp-animated-logo.gif"
+                : "dist/discord/discord-rp-animated-logo.gif"
             return uploadToGiphy(file: file, hidden: args.contains("--hidden"))
         }
         let live = args.contains("--live")
@@ -166,7 +173,7 @@ enum SelfTest {
 
     private static func checkRules() {
         print("discord rules:")
-        var activity = Activity(name: "Test", details: "coding", state: "customrp-mac")
+        var activity = Activity(name: "Test", details: "coding", state: "discord-rp-mac")
         expect(ActivityRules.validate(activity, appID: "123").isEmpty, "valid activity passes")
 
         activity.details = "x"
@@ -369,7 +376,7 @@ enum SelfTest {
             let path = try client.connect()
             print("  socket: \(path)")
             print("  user:   \(client.readyUser?.username ?? "unknown")")
-            var activity = Activity(name: "CustomRP", details: "Live probe", state: "customrp-mac")
+            var activity = Activity(name: "CustomRP", details: "Live probe", state: "discord-rp-mac")
             activity.timestampMode = .sincePresenceUpdate
             let payload = ActivityRules.payload(activity, appID: appID, appStarted: Date(),
                                                 connectionStarted: Date(), presenceStarted: Date()) ?? [:]

@@ -4,10 +4,10 @@
 
 | Data | Where | Contains secrets? |
 | --- | --- | --- |
-| Presets + settings | `~/Library/Application Support/CustomRPMac/*.json` | no |
-| Upload history (Giphy ids/URLs) | `~/Library/Application Support/CustomRPMac/giphy-uploads.json` | no |
-| Your Giphy API key | macOS Keychain, item `dev.kun.customrp.giphy` / `api-key` | **yes** |
-| Last presence payload sent to Discord | `~/Library/Logs/CustomRP/last-presence.json` + `customrp.log` | no |
+| Presets + settings | `~/Library/Application Support/DiscordRPMac/*.json` | no |
+| Upload history (Giphy ids/URLs) | `~/Library/Application Support/DiscordRPMac/giphy-uploads.json` | no |
+| Your Giphy API key | macOS Keychain, item `dev.quangpao.discordrp.giphy` / `api-key` | **yes** |
+| Last presence payload sent to Discord | `~/Library/Logs/DiscordRP/last-presence.json` + `customrp.log` | no |
 
 The API key is read from the Keychain first, then `$GIPHY_API_KEY`, then `~/.giphy/api_key`. It is
 never logged, never written into this repository, and never displayed back to you — the UI only

@@ -238,7 +238,7 @@ public enum ActivityRules {
         appStarted: Date,
         connectionStarted: Date,
         presenceStarted: Date,
-        partyID: String = "customrp-mac"
+        partyID: String = "discord-rp-mac"
     ) -> [String: Any]? {
         guard errors(in: validate(activity, appID: appID)).isEmpty else { return nil }
 
