@@ -94,6 +94,11 @@ public final class PresenceEngine: ObservableObject {
 
     public func clear() { worker.clear() }
 
+    /// Force an immediate keepalive ping and re-push the current activity. Used when the system
+    /// wakes (or when the app was idle long enough that App Nap may have stalled the timers), so
+    /// the presence is re-asserted instead of silently going stale.
+    public func reassert() { worker.reassert() }
+
     /// Clears the presence and closes the socket — used on quit.
     public func stop() { worker.stop() }
 }
@@ -121,6 +126,7 @@ private final class Worker: @unchecked Sendable {
     private var presenceStarted = Date()
     private var connectionStarted: Date?
     private var lastPing = Date.distantPast
+    private var pingCount = 0
     private var nextRetryAt = Date.distantPast
     private var backoffIndex = 0
     /// Set when Discord rejects the Application ID (code 4000): retrying forever is pointless.
@@ -147,6 +153,7 @@ private final class Worker: @unchecked Sendable {
             source.setEventHandler { [weak self] in self?.tick() }
             timer = source
             source.resume()
+            PresenceLog.note("timer started (tick 0.5s, ping 15s)")
         }
     }
 
@@ -189,6 +196,19 @@ private final class Worker: @unchecked Sendable {
             timer?.cancel()
             timer = nil
             emit(.idle)
+            PresenceLog.note("timer stopped")
+        }
+    }
+
+    /// Ping now and re-send the presence, without waiting for the next timer deadline.
+    func reassert() {
+        queue.async { [self] in
+            lastPing = .distantPast
+            if currentActivity != nil {
+                needsPush = true
+                pushAt = Date()
+            }
+            tick()
         }
     }
 
@@ -212,7 +232,13 @@ private final class Worker: @unchecked Sendable {
 
         if now.timeIntervalSince(lastPing) >= 15 {
             lastPing = now
+            pingCount += 1
+            // One line a minute: enough to prove the keepalive is alive without flooding the log.
+            if pingCount % 4 == 0 {
+                PresenceLog.note("alive pings=\(pingCount) connected=\(client.isConnected)")
+            }
             if !client.ping() {
+                PresenceLog.note("ping failed — reconnecting")
                 teardown()
                 scheduleRetry()
             }
@@ -241,7 +267,10 @@ private final class Worker: @unchecked Sendable {
             candidate.close()
             switch error {
             case .discordRejected(let code, let message):
-                if code == 4000 { paused = true }
+                if code == 4000 {
+                    paused = true
+                    PresenceLog.note("paused: Discord rejected the application id (4000)")
+                }
                 emit(.failed(code: code, message: code == 4000 ? "Invalid Application ID" : message))
                 onIssues?([ActivityIssue(field: .appID, message: message)])
             default:

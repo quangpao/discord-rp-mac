@@ -15,6 +15,12 @@ final class AppModel: ObservableObject {
     let engine: PresenceEngine
     private let store: PresetStore
     private var editor: EditorWindowController?
+    /// Held for the app's lifetime: App Nap suspends a menu bar app's timers, which silently killed
+    /// the RPC keepalive (measured: pings stopped ~2 minutes after launch, so Discord saw a dead
+    /// connection and the activity disappeared). This token keeps the app out of App Nap while
+    /// still allowing the system itself to sleep.
+    private var activityToken: NSObjectProtocol?
+    private var wakeObserver: NSObjectProtocol?
 
     init(startEngine: Bool = true) {
         let store = PresetStore()
@@ -47,6 +53,24 @@ final class AppModel: ObservableObject {
         if startEngine, let active = activePreset {
             engine.apply(active.activity)
         }
+
+        guard startEngine else { return }
+        // Keep the keepalive timer alive while the app sits idle in the menu bar.
+        activityToken = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep],
+            reason: "Keep the Discord Rich Presence connection alive while idle"
+        )
+        // After a sleep/wake the socket may be stale: re-ping and re-push immediately.
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [engine] _ in
+            Task { @MainActor in engine.reassert() }
+        }
+    }
+
+    deinit {
+        if let activityToken { ProcessInfo.processInfo.endActivity(activityToken) }
+        if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
     }
 
     // MARK: presets

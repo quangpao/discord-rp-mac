@@ -28,6 +28,13 @@ public enum PresenceLog {
         }
     }
 
+    /// Diagnostic breadcrumbs for the connection lifecycle (timer start/stop, paused, periodic
+    /// keepalive). Kept deliberately sparse: a long-lived app must not grow its log without bound.
+    public static func note(_ message: String) {
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        append("\(ISO8601DateFormatter().string(from: Date())) note \(message)\n")
+    }
+
     private static func append(_ line: String) {
         guard let data = line.data(using: .utf8) else { return }
         if let size = try? FileManager.default.attributesOfItem(atPath: logURL.path)[.size] as? Int,
