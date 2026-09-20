@@ -84,11 +84,15 @@ struct ImagePreview: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             box
+                // One fixed column for every preview, so the captions of the large and small rows
+                // start at the same x even though the boxes are different sizes.
+                .frame(width: 96, height: side, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 if let target {
-                    Text(target.kind).font(.system(size: 11, weight: .semibold))
+                    Text(target.kind + (data.map { " · " + sizeText($0) } ?? ""))
+                        .font(.system(size: 11, weight: .semibold))
                     if let data {
-                        Text(details(for: data)).font(.system(size: 11)).foregroundStyle(.secondary)
+                        Text(pixelText(data)).font(.system(size: 11)).foregroundStyle(.secondary)
                     } else if let failure {
                         Text(failure).font(.system(size: 11)).foregroundStyle(.red)
                     } else if loading {
@@ -97,7 +101,7 @@ struct ImagePreview: View {
                     Text(target.url.absoluteString)
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(1)
                         .truncationMode(.middle)
                         .textSelection(.enabled)
                 } else {
@@ -168,13 +172,14 @@ struct ImagePreview: View {
         loading = false
     }
 
-    /// Byte size plus real pixel size — enough to spot a 4 MB GIF before Discord chokes on it.
-    private func details(for data: Data) -> String {
-        let bytes = ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)
-        guard let image = NSImage(data: data) else { return bytes }
-        let width = Int(image.size.width)
-        let height = Int(image.size.height)
-        let frames = image.representations.first.map { $0 is NSBitmapImageRep ? "" : "" } ?? ""
-        return "\(width)×\(height) · \(bytes)\(frames)"
+    /// Byte size — enough to spot a 4 MB GIF before Discord chokes on it.
+    private func sizeText(_ data: Data) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)
+    }
+
+    /// Real pixel size of the image, so a tiny source is obvious before it is scaled on the card.
+    private func pixelText(_ data: Data) -> String {
+        guard let image = NSImage(data: data) else { return "" }
+        return "\(Int(image.size.width))×\(Int(image.size.height)) px"
     }
 }

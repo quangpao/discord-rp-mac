@@ -10,6 +10,12 @@ public enum ActivityKind: Int, Codable, CaseIterable, Sendable, Identifiable {
 
     public var id: Int { rawValue }
 
+    /// What the picker offers. `streaming` stays in the enum so old preset files still decode, but
+    /// Discord's RPC API rejects type 1 (`type must be one of [0, 2, 3, 5]`), so it is not offered.
+    public static var selectable: [ActivityKind] { allCases.filter(\.isAcceptedByDiscord) }
+
+    public var isAcceptedByDiscord: Bool { self != .streaming }
+
     public var label: String {
         switch self {
         case .playing: "Playing"

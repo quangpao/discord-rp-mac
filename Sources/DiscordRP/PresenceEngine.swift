@@ -268,10 +268,12 @@ private final class Worker: @unchecked Sendable {
             switch error {
             case .discordRejected(let code, let message):
                 if code == 4000 {
+                    // During the handshake 4000 does mean the client id was refused, so retrying
+                    // forever would be pointless — Reconnect clears this once the id is fixed.
                     paused = true
-                    PresenceLog.note("paused: Discord rejected the application id (4000)")
+                    PresenceLog.note("handshake rejected (4000): \(message)")
                 }
-                emit(.failed(code: code, message: code == 4000 ? "Invalid Application ID" : message))
+                emit(.failed(code: code, message: message))
                 onIssues?([ActivityIssue(field: .appID, message: message)])
             default:
                 emit(.discordNotRunning)
@@ -310,8 +312,17 @@ private final class Worker: @unchecked Sendable {
             onIssues?([])
         } catch let error as IPCError {
             if case .discordRejected(let code, let message) = error {
-                if code == 4000 { paused = true }
-                emit(.failed(code: code, message: code == 4000 ? "Invalid Application ID" : message))
+                // 4000 is Discord's generic "invalid payload" rejection, NOT necessarily a bad
+                // Application ID: sending type 1 (Streaming) produces exactly this code with
+                // `"type" must be one of [0, 2, 3, 5]`. Never pause on it — pause used to stop the
+                // timer for good and report "Invalid Application ID", which hid the real cause.
+                PresenceLog.note("push rejected (code \(code)): \(message)")
+                onIssues?([ActivityIssue(field: .kind, message: message)])
+                needsPush = true
+                pushAt = Date().addingTimeInterval(10)
+                // Report Discord's own wording: code 4000 is a payload rejection, not necessarily
+                // a bad Application ID, and the old hardcoded text sent us chasing the wrong thing.
+                emit(.failed(code: code, message: message))
             } else {
                 teardown()
                 scheduleRetry()

@@ -1,7 +1,7 @@
 import Foundation
 
 public enum IssueField: String, Sendable, Equatable {
-    case appID, details, state, buttonLabel, buttonURL, timestamp, imageKey, imageURL, party
+    case appID, kind, details, state, buttonLabel, buttonURL, timestamp, imageKey, imageURL, party
 }
 
 public struct ActivityIssue: Equatable, Sendable {
@@ -89,6 +89,17 @@ public enum ActivityRules {
 
     public static func validate(_ activity: Activity, appID: String) -> [ActivityIssue] {
         var issues: [ActivityIssue] = []
+
+        // Discord's RPC validator accepts `type` in [0, 2, 3, 5] only. Sending 1 (Streaming) comes
+        // back as a generic code-4000 rejection, which used to be reported as an invalid
+        // Application ID — a completely misleading dead end. Block it locally instead.
+        if !activity.kind.isAcceptedByDiscord {
+            issues.append(ActivityIssue(
+                field: .kind,
+                message: "Discord rejects the “\(activity.kind.label)” type for rich presence. "
+                    + "Use Playing, Listening to, Watching or Competing in."
+            ))
+        }
 
         if appID.trimmingCharacters(in: .whitespaces).isEmpty {
             issues.append(ActivityIssue(

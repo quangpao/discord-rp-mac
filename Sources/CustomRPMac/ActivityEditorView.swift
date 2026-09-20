@@ -186,7 +186,7 @@ struct ActivityEditorView: View {
             hint("The app name Discord prints on your profile.")
             row("Type") {
                 Picker("", selection: $draft.kind) {
-                    ForEach(ActivityKind.allCases) { kind in Text(kind.label).tag(kind) }
+                    ForEach(ActivityKind.selectable) { kind in Text(kind.label).tag(kind) }
                 }
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .leading)

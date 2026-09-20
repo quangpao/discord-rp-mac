@@ -132,8 +132,29 @@ final class PresenceEngineTests: XCTestCase {
         server.reject = (4000, "Invalid Client ID")
         let engine = PresenceEngine(appID: "0")
         engine.start()
-        let failed = await waitUntil { engine.status == .failed(code: 4000, message: "Invalid Application ID") }
+        // Discord's own wording is surfaced: code 4000 is generic (it is also what an unsupported
+        // activity type returns), so the app must not paraphrase it as "Invalid Application ID".
+        let failed = await waitUntil { engine.status == .failed(code: 4000, message: "Invalid Client ID") }
         XCTAssertTrue(failed, "status was \(engine.status)")
+        engine.stop()
+    }
+
+    /// A rejected *push* must not pause the engine: 4000 also means "bad payload" (e.g. an
+    /// unsupported activity type), and pausing used to stop the timer for good.
+    func testRejectedPushKeepsRetryingInsteadOfPausing() async throws {
+        server.reject = (4000, #"child "activity" fails because [child "type" fails because ["type" must be one of [0, 2, 3, 5]]]"#)
+        let engine = PresenceEngine(appID: "123")
+        engine.start()
+        _ = await waitUntil { engine.status.isConnected }
+
+        var activity = Activity(name: "Bad", details: "rejected payload")
+        activity.kind = .playing
+        engine.apply(activity)
+        let reported = await waitUntil {
+            if case .failed(let code, _) = engine.status { return code == 4000 }
+            return false
+        }
+        XCTAssertTrue(reported, "the rejection must be reported, status was \(engine.status)")
         engine.stop()
     }
 

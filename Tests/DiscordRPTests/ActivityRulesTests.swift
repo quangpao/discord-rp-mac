@@ -166,4 +166,21 @@ final class ActivityRulesTests: XCTestCase {
         XCTAssertTrue(TimestampMode.sinceConnection.label.contains("Discord"))
         XCTAssertTrue(TimestampMode.sinceAppStart.label.contains("app launch"))
     }
+
+    /// Discord's RPC validator accepts `type` in [0, 2, 3, 5] only — verified against a real
+    /// rejection: `"type" must be one of [0, 2, 3, 5]`. Streaming (1) must never be sent.
+    func testStreamingTypeIsRejectedLocallyAndNeverOffered() {
+        var activity = Activity(name: "T", details: "ok")
+        activity.kind = .streaming
+        let issues = ActivityRules.validate(activity, appID: "1041550572223995925")
+        XCTAssertTrue(issues.contains { $0.field == .kind && $0.isError },
+                      "streaming must be an error: \(issues.map(\.message))")
+
+        XCTAssertEqual(ActivityKind.selectable.map(\.rawValue), [0, 2, 3, 5])
+        XCTAssertFalse(ActivityKind.selectable.contains(.streaming))
+        XCTAssertFalse(ActivityKind.streaming.isAcceptedByDiscord)
+        for kind in ActivityKind.selectable {
+            XCTAssertTrue(kind.isAcceptedByDiscord, "\(kind.label) should be accepted")
+        }
+    }
 }
