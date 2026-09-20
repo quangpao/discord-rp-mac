@@ -39,6 +39,10 @@ enum PreviewError: Error, CustomStringConvertible {
 
 /// An `NSImageView` so animated GIFs actually animate — SwiftUI's `Image`/`AsyncImage` would only
 /// ever show the first frame, which is exactly what makes a GIF hard to identify.
+///
+/// An `NSImageView` reports the image's **natural size** as its fitting size, so left alone SwiftUI
+/// sizes it to e.g. 480×480 inside a 64 pt box and clips the overflow. It is pinned to the box
+/// instead: low hugging/compression resistance, aspect-fit scaling, centred.
 struct AnimatedImageView: NSViewRepresentable {
     let data: Data
 
@@ -47,6 +51,12 @@ struct AnimatedImageView: NSViewRepresentable {
         view.animates = true
         view.imageScaling = .scaleProportionallyUpOrDown
         view.imageAlignment = .alignCenter
+        view.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        view.setContentHuggingPriority(.defaultLow, for: .vertical)
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        view.wantsLayer = true
+        view.layer?.masksToBounds = true
         return view
     }
 
@@ -134,7 +144,10 @@ struct ImagePreview: View {
                 .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
             if let data {
                 AnimatedImageView(data: data)
-                    .padding(3)
+                    // Pin the view to the box: the NSImageView must not be sized by the image's own
+                    // natural size, or a 480 px GIF overflows a 64 pt preview.
+                    .frame(width: side - 8, height: side - 8)
+                    .clipped()
             } else if loading {
                 ProgressView().controlSize(.small)
             } else {
