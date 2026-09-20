@@ -116,8 +116,9 @@ public struct Activity: Codable, Equatable, Sendable {
     public var partyMax: Int = 0
 
     public var timestampMode: TimestampMode = .sinceConnection
-    public var customStart: Date = Date()
-    public var customEnd: Date = Date()
+    /// Truncated to the storage precision (epoch milliseconds) so a save/load round trip is exact.
+    public var customStart: Date = ActivityRules.millisecondPrecision(Date())
+    public var customEnd: Date = ActivityRules.millisecondPrecision(Date())
     public var customEndEnabled: Bool = false
 
     public var largeKey: String = ""

@@ -20,8 +20,10 @@ LINK = "https://quangpao.dev"
 GH = "https://github.com/quangpao"
 
 now = datetime.now()
-start = (now - timedelta(minutes=42)).timestamp()
-end = (now + timedelta(hours=3)).timestamp()
+# Epoch MILLISECONDS: PresetStore pins dates to .millisecondsSince1970, so a value written in
+# seconds would be read as a date in 1970 (or 2057 the other way round).
+start = int((now - timedelta(minutes=42)).timestamp() * 1000)
+end = int((now + timedelta(hours=3)).timestamp() * 1000)
 
 
 def activity(**overrides):

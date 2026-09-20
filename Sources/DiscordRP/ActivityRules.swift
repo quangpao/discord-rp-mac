@@ -316,4 +316,11 @@ public enum ActivityRules {
             return ["start": milliseconds(activity.customStart)]
         }
     }
+
+    /// Dates are stored as epoch milliseconds, so anything finer than that is dropped on the way
+    /// in and on the way out. Without this a save/load round trip is never exactly equal and the
+    /// UI sees phantom "unsaved changes".
+    public static func millisecondPrecision(_ date: Date) -> Date {
+        Date(timeIntervalSince1970: (date.timeIntervalSince1970 * 1000).rounded() / 1000)
+    }
 }

@@ -41,10 +41,19 @@ public final class PresetStore: @unchecked Sendable {
     private var presetsURL: URL { directory.appendingPathComponent("presets.json") }
     private var settingsURL: URL { directory.appendingPathComponent("settings.json") }
 
-    private static func decoder() -> JSONDecoder { JSONDecoder() }
+    /// Dates are pinned to **epoch milliseconds** in the JSON — the same unit Discord uses on the
+    /// wire and the same unit `scripts/seed-demo-presets.py` writes. Swift's default `Date`
+    /// Codable representation is seconds since 2001, which silently reinterpreted hand-written
+    /// timestamps as 1970/2057; never let that default back in.
+    private static func decoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .millisecondsSince1970
+        return decoder
+    }
 
     private static func encoder() -> JSONEncoder {
         let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .millisecondsSince1970
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return encoder
     }
@@ -52,7 +61,7 @@ public final class PresetStore: @unchecked Sendable {
     public func loadPresets() -> [Preset] {
         guard let data = try? Data(contentsOf: presetsURL) else { return [] }
         if let presets = try? Self.decoder().decode([Preset].self, from: data) {
-            return presets
+            return Self.normalized(presets)
         }
         quarantine(presetsURL)
         return []
@@ -60,7 +69,18 @@ public final class PresetStore: @unchecked Sendable {
 
     public func save(presets: [Preset]) throws {
         try ensureDirectory()
-        try Self.encoder().encode(presets).write(to: presetsURL, options: .atomic)
+        try Self.encoder().encode(Self.normalized(presets)).write(to: presetsURL, options: .atomic)
+    }
+
+    /// Storage keeps epoch milliseconds, so dates are snapped to that precision on both sides —
+    /// a hand-written preset file cannot introduce a sub-millisecond mismatch either.
+    private static func normalized(_ presets: [Preset]) -> [Preset] {
+        presets.map { preset in
+            var preset = preset
+            preset.activity.customStart = ActivityRules.millisecondPrecision(preset.activity.customStart)
+            preset.activity.customEnd = ActivityRules.millisecondPrecision(preset.activity.customEnd)
+            return preset
+        }
     }
 
     public func loadSettings() -> AppSettings {

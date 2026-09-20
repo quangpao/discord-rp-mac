@@ -95,9 +95,25 @@ struct ActivityEditorView: View {
         .padding(.vertical, 2)
     }
 
-    private func field(_ placeholder: String, text: Binding<String>) -> some View {
-        TextField(placeholder, text: text)
+    /// A `TextField` inside a grouped `Form` renders its placeholder as a *label* in the form's
+    /// label column — which duplicated every value and staggered the field edges. The name always
+    /// comes from our own label column / subheader, so the field label stays empty.
+    private func field(_ placeholder: String = "", text: Binding<String>) -> some View {
+        TextField("", text: text)
             .textFieldStyle(.roundedBorder)
+            .multilineTextAlignment(.leading)
+    }
+
+    /// Field with its own name inside a stacked group, so every field in the group starts at the
+    /// same x even though the names differ in length.
+    private func subRow(_ label: String, text: Binding<String>, captionWidth: CGFloat = 84) -> some View {
+        HStack(spacing: inlineSpacing) {
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .frame(width: captionWidth, alignment: .leading)
+            field(text: text)
+        }
     }
 
     private var statusRow: some View {
@@ -118,8 +134,7 @@ struct ActivityEditorView: View {
     private var connectionSection: some View {
         Section("Connection") {
             inlineRow("Discord Application ID") {
-                TextField("e.g. 1041550572223995925", text: $appIDField)
-                    .textFieldStyle(.roundedBorder)
+                field(text: $appIDField)
                     .onSubmit { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
             }
             inlineRow("Pipe index") {
@@ -134,7 +149,10 @@ struct ActivityEditorView: View {
                 }
             }
             actionRow {
-                Button("Apply") { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
+                Button("Reconnect") { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
+                Text("re-applies the connection and the active preset")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
             statusRow
         }
@@ -143,10 +161,10 @@ struct ActivityEditorView: View {
     private var presenceSection: some View {
         Section("Presence") {
             inlineRow("Preset name (this app only)") {
-                TextField("Default", text: $presetName).textFieldStyle(.roundedBorder)
+                field(text: $presetName)
             }
             inlineRow("Shown as (Discord app name)") {
-                TextField("CustomRP by quangpao", text: $draft.name).textFieldStyle(.roundedBorder)
+                field(text: $draft.name)
             }
             inlineRow("Type") {
                 Picker("", selection: $draft.kind) {
@@ -163,16 +181,16 @@ struct ActivityEditorView: View {
                 .frame(minWidth: 150, alignment: .leading)
             }
             inlineRow("Details") {
-                TextField("Đang code", text: $draft.details).textFieldStyle(.roundedBorder)
+                field(text: $draft.details)
             }
             stackedGroup("Details link (optional)") {
-                field("https://…", text: $draft.detailsURL)
+                field(text: $draft.detailsURL)
             }
             inlineRow("State") {
-                TextField("customrp-mac", text: $draft.state).textFieldStyle(.roundedBorder)
+                field(text: $draft.state)
             }
             stackedGroup("State link (optional)") {
-                field("https://…", text: $draft.stateURL)
+                field(text: $draft.stateURL)
             }
             if draft.kind.allowsParty {
                 inlineRow("Party") {
@@ -268,9 +286,9 @@ struct ActivityEditorView: View {
 
     private func imageSlot(title: String, key: Binding<String>, text: Binding<String>, link: Binding<String>) -> some View {
         stackedGroup(title) {
-            field("key or URL", text: key)
-            field("text (optional)", text: text)
-            field("link (optional)", text: link)
+            subRow("key or URL", text: key)
+            subRow("text (optional)", text: text)
+            subRow("link (optional)", text: link)
             HStack(spacing: 8) {
                 Button(giphyUploading ? "Uploading…" : "Upload…") { uploadToGiphy(into: key, slot: title) }
                     .disabled(giphyUploading)
@@ -293,11 +311,12 @@ struct ActivityEditorView: View {
         Section("Buttons") {
             ForEach(Array(draft.buttons.prefix(ActivityRules.maxButtons).indices), id: \.self) { index in
                 stackedGroup("Button \(index + 1)") {
-                    field("label", text: $draft.buttons[index].label)
-                    field("URL", text: $draft.buttons[index].url)
+                    subRow("label", text: $draft.buttons[index].label)
+                    subRow("URL", text: $draft.buttons[index].url)
                     HStack {
                         Button("Remove", role: .destructive) { draft.buttons.remove(at: index) }
                             .buttonStyle(.borderless)
+                            .foregroundStyle(.red)
                         Spacer(minLength: 0)
                     }
                 }
