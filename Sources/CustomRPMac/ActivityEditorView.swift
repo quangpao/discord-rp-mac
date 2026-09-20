@@ -9,12 +9,13 @@ import UniformTypeIdentifiers
 final class EditorWindowController: NSWindowController {
     init(model: AppModel) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 620),
-            styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 720),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "CustomRP — Preset"
+        window.minSize = NSSize(width: 480, height: 600)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: ActivityEditorView(model: model))
         window.center()
@@ -30,7 +31,10 @@ final class EditorWindowController: NSWindowController {
     }
 }
 
-/// One compact form for every field Discord accepts, with the same rules enforced in the UI.
+/// Layout follows the Open Design handoff spec (`docs/ui/customrp-editor-window-spec.html`):
+/// two-tier rows — inline rows with a fixed 132 pt label column, stacked groups for fields that
+/// need the full card width — one section-header treatment, and a pinned footer. No control ever
+/// shares a line with a full-length URL.
 struct ActivityEditorView: View {
     @ObservedObject var model: AppModel
     @State private var draft = Activity()
@@ -43,65 +47,147 @@ struct ActivityEditorView: View {
     @State private var giphyUploading = false
     @State private var giphyHidden = false
 
+    /// Spec: 132 pt label column, sized by the longest label ("Shown as (Discord app name)").
+    private let labelColumn: CGFloat = 132
+    private let inlineSpacing: CGFloat = 8
+
     var body: some View {
         Form {
             connectionSection
-            if !model.issues.isEmpty { issuesSection }
-            contentSection
+            presenceSection
             timeSection
             imageSection
             buttonSection
-            footerSection
         }
         .formStyle(.grouped)
-        .frame(minWidth: 460, minHeight: 600)
+        .safeAreaInset(edge: .bottom, spacing: 0) { footer }
+        .frame(minWidth: 480, minHeight: 600)
         .onAppear(perform: load)
     }
 
-    // MARK: sections
+    // MARK: - row primitives
 
-    private var connectionSection: some View {
-        Section("Connection") {
-            TextField("Discord Application ID", text: $appIDField)
-                .onSubmit { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
-            HStack {
-                Stepper("Pipe index \(pipeIndex)", value: $pipeIndex, in: 0...9)
-                Button("Apply") { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
-            }
+    private func inlineRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: inlineSpacing) {
+            Text(label)
+                .frame(width: labelColumn, alignment: .leading)
+            content()
+        }
+        .frame(minHeight: 28)
+    }
+
+    /// Action rows line up with the control column, not the label column.
+    private func actionRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: inlineSpacing) {
+            Color.clear.frame(width: labelColumn, height: 1)
+            content()
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func stackedGroup<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            content()
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func field(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .textFieldStyle(.roundedBorder)
+    }
+
+    private var statusRow: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .frame(width: 7, height: 7)
+                .foregroundStyle(model.status.isConnected ? Color.green
+                                 : model.status.needsAttention ? Color.red
+                                 : Color.orange)
             Text(model.status.shortText)
-                .font(.caption)
+                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
     }
 
-    private var issuesSection: some View {
-        Section("Checks") {
-            ForEach(Array(model.issues.enumerated()), id: \.offset) { _, issue in
-                Text("\(issue.isError ? "⚠︎" : "ⓘ") \(issue.message)")
-                    .font(.caption)
-                    .foregroundStyle(issue.isError ? Color.red : Color.secondary)
+    // MARK: - sections
+
+    private var connectionSection: some View {
+        Section("Connection") {
+            inlineRow("Discord Application ID") {
+                TextField("e.g. 1041550572223995925", text: $appIDField)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
             }
+            inlineRow("Pipe index") {
+                HStack(spacing: 8) {
+                    Stepper(value: $pipeIndex, in: 0...9) {
+                        Text("\(pipeIndex)").monospacedDigit()
+                    }
+                    .frame(width: 110, alignment: .leading)
+                    Text("0 = Discord · 1 = PTB · 2 = Canary")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            actionRow {
+                Button("Apply") { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
+            }
+            statusRow
         }
     }
 
-    private var contentSection: some View {
+    private var presenceSection: some View {
         Section("Presence") {
-            TextField("Preset name (this app only)", text: $presetName)
-            TextField("Shown as (Discord app name)", text: $draft.name)
-            Picker("Type", selection: $draft.kind) {
-                ForEach(ActivityKind.allCases) { kind in Text(kind.label).tag(kind) }
+            inlineRow("Preset name (this app only)") {
+                TextField("Default", text: $presetName).textFieldStyle(.roundedBorder)
             }
-            Picker("Show as", selection: $draft.display) {
-                ForEach(DisplayType.allCases) { type in Text(type.label).tag(type) }
+            inlineRow("Shown as (Discord app name)") {
+                TextField("CustomRP by quangpao", text: $draft.name).textFieldStyle(.roundedBorder)
             }
-            TextField("Details", text: $draft.details)
-            TextField("Details link (optional)", text: $draft.detailsURL)
-            TextField("State", text: $draft.state)
-            TextField("State link (optional)", text: $draft.stateURL)
+            inlineRow("Type") {
+                Picker("", selection: $draft.kind) {
+                    ForEach(ActivityKind.allCases) { kind in Text(kind.label).tag(kind) }
+                }
+                .labelsHidden()
+                .frame(minWidth: 150, alignment: .leading)
+            }
+            inlineRow("Show as") {
+                Picker("", selection: $draft.display) {
+                    ForEach(DisplayType.allCases) { type in Text(type.label).tag(type) }
+                }
+                .labelsHidden()
+                .frame(minWidth: 150, alignment: .leading)
+            }
+            inlineRow("Details") {
+                TextField("Đang code", text: $draft.details).textFieldStyle(.roundedBorder)
+            }
+            stackedGroup("Details link (optional)") {
+                field("https://…", text: $draft.detailsURL)
+            }
+            inlineRow("State") {
+                TextField("customrp-mac", text: $draft.state).textFieldStyle(.roundedBorder)
+            }
+            stackedGroup("State link (optional)") {
+                field("https://…", text: $draft.stateURL)
+            }
             if draft.kind.allowsParty {
-                HStack {
-                    TextField("Party current", value: $draft.partySize, format: .number)
-                    TextField("Party max", value: $draft.partyMax, format: .number)
+                inlineRow("Party") {
+                    HStack(spacing: 6) {
+                        TextField("", value: $draft.partySize, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 46)
+                            .monospacedDigit()
+                        Text("current").font(.system(size: 11)).foregroundStyle(.secondary)
+                        TextField("", value: $draft.partyMax, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 46)
+                            .monospacedDigit()
+                        Text("max").font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
                 }
             }
         }
@@ -109,22 +195,36 @@ struct ActivityEditorView: View {
 
     private var timeSection: some View {
         Section("Time") {
-            Picker("Mode", selection: $draft.timestampMode) {
-                ForEach(TimestampMode.allCases) { mode in Text(mode.label).tag(mode) }
+            inlineRow("Mode") {
+                Picker("", selection: $draft.timestampMode) {
+                    ForEach(TimestampMode.allCases) { mode in Text(mode.label).tag(mode) }
+                }
+                .labelsHidden()
+                .frame(minWidth: 196, alignment: .leading)
+                .disabled(!draft.kind.allowsTimestamps)
             }
-            .disabled(!draft.kind.allowsTimestamps)
             Text(draft.kind.allowsTimestamps
                  ? draft.timestampMode.explanation
                  : "The “Competing” type cannot show timestamps.")
-                .font(.caption)
+                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             if draft.timestampMode == .custom {
-                DatePicker("Start", selection: $draft.customStart,
-                           in: ActivityRules.earliestTimestamp...ActivityRules.latestTimestamp)
-                Toggle("Show end", isOn: $draft.customEndEnabled)
-                if draft.customEndEnabled {
-                    DatePicker("End", selection: $draft.customEnd,
+                stackedGroup("Start") {
+                    DatePicker("", selection: $draft.customStart,
                                in: ActivityRules.earliestTimestamp...ActivityRules.latestTimestamp)
+                        .labelsHidden()
+                        .datePickerStyle(.field)
+                }
+                inlineRow("Show end") {
+                    Toggle("", isOn: $draft.customEndEnabled).labelsHidden()
+                }
+                stackedGroup("End") {
+                    DatePicker("", selection: $draft.customEnd,
+                               in: ActivityRules.earliestTimestamp...ActivityRules.latestTimestamp)
+                        .labelsHidden()
+                        .datePickerStyle(.field)
+                        .disabled(!draft.customEndEnabled)
                 }
             }
         }
@@ -132,88 +232,116 @@ struct ActivityEditorView: View {
 
     private var imageSection: some View {
         Section("Images") {
-            Text("A key is either an asset name you uploaded to your Discord app, or an https URL.")
-                .font(.caption)
+            Text("A key is either an asset name you uploaded to your Discord app, or an https URL. Animation only renders through an external URL.")
+                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-            imageRow(title: "Large", key: $draft.largeKey, text: $draft.largeText, url: $draft.largeURL)
-            imageRow(title: "Small", key: $draft.smallKey, text: $draft.smallText, url: $draft.smallURL)
-            HStack {
+                .fixedSize(horizontal: false, vertical: true)
+
+            imageSlot(title: "Large", key: $draft.largeKey, text: $draft.largeText, link: $draft.largeURL)
+            imageSlot(title: "Small", key: $draft.smallKey, text: $draft.smallText, link: $draft.smallURL)
+
+            inlineRow("Private on Giphy") {
+                Toggle("", isOn: $giphyHidden).labelsHidden()
+            }
+            actionRow {
                 Button("Load asset names") { Task { await loadAssets() } }
                 if let assetError {
-                    Text(assetError).font(.caption).foregroundStyle(.red)
+                    Text(assetError).font(.system(size: 11)).foregroundStyle(.red)
                 } else if !assetNames.isEmpty {
-                    Text("\(assetNames.count) assets").font(.caption).foregroundStyle(.secondary)
+                    Text("\(assetNames.count) assets").font(.system(size: 11)).foregroundStyle(.secondary)
                 }
             }
-            Divider()
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle("Private on Giphy", isOn: $giphyHidden)
-                    .toggleStyle(.checkbox)
-                    .font(.caption)
-                Text("“Upload…” next to each row pushes the file to Giphy and puts its CDN URL into that slot. Large = the big card image; Small = the tiny circular overlay in its corner (an animation there is barely visible — a static asset usually reads better). Animation only renders through an external URL; a portal upload stays static.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if let giphyStatus {
-                    Text(giphyStatus)
-                        .font(.caption)
+            if let giphyStatus {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: giphyStatus.hasPrefix("✓") ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 11))
                         .foregroundStyle(giphyStatus.hasPrefix("✓") ? Color.green : Color.red)
+                    Text(giphyStatus)
+                        .font(.system(size: 11))
+                        .foregroundStyle(giphyStatus.hasPrefix("✓") ? Color.secondary : Color.red)
                         .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
     }
 
-    private func imageRow(title: String, key: Binding<String>, text: Binding<String>, url: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                TextField("\(title) key or URL", text: key)
-                Button("Upload…") { uploadToGiphy(into: key, slot: title) }
-                    .font(.caption)
+    private func imageSlot(title: String, key: Binding<String>, text: Binding<String>, link: Binding<String>) -> some View {
+        stackedGroup(title) {
+            field("key or URL", text: key)
+            field("text (optional)", text: text)
+            field("link (optional)", text: link)
+            HStack(spacing: 8) {
+                Button(giphyUploading ? "Uploading…" : "Upload…") { uploadToGiphy(into: key, slot: title) }
                     .disabled(giphyUploading)
-                if !assetNames.isEmpty {
-                    Menu("Assets") {
+                Menu("Assets") {
+                    if assetNames.isEmpty {
+                        Text("Load asset names first")
+                    } else {
                         ForEach(assetNames, id: \.self) { name in
                             Button(name) { key.wrappedValue = name }
                         }
                     }
-                    .frame(width: 90)
                 }
+                .frame(width: 100)
+                Spacer(minLength: 0)
             }
-            TextField("\(title) text (optional)", text: text)
-            TextField("\(title) link (optional)", text: url)
         }
     }
 
     private var buttonSection: some View {
         Section("Buttons") {
-            ForEach(0..<min(draft.buttons.count, ActivityRules.maxButtons), id: \.self) { index in
-                VStack(alignment: .leading, spacing: 4) {
-                    TextField("Button \(index + 1) label", text: $draft.buttons[index].label)
-                    TextField("Button \(index + 1) URL", text: $draft.buttons[index].url)
-                    Button("Remove") { draft.buttons.remove(at: index) }
-                        .font(.caption)
+            ForEach(Array(draft.buttons.prefix(ActivityRules.maxButtons).indices), id: \.self) { index in
+                stackedGroup("Button \(index + 1)") {
+                    field("label", text: $draft.buttons[index].label)
+                    field("URL", text: $draft.buttons[index].url)
+                    HStack {
+                        Button("Remove", role: .destructive) { draft.buttons.remove(at: index) }
+                            .buttonStyle(.borderless)
+                        Spacer(minLength: 0)
+                    }
                 }
             }
-            if draft.buttons.count < ActivityRules.maxButtons {
+            actionRow {
                 Button("Add button") { draft.buttons.append(Button()) }
+                    .disabled(draft.buttons.count >= ActivityRules.maxButtons)
+                if draft.buttons.count >= ActivityRules.maxButtons {
+                    Text("2/2 — Discord shows at most two")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
 
-    private var footerSection: some View {
-        Section {
-            HStack {
-                Button("Apply") { model.engine.apply(draft) }
-                    .keyboardShortcut("r", modifiers: .command)
-                Button("Save") { saveCurrent() }
-                    .keyboardShortcut("s", modifiers: .command)
-                Spacer()
+    // MARK: - pinned footer
+
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(model.issues.filter(\.isError).enumerated()), id: \.offset) { _, issue in
+                Text(issue.message)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 10) {
+                Spacer(minLength: 0)
                 Button("Save as New") {
                     saveCurrent()
                     model.addPreset(from: draft, name: presetName.isEmpty ? "Preset" : presetName)
                 }
+                .buttonStyle(.borderless)
+                Button("Save") { saveCurrent() }
+                    .keyboardShortcut("s", modifiers: .command)
+                Button("Apply") { model.engine.apply(draft) }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .buttonStyle(.borderedProminent)
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
     }
 
     // MARK: actions
