@@ -61,7 +61,7 @@ you tick *Private on Giphy*, and a dashboard key allows **10 uploads per day**. 
 history of what it uploaded (`~/Library/Application Support/CustomRPMac/giphy-uploads.json`) because
 Giphy's API cannot list your own uploads — especially not private ones.
 
-Giphy is a third-party service; this project is not affiliated with Giphy or Discord.
+**Not affiliated** with CustomRP (the Windows app by maximmax42, whose source was studied for protocol details), with Giphy, or with Discord. CustomRP is MIT-licensed; this is an independent macOS implementation.
 
 ## Development
 
