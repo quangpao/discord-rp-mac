@@ -113,6 +113,11 @@ struct ActivityEditorView: View {
                 ForEach(TimestampMode.allCases) { mode in Text(mode.label).tag(mode) }
             }
             .disabled(!draft.kind.allowsTimestamps)
+            Text(draft.kind.allowsTimestamps
+                 ? draft.timestampMode.explanation
+                 : "The “Competing” type cannot show timestamps.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             if draft.timestampMode == .custom {
                 DatePicker("Start", selection: $draft.customStart,
                            in: ActivityRules.earliestTimestamp...ActivityRules.latestTimestamp)

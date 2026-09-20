@@ -60,12 +60,30 @@ public enum TimestampMode: Int, Codable, CaseIterable, Sendable, Identifiable {
 
     public var label: String {
         switch self {
-        case .off: "Off"
-        case .sinceConnection: "Since launch"
-        case .sinceAppStart: "Since app start"
-        case .sincePresenceUpdate: "Total time"
+        case .off: "Off (no timer)"
+        case .sinceConnection: "Since Discord connect"
+        case .sinceAppStart: "Since app launch"
+        case .sincePresenceUpdate: "Since last update"
         case .localTime: "Local time"
         case .custom: "Custom"
+        }
+    }
+
+    /// One-line explanation shown under the picker, so the label never has to be decoded.
+    public var explanation: String {
+        switch self {
+        case .off:
+            "No timer on the card."
+        case .sinceConnection:
+            "Counts from the moment this app connected to Discord. Resets when Discord restarts or the app reconnects."
+        case .sinceAppStart:
+            "Counts from the moment this app was launched. Keeps running across Discord restarts."
+        case .sincePresenceUpdate:
+            "Counts from the last time the presence was pushed (Apply, preset switch, reconnect). Looks like an elapsed session timer."
+        case .localTime:
+            "Discord renders the current local time — the stamp is local midnight, so it reads like a clock."
+        case .custom:
+            "Pick a start date; if the start is in the future, Discord shows a countdown instead. Add an end date for a fixed range."
         }
     }
 }

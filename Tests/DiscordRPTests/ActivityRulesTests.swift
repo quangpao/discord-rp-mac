@@ -154,4 +154,16 @@ final class ActivityRulesTests: XCTestCase {
         XCTAssertEqual(payload(activity)?["type"] as? Int, 3)
         XCTAssertEqual(payload(activity)?["status_display_type"] as? Int, 1)
     }
+
+    /// The picker is only useful if the labels are distinguishable and each mode explains itself.
+    func testTimestampModeLabelsAreUniqueAndExplained() {
+        let labels = TimestampMode.allCases.map(\.label)
+        XCTAssertEqual(labels.count, Set(labels).count, "labels must be unique: \(labels)")
+        for mode in TimestampMode.allCases {
+            XCTAssertFalse(mode.label.isEmpty)
+            XCTAssertGreaterThan(mode.explanation.count, 20, "\(mode.label) needs a real explanation")
+        }
+        XCTAssertTrue(TimestampMode.sinceConnection.label.contains("Discord"))
+        XCTAssertTrue(TimestampMode.sinceAppStart.label.contains("app launch"))
+    }
 }
