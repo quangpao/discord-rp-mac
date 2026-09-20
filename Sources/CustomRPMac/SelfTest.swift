@@ -224,6 +224,12 @@ enum SelfTest {
             hosting.layoutSubtreeIfNeeded()
             window.displayIfNeeded()
             hosting.display()
+            // Image previews load asynchronously; let them land before capturing, or the shot shows
+            // spinners instead of the images the user actually sees.
+            RunLoop.main.run(until: Date().addingTimeInterval(3.0))
+            hosting.layoutSubtreeIfNeeded()
+            window.displayIfNeeded()
+            hosting.display()
             guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
                 print("render failed: no bitmap rep")
                 return

@@ -272,6 +272,9 @@ struct ActivityEditorView: View {
             row("Large key") {
                 field("Large key or URL", text: $draft.largeKey)
             }
+            row("Large preview") {
+                ImagePreview(key: draft.largeKey, appID: appIDField)
+            }
             row("Large text") {
                 field("Large text (optional)", text: $draft.largeText)
             }
@@ -292,6 +295,10 @@ struct ActivityEditorView: View {
             }
             row("Small key") {
                 field("Small key or URL", text: $draft.smallKey)
+            }
+            row("Small preview") {
+                ImagePreview(key: draft.smallKey, appID: appIDField, side: 64,
+                             note: "Discord draws this as a ~20 px circle in the corner of the large image.")
             }
             row("Small text") {
                 field("Small text (optional)", text: $draft.smallText)
