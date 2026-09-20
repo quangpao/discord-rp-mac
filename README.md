@@ -1,4 +1,4 @@
-# discord-rp-mac
+# Discord RP
 
 Native macOS menu bar app for **custom Discord Rich Presence** — a from-scratch Swift
 implementation, *not* a port of [CustomRP](https://github.com/maximmax42/Discord-CustomRP)
