@@ -82,13 +82,12 @@ struct MenuContentView: View {
 
         Divider()
 
-        // 5 — login item
-        Toggle(isOn: Binding(
+        // 5 — login item. No icon in the label on purpose: a menu `Toggle` already draws its own
+        // checkmark when on, so the `checkmark` symbol here rendered **two** ticks next to the text.
+        Toggle("Launch at Login", isOn: Binding(
             get: { model.launchAtLogin },
             set: { model.setLaunchAtLogin($0) }
-        )) {
-            Label("Launch at Login", systemImage: "checkmark")
-        }
+        ))
 
         // 6 — only when Discord is not running
         if !model.status.isConnected {
