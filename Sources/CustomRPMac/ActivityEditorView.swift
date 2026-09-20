@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 final class EditorWindowController: NSWindowController {
     init(model: AppModel) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 720),
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 780),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -67,13 +67,34 @@ struct ActivityEditorView: View {
 
     // MARK: - row primitives
 
-    private func inlineRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+    /// ONE alignment system for the whole window: every row is `label | control`, the label column
+    /// is a fixed 132 pt with **trailing** alignment (macOS convention), so every control starts at
+    /// exactly the same x and every label ends at exactly the same x, whatever its length.
+    private func row<Content: View>(_ label: String, hint: String? = nil, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: inlineSpacing) {
             Text(label)
-                .frame(width: labelColumn, alignment: .leading)
-            content()
+                .frame(width: labelColumn, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 2) {
+                content()
+                if let hint {
+                    Text(hint)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
         .frame(minHeight: 28)
+    }
+
+    /// Group headers ("Large", "Small", "Button 1") start at the card edge, exactly like the
+    /// section headers — headers never pretend to be labels.
+    private func groupHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
     }
 
     /// Action rows line up with the control column, not the label column.
@@ -85,35 +106,13 @@ struct ActivityEditorView: View {
         }
     }
 
-    private func stackedGroup<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            content()
-        }
-        .padding(.vertical, 2)
-    }
-
     /// A `TextField` inside a grouped `Form` renders its placeholder as a *label* in the form's
     /// label column — which duplicated every value and staggered the field edges. The name always
-    /// comes from our own label column / subheader, so the field label stays empty.
+    /// comes from our own label column / group header, so the field label stays empty.
     private func field(_ placeholder: String = "", text: Binding<String>) -> some View {
         TextField("", text: text)
             .textFieldStyle(.roundedBorder)
             .multilineTextAlignment(.leading)
-    }
-
-    /// Field with its own name inside a stacked group, so every field in the group starts at the
-    /// same x even though the names differ in length.
-    private func subRow(_ label: String, text: Binding<String>, captionWidth: CGFloat = 84) -> some View {
-        HStack(spacing: inlineSpacing) {
-            Text(label)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .frame(width: captionWidth, alignment: .leading)
-            field(text: text)
-        }
     }
 
     private var statusRow: some View {
@@ -133,20 +132,15 @@ struct ActivityEditorView: View {
 
     private var connectionSection: some View {
         Section("Connection") {
-            inlineRow("Discord Application ID") {
+            row("Application ID", hint: "from the Discord Developer Portal (discord.com/developers/applications)") {
                 field(text: $appIDField)
                     .onSubmit { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
             }
-            inlineRow("Pipe index") {
-                HStack(spacing: 8) {
-                    Stepper(value: $pipeIndex, in: 0...9) {
-                        Text("\(pipeIndex)").monospacedDigit()
-                    }
-                    .frame(width: 110, alignment: .leading)
-                    Text("0 = Discord · 1 = PTB · 2 = Canary")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+            row("Pipe index", hint: "0 = Discord · 1 = PTB · 2 = Canary") {
+                Stepper(value: $pipeIndex, in: 0...9) {
+                    Text("\(pipeIndex)").monospacedDigit()
                 }
+                .frame(width: 110, alignment: .leading)
             }
             actionRow {
                 Button("Reconnect") { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
@@ -160,51 +154,49 @@ struct ActivityEditorView: View {
 
     private var presenceSection: some View {
         Section("Presence") {
-            inlineRow("Preset name (this app only)") {
+            row("Preset name", hint: "this app only — never sent to Discord") {
                 field(text: $presetName)
             }
-            inlineRow("Shown as (Discord app name)") {
+            row("Shown as", hint: "the app name Discord prints on your profile") {
                 field(text: $draft.name)
             }
-            inlineRow("Type") {
+            row("Type") {
                 Picker("", selection: $draft.kind) {
                     ForEach(ActivityKind.allCases) { kind in Text(kind.label).tag(kind) }
                 }
                 .labelsHidden()
                 .frame(minWidth: 150, alignment: .leading)
             }
-            inlineRow("Show as") {
+            row("Show as") {
                 Picker("", selection: $draft.display) {
                     ForEach(DisplayType.allCases) { type in Text(type.label).tag(type) }
                 }
                 .labelsHidden()
                 .frame(minWidth: 150, alignment: .leading)
             }
-            inlineRow("Details") {
+            row("Details") {
                 field(text: $draft.details)
             }
-            stackedGroup("Details link (optional)") {
+            row("Details link") {
                 field(text: $draft.detailsURL)
             }
-            inlineRow("State") {
+            row("State") {
                 field(text: $draft.state)
             }
-            stackedGroup("State link (optional)") {
+            row("State link") {
                 field(text: $draft.stateURL)
             }
             if draft.kind.allowsParty {
-                inlineRow("Party") {
+                row("Party", hint: "current / max — Discord renders “3 of 5”") {
                     HStack(spacing: 6) {
                         TextField("", value: $draft.partySize, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 46)
                             .monospacedDigit()
-                        Text("current").font(.system(size: 11)).foregroundStyle(.secondary)
                         TextField("", value: $draft.partyMax, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 46)
                             .monospacedDigit()
-                        Text("max").font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -213,7 +205,9 @@ struct ActivityEditorView: View {
 
     private var timeSection: some View {
         Section("Time") {
-            inlineRow("Mode") {
+            row("Mode", hint: draft.kind.allowsTimestamps
+                ? draft.timestampMode.explanation
+                : "The “Competing” type cannot show timestamps.") {
                 Picker("", selection: $draft.timestampMode) {
                     ForEach(TimestampMode.allCases) { mode in Text(mode.label).tag(mode) }
                 }
@@ -221,23 +215,17 @@ struct ActivityEditorView: View {
                 .frame(minWidth: 196, alignment: .leading)
                 .disabled(!draft.kind.allowsTimestamps)
             }
-            Text(draft.kind.allowsTimestamps
-                 ? draft.timestampMode.explanation
-                 : "The “Competing” type cannot show timestamps.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             if draft.timestampMode == .custom {
-                stackedGroup("Start") {
+                row("Start") {
                     DatePicker("", selection: $draft.customStart,
                                in: ActivityRules.earliestTimestamp...ActivityRules.latestTimestamp)
                         .labelsHidden()
                         .datePickerStyle(.field)
                 }
-                inlineRow("Show end") {
+                row("Show end") {
                     Toggle("", isOn: $draft.customEndEnabled).labelsHidden()
                 }
-                stackedGroup("End") {
+                row("End") {
                     DatePicker("", selection: $draft.customEnd,
                                in: ActivityRules.earliestTimestamp...ActivityRules.latestTimestamp)
                         .labelsHidden()
@@ -258,7 +246,7 @@ struct ActivityEditorView: View {
             imageSlot(title: "Large", key: $draft.largeKey, text: $draft.largeText, link: $draft.largeURL)
             imageSlot(title: "Small", key: $draft.smallKey, text: $draft.smallText, link: $draft.smallURL)
 
-            inlineRow("Private on Giphy") {
+            row("Private on Giphy") {
                 Toggle("", isOn: $giphyHidden).labelsHidden()
             }
             actionRow {
@@ -285,11 +273,14 @@ struct ActivityEditorView: View {
     }
 
     private func imageSlot(title: String, key: Binding<String>, text: Binding<String>, link: Binding<String>) -> some View {
-        stackedGroup(title) {
-            subRow("key or URL", text: key)
-            subRow("text (optional)", text: text)
-            subRow("link (optional)", text: link)
-            HStack(spacing: 8) {
+        Group {
+            groupHeader(title)
+            row("key or URL", hint: "asset name uploaded to your Discord app, or an https URL") {
+                field(text: key)
+            }
+            row("text (optional)") { field(text: text) }
+            row("link (optional)") { field(text: link) }
+            actionRow {
                 Button(giphyUploading ? "Uploading…" : "Upload…") { uploadToGiphy(into: key, slot: title) }
                     .disabled(giphyUploading)
                 Menu("Assets") {
@@ -302,7 +293,6 @@ struct ActivityEditorView: View {
                     }
                 }
                 .frame(width: 100)
-                Spacer(minLength: 0)
             }
         }
     }
@@ -310,14 +300,14 @@ struct ActivityEditorView: View {
     private var buttonSection: some View {
         Section("Buttons") {
             ForEach(Array(draft.buttons.prefix(ActivityRules.maxButtons).indices), id: \.self) { index in
-                stackedGroup("Button \(index + 1)") {
-                    subRow("label", text: $draft.buttons[index].label)
-                    subRow("URL", text: $draft.buttons[index].url)
-                    HStack {
+                Group {
+                    groupHeader("Button \(index + 1)")
+                    row("label") { field(text: $draft.buttons[index].label) }
+                    row("URL") { field(text: $draft.buttons[index].url) }
+                    actionRow {
                         Button("Remove", role: .destructive) { draft.buttons.remove(at: index) }
                             .buttonStyle(.borderless)
                             .foregroundStyle(.red)
-                        Spacer(minLength: 0)
                     }
                 }
             }
