@@ -17,16 +17,22 @@ final class PreviewTargetTests: XCTestCase {
         XCTAssertEqual(PreviewTarget.make(key: "http://example.com/a.png", appID: "")?.kind, "external URL")
     }
 
-    func testBareNameBecomesDiscordAppAssetURL() {
-        let target = PreviewTarget.make(key: "3-asset-small-512", appID: appID)
+    func testBareNameBecomesDiscordAppAssetURLUsingTheNumericID() {
+        let target = PreviewTarget.make(key: "3-asset-small-512", appID: appID, assetID: "1550951948394692669")
         XCTAssertEqual(target?.url.absoluteString,
-                       "https://cdn.discordapp.com/app-assets/\(appID)/3-asset-small-512.png")
+                       "https://cdn.discordapp.com/app-assets/\(appID)/1550951948394692669.png")
         XCTAssertEqual(target?.kind, "Discord asset")
     }
 
+    /// The name-based CDN path 404s, so without the id there is nothing to show.
+    func testAssetNameWithoutItsIDHasNoPreview() {
+        XCTAssertNil(PreviewTarget.make(key: "3-asset-small-512", appID: appID))
+        XCTAssertNil(PreviewTarget.make(key: "3-asset-small-512", appID: appID, assetID: ""))
+    }
+
     func testAssetNameNeedsTheApplicationID() {
-        XCTAssertNil(PreviewTarget.make(key: "3-asset-small-512", appID: ""))
-        XCTAssertNil(PreviewTarget.make(key: "3-asset-small-512", appID: "   "))
+        XCTAssertNil(PreviewTarget.make(key: "3-asset-small-512", appID: "", assetID: "1550951948394692669"))
+        XCTAssertNil(PreviewTarget.make(key: "3-asset-small-512", appID: "   ", assetID: "1550951948394692669"))
     }
 
     func testEmptyKeyHasNoPreview() {

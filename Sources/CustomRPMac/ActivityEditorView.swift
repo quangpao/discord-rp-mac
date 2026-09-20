@@ -50,7 +50,7 @@ struct ActivityEditorView: View {
     @State private var presetName: String = ""
     @State private var appIDField: String = ""
     @State private var pipeIndex: Int = 0
-    @State private var assetNames: [String] = []
+    @State private var assets: [DiscordAsset] = []
     @State private var assetError: String?
     @State private var giphyStatus: String?
     @State private var giphyUploading = false
@@ -273,7 +273,7 @@ struct ActivityEditorView: View {
                 field("Large key or URL", text: $draft.largeKey)
             }
             row("Large preview") {
-                ImagePreview(key: draft.largeKey, appID: appIDField)
+                ImagePreview(key: draft.largeKey, appID: appIDField, assetID: assetID(for: draft.largeKey))
             }
             row("Large text") {
                 field("Large text (optional)", text: $draft.largeText)
@@ -297,7 +297,8 @@ struct ActivityEditorView: View {
                 field("Small key or URL", text: $draft.smallKey)
             }
             row("Small preview") {
-                ImagePreview(key: draft.smallKey, appID: appIDField, side: 64,
+                ImagePreview(key: draft.smallKey, appID: appIDField, assetID: assetID(for: draft.smallKey),
+                             side: 64,
                              note: "Discord draws this as a ~20 px circle in the corner of the large image.")
             }
             row("Small text") {
@@ -326,8 +327,8 @@ struct ActivityEditorView: View {
             }
             if let assetError {
                 hint(assetError).foregroundStyle(.red)
-            } else if !assetNames.isEmpty {
-                hint("\(assetNames.count) assets available in the menus above.")
+            } else if !assets.isEmpty {
+                hint("\(assets.count) assets available in the menus above.")
             }
             if let giphyStatus {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -347,13 +348,18 @@ struct ActivityEditorView: View {
 
     @ViewBuilder
     private func assetButtons(into key: Binding<String>) -> some View {
-        if assetNames.isEmpty {
+        if assets.isEmpty {
             Text("Load asset names first")
         } else {
-            ForEach(assetNames, id: \.self) { name in
-                Button(name) { key.wrappedValue = name }
+            ForEach(assets) { asset in
+                Button(asset.name) { key.wrappedValue = asset.name }
             }
         }
+    }
+
+    /// The numeric id behind an asset name, for the preview URL (the CDN keys images by id).
+    private func assetID(for key: String) -> String? {
+        assets.first { $0.name == key.trimmingCharacters(in: .whitespacesAndNewlines) }?.id
     }
 
     /// Every GIF this app has uploaded, newest first: pick one instead of uploading it again
@@ -457,8 +463,8 @@ struct ActivityEditorView: View {
             return
         }
         do {
-            assetNames = try await AssetCatalog.assetNames(appID: appIDField)
-            assetError = assetNames.isEmpty ? "No art assets uploaded for this app yet." : nil
+            assets = try await AssetCatalog.assets(appID: appIDField)
+            assetError = assets.isEmpty ? "No art assets uploaded for this app yet." : nil
         } catch {
             assetError = "Could not load assets: \(error.localizedDescription)"
         }

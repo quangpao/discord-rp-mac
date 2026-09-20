@@ -68,6 +68,8 @@ struct AnimatedImageView: NSViewRepresentable {
 struct ImagePreview: View {
     let key: String
     let appID: String
+    /// Numeric asset id from the assets API — required to preview a Discord asset name.
+    var assetID: String? = nil
     /// Side of the square preview box.
     var side: CGFloat = 96
     /// Extra note (e.g. how Discord renders this slot on the card).
@@ -77,7 +79,7 @@ struct ImagePreview: View {
     @State private var failure: String?
     @State private var loading = false
 
-    private var target: PreviewTarget? { PreviewTarget.make(key: key, appID: appID) }
+    private var target: PreviewTarget? { PreviewTarget.make(key: key, appID: appID, assetID: assetID) }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -100,11 +102,7 @@ struct ImagePreview: View {
                         .textSelection(.enabled)
                 } else {
                     Text("No preview").font(.system(size: 11, weight: .semibold))
-                    Text(key.trimmingCharacters(in: .whitespaces).isEmpty
-                         ? "Empty — nothing to show."
-                         : "A Discord asset needs the Application ID in the Connection card.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                    Text(noPreviewReason).font(.system(size: 11)).foregroundStyle(.secondary)
                 }
                 if let note {
                     Text(note).font(.system(size: 11)).foregroundStyle(.secondary)
@@ -112,7 +110,16 @@ struct ImagePreview: View {
             }
             Spacer(minLength: 0)
         }
-        .task(id: key + "|" + appID) { await load() }
+        .task(id: key + "|" + appID + "|" + (assetID ?? "")) { await load() }
+    }
+
+    private var noPreviewReason: String {
+        let trimmed = key.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "Empty — nothing to show." }
+        if appID.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Needs the Application ID from the Connection card."
+        }
+        return "Discord serves asset images by numeric id, not by name — press “Load from Discord” in the Asset names row to resolve it."
     }
 
     private var box: some View {
