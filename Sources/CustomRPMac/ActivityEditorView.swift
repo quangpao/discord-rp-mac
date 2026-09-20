@@ -9,13 +9,13 @@ import UniformTypeIdentifiers
 final class EditorWindowController: NSWindowController {
     init(model: AppModel) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 780),
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 800),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "CustomRP — Preset"
-        window.minSize = NSSize(width: 480, height: 600)
+        window.minSize = NSSize(width: 560, height: 600)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: ActivityEditorView(model: model))
         window.center()
@@ -31,10 +31,19 @@ final class EditorWindowController: NSWindowController {
     }
 }
 
-/// Layout follows the Open Design handoff spec (`docs/ui/customrp-editor-window-spec.html`):
-/// two-tier rows — inline rows with a fixed 132 pt label column, stacked groups for fields that
-/// need the full card width — one section-header treatment, and a pinned footer. No control ever
-/// shares a line with a full-length URL.
+/// Layout contract — and why this is hand-built instead of a `Form`:
+///
+/// SwiftUI's grouped `Form` does *row extraction*: a `TextField` placed in a row is pulled into the
+/// form's control column (x ≈ 452 in a 720 pt window) while a `Picker`, `Button` or `Stepper` in the
+/// same row is left where it is and ends up pinned to the row's trailing edge (x ≈ 718–890). Every
+/// attempt to align them through the form — custom label column, `LabeledContent`, `fixedSize`,
+/// `frame(alignment:)` — was measured on a rendered PNG and failed. Three or four x positions in one
+/// card is the "chaotic" look.
+///
+/// So the window owns its grid: one `label | control` row primitive, a fixed trailing-aligned label
+/// column, and **every** control is a plain child of the same `HStack`, so all controls start at the
+/// same x by construction, whatever their type. Cards are drawn with the system's
+/// `controlBackgroundColor` + rounded corners, which is what the grouped form looked like anyway.
 struct ActivityEditorView: View {
     @ObservedObject var model: AppModel
     @State private var draft = Activity()
@@ -47,72 +56,81 @@ struct ActivityEditorView: View {
     @State private var giphyUploading = false
     @State private var giphyHidden = false
 
-    /// Spec: 132 pt label column, sized by the longest label ("Shown as (Discord app name)").
-    private let labelColumn: CGFloat = 132
-    private let inlineSpacing: CGFloat = 8
+    /// One grid for the whole window.
+    private let labelColumn: CGFloat = 140
+    private let columnGap: CGFloat = 10
+    private let cardPadding: CGFloat = 14
+    private let cardSpacing: CGFloat = 8
 
     var body: some View {
-        Form {
-            connectionSection
-            presenceSection
-            timeSection
-            imageSection
-            buttonSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                connectionCard
+                presenceCard
+                timeCard
+                imageCard
+                buttonCard
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 14)
+            .padding(.bottom, 18)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .formStyle(.grouped)
         .safeAreaInset(edge: .bottom, spacing: 0) { footer }
-        .frame(minWidth: 480, minHeight: 600)
+        .frame(minWidth: 560, minHeight: 600)
         .onAppear(perform: load)
     }
 
-    // MARK: - row primitives
+    // MARK: - grid primitives
 
-    /// ONE alignment system for the whole window: every row is `label | control`, the label column
-    /// is a fixed 132 pt with **trailing** alignment (macOS convention), so every control starts at
-    /// exactly the same x and every label ends at exactly the same x, whatever its length.
-    private func row<Content: View>(_ label: String, hint: String? = nil, @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: inlineSpacing) {
+    /// The single row primitive: label in the fixed column, control in the control column.
+    private func row<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: columnGap) {
             Text(label)
+                .foregroundStyle(.secondary)
                 .frame(width: labelColumn, alignment: .trailing)
-            VStack(alignment: .leading, spacing: 2) {
-                content()
-                if let hint {
-                    Text(hint)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .frame(minHeight: 28)
-    }
-
-    /// Group headers ("Large", "Small", "Button 1") start at the card edge, exactly like the
-    /// section headers — headers never pretend to be labels.
-    private func groupHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
-    }
-
-    /// Action rows line up with the control column, not the label column.
-    private func actionRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: inlineSpacing) {
-            Color.clear.frame(width: labelColumn, height: 1)
             content()
             Spacer(minLength: 0)
         }
+        .frame(minHeight: 24)
     }
 
-    /// A `TextField` inside a grouped `Form` renders its placeholder as a *label* in the form's
-    /// label column — which duplicated every value and staggered the field edges. The name always
-    /// comes from our own label column / group header, so the field label stays empty.
-    private func field(_ placeholder: String = "", text: Binding<String>) -> some View {
+    /// Helper text sits under its control, in the control column — one x for every hint.
+    private func hint(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.leading, labelColumn + columnGap)
+    }
+
+    private func field(_ label: String, text: Binding<String>) -> some View {
         TextField("", text: text)
             .textFieldStyle(.roundedBorder)
             .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel(label)
+    }
+
+    private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: cardSpacing) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(cardPadding)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+            )
+        }
     }
 
     private var statusRow: some View {
@@ -126,95 +144,105 @@ struct ActivityEditorView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
+        .padding(.leading, labelColumn + columnGap)
     }
 
-    // MARK: - sections
+    // MARK: - cards
 
-    private var connectionSection: some View {
-        Section("Connection") {
-            row("Application ID", hint: "from the Discord Developer Portal (discord.com/developers/applications)") {
-                field(text: $appIDField)
+    private var connectionCard: some View {
+        card("Connection") {
+            row("Application ID") {
+                field("Application ID", text: $appIDField)
                     .onSubmit { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
             }
-            row("Pipe index", hint: "0 = Discord · 1 = PTB · 2 = Canary") {
-                Stepper(value: $pipeIndex, in: 0...9) {
-                    Text("\(pipeIndex)").monospacedDigit()
+            hint("From the Discord Developer Portal — discord.com/developers/applications")
+            row("Pipe index") {
+                Picker("", selection: $pipeIndex) {
+                    ForEach(0...9, id: \.self) { index in Text("\(index)").tag(index) }
                 }
-                .frame(width: 110, alignment: .leading)
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            actionRow {
+            hint("0 = Discord · 1 = PTB · 2 = Canary")
+            row("Connection") {
                 Button("Reconnect") { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
-                Text("re-applies the connection and the active preset")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
             }
+            hint("Reconnect re-applies the connection and the active preset.")
             statusRow
         }
     }
 
-    private var presenceSection: some View {
-        Section("Presence") {
-            row("Preset name", hint: "this app only — never sent to Discord") {
-                field(text: $presetName)
+    private var presenceCard: some View {
+        card("Presence") {
+            row("Preset name") {
+                field("Preset name (this app only)", text: $presetName)
             }
-            row("Shown as", hint: "the app name Discord prints on your profile") {
-                field(text: $draft.name)
+            hint("This app only — never sent to Discord.")
+            row("Shown as") {
+                field("Shown as (Discord app name)", text: $draft.name)
             }
+            hint("The app name Discord prints on your profile.")
             row("Type") {
                 Picker("", selection: $draft.kind) {
                     ForEach(ActivityKind.allCases) { kind in Text(kind.label).tag(kind) }
                 }
                 .labelsHidden()
-                .frame(minWidth: 150, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             row("Show as") {
                 Picker("", selection: $draft.display) {
                     ForEach(DisplayType.allCases) { type in Text(type.label).tag(type) }
                 }
                 .labelsHidden()
-                .frame(minWidth: 150, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             row("Details") {
-                field(text: $draft.details)
+                field("Details", text: $draft.details)
             }
             row("Details link") {
-                field(text: $draft.detailsURL)
+                field("Details link (optional)", text: $draft.detailsURL)
             }
             row("State") {
-                field(text: $draft.state)
+                field("State", text: $draft.state)
             }
             row("State link") {
-                field(text: $draft.stateURL)
+                field("State link (optional)", text: $draft.stateURL)
             }
             if draft.kind.allowsParty {
-                row("Party", hint: "current / max — Discord renders “3 of 5”") {
-                    HStack(spacing: 6) {
+                row("Party") {
+                    HStack(spacing: 8) {
                         TextField("", value: $draft.partySize, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .frame(width: 46)
                             .monospacedDigit()
+                            .frame(width: 64)
+                            .accessibilityLabel("Party current")
+                        Text("/").foregroundStyle(.secondary)
                         TextField("", value: $draft.partyMax, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .frame(width: 46)
                             .monospacedDigit()
+                            .frame(width: 64)
+                            .accessibilityLabel("Party max")
+                        Text("current / max").font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                 }
+                hint("Discord renders this as “3 of 5” on the card.")
             }
         }
     }
 
-    private var timeSection: some View {
-        Section("Time") {
-            row("Mode", hint: draft.kind.allowsTimestamps
-                ? draft.timestampMode.explanation
-                : "The “Competing” type cannot show timestamps.") {
+    private var timeCard: some View {
+        card("Time") {
+            row("Mode") {
                 Picker("", selection: $draft.timestampMode) {
                     ForEach(TimestampMode.allCases) { mode in Text(mode.label).tag(mode) }
                 }
                 .labelsHidden()
-                .frame(minWidth: 196, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .disabled(!draft.kind.allowsTimestamps)
             }
+            hint(draft.kind.allowsTimestamps
+                 ? draft.timestampMode.explanation
+                 : "The “Competing” type cannot show timestamps.")
             if draft.timestampMode == .custom {
                 row("Start") {
                     DatePicker("", selection: $draft.customStart,
@@ -236,26 +264,51 @@ struct ActivityEditorView: View {
         }
     }
 
-    private var imageSection: some View {
-        Section("Images") {
-            Text("A key is either an asset name you uploaded to your Discord app, or an https URL. Animation only renders through an external URL.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            imageSlot(title: "Large", key: $draft.largeKey, text: $draft.largeText, link: $draft.largeURL)
-            imageSlot(title: "Small", key: $draft.smallKey, text: $draft.smallText, link: $draft.smallURL)
-
-            row("Private on Giphy") {
-                Toggle("", isOn: $giphyHidden).labelsHidden()
+    private var imageCard: some View {
+        card("Images") {
+            hint("A key is either an asset name you uploaded to your Discord app, or an https URL. Animation only renders through an external URL.")
+            row("Large key") {
+                field("Large key or URL", text: $draft.largeKey)
             }
-            actionRow {
-                Button("Load asset names") { Task { await loadAssets() } }
-                if let assetError {
-                    Text(assetError).font(.system(size: 11)).foregroundStyle(.red)
-                } else if !assetNames.isEmpty {
-                    Text("\(assetNames.count) assets").font(.system(size: 11)).foregroundStyle(.secondary)
+            row("Large text") {
+                field("Large text (optional)", text: $draft.largeText)
+            }
+            row("Large link") {
+                field("Large link (optional)", text: $draft.largeURL)
+            }
+            row("Large image") {
+                Button(giphyUploading ? "Uploading…" : "Upload to Giphy…") {
+                    uploadToGiphy(into: $draft.largeKey, slot: "Large")
                 }
+                .disabled(giphyUploading)
+                Menu("From uploaded assets") { assetButtons(into: $draft.largeKey) }
+            }
+            row("Small key") {
+                field("Small key or URL", text: $draft.smallKey)
+            }
+            row("Small text") {
+                field("Small text (optional)", text: $draft.smallText)
+            }
+            row("Small link") {
+                field("Small link (optional)", text: $draft.smallURL)
+            }
+            row("Small image") {
+                Button(giphyUploading ? "Uploading…" : "Upload to Giphy…") {
+                    uploadToGiphy(into: $draft.smallKey, slot: "Small")
+                }
+                .disabled(giphyUploading)
+                Menu("From uploaded assets") { assetButtons(into: $draft.smallKey) }
+            }
+            row("Giphy") {
+                Toggle("Private", isOn: $giphyHidden)
+            }
+            row("Asset names") {
+                Button("Load from Discord") { Task { await loadAssets() } }
+            }
+            if let assetError {
+                hint(assetError).foregroundStyle(.red)
+            } else if !assetNames.isEmpty {
+                hint("\(assetNames.count) assets available in the menus above.")
             }
             if let giphyStatus {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -268,58 +321,43 @@ struct ActivityEditorView: View {
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                .padding(.leading, labelColumn + columnGap)
             }
         }
     }
 
-    private func imageSlot(title: String, key: Binding<String>, text: Binding<String>, link: Binding<String>) -> some View {
-        Group {
-            groupHeader(title)
-            row("key or URL", hint: "asset name uploaded to your Discord app, or an https URL") {
-                field(text: key)
-            }
-            row("text (optional)") { field(text: text) }
-            row("link (optional)") { field(text: link) }
-            actionRow {
-                Button(giphyUploading ? "Uploading…" : "Upload…") { uploadToGiphy(into: key, slot: title) }
-                    .disabled(giphyUploading)
-                Menu("Assets") {
-                    if assetNames.isEmpty {
-                        Text("Load asset names first")
-                    } else {
-                        ForEach(assetNames, id: \.self) { name in
-                            Button(name) { key.wrappedValue = name }
-                        }
-                    }
-                }
-                .frame(width: 100)
+    @ViewBuilder
+    private func assetButtons(into key: Binding<String>) -> some View {
+        if assetNames.isEmpty {
+            Text("Load asset names first")
+        } else {
+            ForEach(assetNames, id: \.self) { name in
+                Button(name) { key.wrappedValue = name }
             }
         }
     }
 
-    private var buttonSection: some View {
-        Section("Buttons") {
+    private var buttonCard: some View {
+        card("Buttons") {
             ForEach(Array(draft.buttons.prefix(ActivityRules.maxButtons).indices), id: \.self) { index in
-                Group {
-                    groupHeader("Button \(index + 1)")
-                    row("label") { field(text: $draft.buttons[index].label) }
-                    row("URL") { field(text: $draft.buttons[index].url) }
-                    actionRow {
-                        Button("Remove", role: .destructive) { draft.buttons.remove(at: index) }
-                            .buttonStyle(.borderless)
-                            .foregroundStyle(.red)
-                    }
+                row("Button \(index + 1) label") {
+                    field("Button \(index + 1) label", text: $draft.buttons[index].label)
+                }
+                row("Button \(index + 1) URL") {
+                    field("Button \(index + 1) URL", text: $draft.buttons[index].url)
+                }
+                row("Button \(index + 1)") {
+                    Button("Remove", role: .destructive) { draft.buttons.remove(at: index) }
+                        .foregroundStyle(.red)
                 }
             }
-            actionRow {
+            row("Buttons") {
                 Button("Add button") { draft.buttons.append(Button()) }
                     .disabled(draft.buttons.count >= ActivityRules.maxButtons)
-                if draft.buttons.count >= ActivityRules.maxButtons {
-                    Text("2/2 — Discord shows at most two")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
             }
+            hint(draft.buttons.count >= ActivityRules.maxButtons
+                 ? "2/2 — Discord shows at most two buttons"
+                 : "Discord shows at most two buttons.")
         }
     }
 
@@ -347,7 +385,7 @@ struct ActivityEditorView: View {
                     .buttonStyle(.borderedProminent)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 18)
         .padding(.vertical, 10)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }

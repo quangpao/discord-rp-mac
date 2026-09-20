@@ -16,7 +16,7 @@ final class AppModel: ObservableObject {
     private let store: PresetStore
     private var editor: EditorWindowController?
 
-    init() {
+    init(startEngine: Bool = true) {
         let store = PresetStore()
         var settings = store.loadSettings()
         var presets = store.loadPresets()
@@ -41,10 +41,10 @@ final class AppModel: ObservableObject {
         engine.$status.assign(to: &$status)
         engine.$issues.assign(to: &$issues)
 
-        if !settings.appID.isEmpty {
+        if startEngine, !settings.appID.isEmpty {
             engine.start()
         }
-        if let active = activePreset {
+        if startEngine, let active = activePreset {
             engine.apply(active.activity)
         }
     }
@@ -131,10 +131,13 @@ final class AppModel: ObservableObject {
     }
 
     func openEditor() {
-        if editor == nil {
-            editor = EditorWindowController(model: self)
-        }
-        editor?.show()
+        // Always rebuild the window: a cached one keeps the draft it loaded when it was first
+        // opened, so after the presets file changed on disk the editor still showed the old values
+        // (empty image keys) — and pressing Save wrote that stale draft back over the file. That is
+        // what looked like "the images rolled back to default".
+        let controller = EditorWindowController(model: self)
+        editor = controller
+        controller.show()
     }
 
     func openDiscord() {

@@ -2,6 +2,8 @@
 """Write a complete demo preset set for the app (covers every activity field Discord accepts)."""
 import json
 import pathlib
+import subprocess
+import sys
 import uuid
 from datetime import datetime, timedelta
 
@@ -24,6 +26,16 @@ now = datetime.now()
 # seconds would be read as a date in 1970 (or 2057 the other way round).
 start = int((now - timedelta(minutes=42)).timestamp() * 1000)
 end = int((now + timedelta(hours=3)).timestamp() * 1000)
+
+# A running app holds its presets in memory and rewrites presets.json on save/quit, which silently
+# undoes a seed written underneath it. Refuse unless --force.
+if "--force" not in sys.argv:
+    running = subprocess.run(["pgrep", "-x", "CustomRPMac"], capture_output=True, text=True).stdout.split()
+    if running:
+        raise SystemExit(
+            f"CustomRP is running (pid {', '.join(running)}) — quit it first, or pass --force.\n"
+            "A running app rewrites presets.json from memory and will undo this seed."
+        )
 
 
 def activity(**overrides):

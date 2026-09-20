@@ -1,5 +1,7 @@
+import AppKit
 import DiscordRP
 import Foundation
+import SwiftUI
 
 /// Headless checks that need no XCTest (the CommandLineTools toolchain has no test runner),
 /// plus a live probe against the real Discord client.
@@ -34,6 +36,14 @@ enum SelfTest {
         if let index = args.firstIndex(of: "--presets") {
             let directory = index + 1 < args.count && !args[index + 1].hasPrefix("--") ? args[index + 1] : nil
             return dumpPresetPayloads(directory: directory)
+        }
+        if let index = args.firstIndex(of: "--render-editor") {
+            let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
+                ? args[index + 1]
+                : "/tmp/customrp-editor.png"
+            let width = index + 2 < args.count ? Double(args[index + 2]) ?? 720 : 720
+            let height = index + 3 < args.count ? Double(args[index + 3]) ?? 800 : 800
+            return renderEditor(to: path, width: width, height: height)
         }
         if let index = args.firstIndex(of: "--giphy-upload") {
             let file = index + 1 < args.count && !args[index + 1].hasPrefix("--")
@@ -183,6 +193,46 @@ enum SelfTest {
         expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("presets.json.bak").path),
                "corrupt file quarantined to .bak")
         try? FileManager.default.removeItem(at: directory)
+    }
+
+    /// `--render-editor <out.png> [width height]` — draws the editor off-screen through the app's
+    /// own AppKit/SwiftUI stack. The app renders its **own view**, so this needs no Screen Recording
+    /// permission and still yields real pixels to inspect the layout with.
+    private static func renderEditor(to path: String, width: Double, height: Double) -> Int32 {
+        let render: @MainActor () -> Void = {
+            let model = AppModel(startEngine: false)
+            let hosting = NSHostingView(rootView: ActivityEditorView(model: model))
+            let frame = NSRect(x: 0, y: 0, width: width, height: height)
+            hosting.frame = frame
+            let window = NSWindow(contentRect: frame, styleMask: [.titled], backing: .buffered, defer: false)
+            window.setFrameOrigin(NSPoint(x: -20_000, y: -20_000))  // never shown, only rendered
+            window.contentView = hosting
+            hosting.layoutSubtreeIfNeeded()
+            window.displayIfNeeded()
+            hosting.display()
+            guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
+                print("render failed: no bitmap rep")
+                return
+            }
+            hosting.cacheDisplay(in: hosting.bounds, to: rep)
+            guard let data = rep.representation(using: .png, properties: [:]) else {
+                print("render failed: no PNG data")
+                return
+            }
+            do {
+                try data.write(to: URL(fileURLWithPath: path))
+                print("rendered \(Int(width))x\(Int(height)) → \(path)")
+            } catch {
+                print("render failed: \(error.localizedDescription)")
+            }
+        }
+
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { render() }
+        } else {
+            DispatchQueue.main.sync { MainActor.assumeIsolated { render() } }
+        }
+        return 0
     }
 
     /// `--presets [support-dir]` prints, for every stored preset, the exact SET_ACTIVITY payload the
