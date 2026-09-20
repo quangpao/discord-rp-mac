@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Write a complete demo preset set for the app (covers every activity field Discord accepts)."""
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -14,10 +15,12 @@ SUPPORT.mkdir(parents=True, exist_ok=True)
 #                4 local time · 5 custom (start/end)
 # ActivityKind:  0 playing · 1 streaming · 2 listening · 3 watching · 5 competing
 # DisplayType:   0 name · 1 details · 2 state
-IMAGE = "https://media.giphy.com/media/4QYW7oUfPAHGBX7zWs/giphy.gif"
+# BYOK / open-source friendly: nothing personal is baked in. Point these at your own uploads, or
+# leave empty and set the image keys with the app's “Upload to Giphy…” button instead.
+IMAGE = os.environ.get("DEMO_IMAGE_URL", "")
 # ↑ animated logo (GIF): Discord renders animation only for EXTERNAL URLs, not for uploaded assets.
 #   Static alternative if animation is unwanted: "2-asset-logo-1024" (uploaded portal asset).
-SMALL = "3-asset-small-512"   # uploaded art asset → small_image overlay
+SMALL = os.environ.get("DEMO_SMALL_KEY", "")   # a Discord art asset name, if you have one
 LINK = "https://quangpao.dev"
 GH = "https://github.com/quangpao"
 
@@ -113,7 +116,8 @@ payload = [{"id": str(uuid.uuid4()).upper(), "name": p["name"], "activity": p["a
 
 settings = json.loads((SUPPORT / "settings.json").read_text()) if (SUPPORT / "settings.json").exists() else {}
 settings["activePresetID"] = payload[0]["id"]
-settings.setdefault("appID", "1041550572223995925")
+# The Application ID belongs to whoever runs this: never hardcode one in the repo.
+settings.setdefault("appID", os.environ.get("DISCORD_APP_ID", ""))
 settings.setdefault("pipeIndex", 0)
 settings["launchAtLogin"] = settings.get("launchAtLogin", False)
 (SUPPORT / "settings.json").write_text(json.dumps(settings, indent=2, sort_keys=True) + "\n")

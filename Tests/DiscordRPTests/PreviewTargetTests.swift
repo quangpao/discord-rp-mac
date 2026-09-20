@@ -5,7 +5,7 @@ import XCTest
 /// Preview URL rules: an external key is loaded as-is, a bare name becomes a Discord app-asset CDN
 /// URL (which is why the Application ID matters for previews).
 final class PreviewTargetTests: XCTestCase {
-    private let appID = "1041550572223995925"
+    private let appID = "123456789012345678"
 
     func testExternalURLIsUsedAsIs() {
         let target = PreviewTarget.make(key: "https://media.giphy.com/media/abc123/giphy.gif", appID: appID)

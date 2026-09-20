@@ -37,6 +37,32 @@ its analytics).
 3. Enter the ID in the app: menu bar item → *Edit This Preset…* → **Connection → Apply**.
 4. Build and install: `./scripts/build-app.sh --install`. Icon: `./scripts/make-icns.sh`.
 
+## Bring your own key (Giphy)
+
+The app ships **no API key of any kind**. If you want the "Upload to Giphy…" buttons to work, you
+bring your own:
+
+1. Create a key at <https://developers.giphy.com/dashboard/?create=true> (free).
+2. Open the app → **Edit This Preset…** → card **“Giphy — bring your own key”** → paste it →
+   **Save to Keychain**. Or from the terminal (the key is read from stdin, never from argv):
+   `CustomRPMac --giphy-key set` · check with `--giphy-key status` · remove with `--giphy-key clear`.
+
+Where the key is looked up, in order:
+
+| Source | Who sets it |
+| --- | --- |
+| macOS Keychain (`dev.kun.customrp.giphy`) | the app, from the field above |
+| `$GIPHY_API_KEY` | your shell / CI |
+| `~/.giphy/api_key` | hand-written file, kept for scripting |
+
+Notes: the key is **never** logged, never written into this repo, and never shown back to you (the
+UI only reports which source supplied it). Uploads use **your** Giphy account, are **public** unless
+you tick *Private on Giphy*, and a dashboard key allows **10 uploads per day**. The app keeps a local
+history of what it uploaded (`~/Library/Application Support/CustomRPMac/giphy-uploads.json`) because
+Giphy's API cannot list your own uploads — especially not private ones.
+
+Giphy is a third-party service; this project is not affiliated with Giphy or Discord.
+
 ## Development
 
 ```bash
@@ -101,3 +127,7 @@ requested one — without that, a 32 px viewBox lands as a speck in the corner o
 
 This changes what your Discord profile displays. Use it at your own discretion with respect to
 Discord's Terms of Service.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

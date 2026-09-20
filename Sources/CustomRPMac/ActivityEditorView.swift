@@ -57,6 +57,10 @@ struct ActivityEditorView: View {
     @State private var giphyHidden = false
     /// Local history of Giphy uploads — an upload is done once and can be re-picked afterwards.
     @State private var uploads: [GiphyUpload] = []
+    /// BYOK: the user's own Giphy key. Held only while typing; never read back from the store.
+    @State private var keyDraft: String = ""
+    @State private var keyStatus: String?
+    @State private var keySource: GiphyKeySource = .none
 
     /// One grid for the whole window.
     private let labelColumn: CGFloat = 140
@@ -71,6 +75,7 @@ struct ActivityEditorView: View {
                 presenceCard
                 timeCard
                 imageCard
+                giphyCard
                 buttonCard
             }
             .padding(.horizontal, 18)
@@ -291,7 +296,7 @@ struct ActivityEditorView: View {
                 Button(giphyUploading ? "Uploading…" : "Upload to Giphy…") {
                     uploadToGiphy(into: $draft.largeKey, slot: "Large")
                 }
-                .disabled(giphyUploading)
+                .disabled(giphyUploading || keySource == .none)
                 Menu("From uploaded assets") { assetButtons(into: $draft.largeKey) }
             }
             row("Large GIFs") {
@@ -317,13 +322,17 @@ struct ActivityEditorView: View {
                 Button(giphyUploading ? "Uploading…" : "Upload to Giphy…") {
                     uploadToGiphy(into: $draft.smallKey, slot: "Small")
                 }
-                .disabled(giphyUploading)
+                .disabled(giphyUploading || keySource == .none)
                 Menu("From uploaded assets") { assetButtons(into: $draft.smallKey) }
             }
             row("Small GIFs") {
                 Menu("From my uploads") { libraryButtons(into: $draft.smallKey) }
                 Button("Copy key") { copyKey(draft.smallKey) }
                     .disabled(draft.smallKey.isEmpty)
+            }
+            if keySource == .none {
+                hint("Uploads are disabled until you add your own Giphy API key in the “Giphy — bring your own key” card below.")
+                    .foregroundStyle(.orange)
             }
             row("Giphy") {
                 Toggle("Private", isOn: $giphyHidden)
@@ -389,6 +398,68 @@ struct ActivityEditorView: View {
         NSPasteboard.general.setString(value, forType: .string)
     }
 
+    /// BYOK: the app ships no Giphy key. The user's own key is stored in the Keychain, and this card
+    /// is the only place it is ever entered. The key itself is never displayed or logged — only the
+    /// source it came from.
+    private var giphyCard: some View {
+        card("Giphy — bring your own key") {
+            hint("Uploads use your own Giphy account. This app ships no key, and the key is sent only to Giphy.")
+            row("Key source") {
+                HStack(spacing: 6) {
+                    Circle()
+                        .frame(width: 7, height: 7)
+                        .foregroundStyle(keySource == .none ? Color.orange : Color.green)
+                    Text(keySource.description)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            row("API key") {
+                SecureField("paste your Giphy API key", text: $keyDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: .infinity)
+                    .onSubmit(saveKey)
+            }
+            row("Key") {
+                Button("Save to Keychain") { saveKey() }
+                    .disabled(keyDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button("Remove saved key") { removeKey() }
+                Button("Get a key…") { openGiphyDashboard() }
+            }
+            if let keyStatus {
+                hint(keyStatus).foregroundStyle(keyStatus.hasPrefix("✓") ? Color.secondary : Color.red)
+            }
+            hint("Create one at developers.giphy.com — a dashboard key allows 10 uploads per day, and uploads are public unless “Private” is ticked in the Images card.")
+        }
+    }
+
+    private func saveKey() {
+        do {
+            try GiphyKeyStore.save(keyDraft)
+            keyDraft = ""
+            keySource = GiphyKeyStore.source()
+            keyStatus = "✓ Key saved to the Keychain — uploads are enabled."
+        } catch let error as GiphyKeyError {
+            keyStatus = "✗ \(error.description)"
+        } catch {
+            keyStatus = "✗ \(error.localizedDescription)"
+        }
+    }
+
+    private func removeKey() {
+        GiphyKeyStore.clear()
+        keySource = GiphyKeyStore.source()
+        keyStatus = keySource == .none
+            ? "✓ Saved key removed."
+            : "Saved key removed — a key is still coming from \(keySource.description)."
+    }
+
+    private func openGiphyDashboard() {
+        if let url = URL(string: "https://developers.giphy.com/dashboard/?create=true") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     private var buttonCard: some View {
         card("Buttons") {
             ForEach(Array(draft.buttons.prefix(ActivityRules.maxButtons).indices), id: \.self) { index in
@@ -449,6 +520,7 @@ struct ActivityEditorView: View {
         appIDField = model.settings.appID
         pipeIndex = model.settings.pipeIndex
         uploads = GiphyLibrary.shared.load()
+        keySource = GiphyKeyStore.source()
         if let preset = model.activePreset {
             draft = preset.activity
             presetName = preset.name

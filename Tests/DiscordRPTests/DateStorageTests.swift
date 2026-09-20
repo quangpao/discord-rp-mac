@@ -39,12 +39,12 @@ final class DateStorageTests: XCTestCase {
 
         let store = PresetStore(directory: directory)
         var settings = AppSettings()
-        settings.appID = "1041550572223995925"
+        settings.appID = "123456789012345678"
         settings.pipeIndex = 2
         try store.save(settings: settings)
 
         let loaded = store.loadSettings()
-        XCTAssertEqual(loaded.appID, "1041550572223995925")
+        XCTAssertEqual(loaded.appID, "123456789012345678")
         XCTAssertEqual(loaded.pipeIndex, 2)
     }
 }

@@ -33,6 +33,37 @@ enum SelfTest {
             print("after:  \(LaunchAtLogin.debugDescription)")
             return 0
         }
+        if let index = args.firstIndex(of: "--giphy-key") {
+            let action = index + 1 < args.count && !args[index + 1].hasPrefix("--") ? args[index + 1] : "status"
+            switch action {
+            case "status":
+                print("source: \(GiphyKeyStore.source().description)")
+                return 0
+            case "clear":
+                GiphyKeyStore.clear()
+                print("cleared — source: \(GiphyKeyStore.source().description)")
+                return 0
+            case "set":
+                // Read from stdin: a key on the command line would end up in shell history and in
+                // the process table for anyone to read.
+                let input = FileHandle.standardInput.readDataToEndOfFile()
+                let key = String(decoding: input, as: UTF8.self)
+                do {
+                    try GiphyKeyStore.save(key)
+                    print("saved — source: \(GiphyKeyStore.source().description)")
+                    return 0
+                } catch let error as GiphyKeyError {
+                    print("error: \(error.description)")
+                    return 1
+                } catch {
+                    print("error: \(error.localizedDescription)")
+                    return 1
+                }
+            default:
+                print("usage: --giphy-key status|set|clear   (set reads the key from stdin)")
+                return 1
+            }
+        }
         if args.contains("--giphy-library") {
             let library = GiphyLibrary.shared.load()
             if library.isEmpty {

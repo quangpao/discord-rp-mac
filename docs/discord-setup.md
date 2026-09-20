@@ -18,7 +18,7 @@ why an app with no uploaded icon shows Discord's grey "?" placeholder.
 
 ## Step 1 — General Information
 
-1. Open <https://discord.com/developers/applications> and pick your app (ID `1041550572223995925`).
+1. Open <https://discord.com/developers/applications> and pick your app (ID `<your-application-id>`).
 2. **General Information**:
    - **Name** — this is what Discord shows when the activity has no `name` override. `CustomRP` is the
      clean choice; `CustomRP by quangpao` also works if you want the credit line here instead.
@@ -45,7 +45,7 @@ why an app with no uploaded icon shows Discord's grey "?" placeholder.
 3. **Save Changes**, then wait a few minutes.
 4. Sanity check from the shell — the same call the app's “Load asset names” button makes:
    ```bash
-   curl -s https://discord.com/api/oauth2/applications/1041550572223995925/assets
+   curl -s https://discord.com/api/oauth2/applications/<your-application-id>/assets
    ```
    Assets appear as `[{"name":"logo",...}]`. An empty `[]` means they have not landed yet.
 
@@ -81,8 +81,8 @@ swift scripts/frames-to-gif.swift build/anim dist/discord/customrp-animated-logo
 ```
 
 Then host the file somewhere public and use that URL as the image key. Current host: **Giphy** —
-`https://media.giphy.com/media/4QYW7oUfPAHGBX7zWs/giphy.gif` (58 chars, `mp:external` budget ≈ 100/256,
-page: <https://giphy.com/gifs/4QYW7oUfPAHGBX7zWs>), uploaded with `scripts/upload-gif-to-giphy.py`.
+`https://media.giphy.com/media/<your-gif-id>/giphy.gif` (58 chars, `mp:external` budget ≈ 100/256,
+page: <https://giphy.com/gifs/<your-gif-id>>), uploaded with `scripts/upload-gif-to-giphy.py`.
 The API key lives **outside the repo** at `~/.giphy/api_key` (mode 600); the script never prints it.
 Fallback host if Giphy ever drops the file: the same GIF in the public repo `quangpao/customrp-assets`
 (`raw.githubusercontent.com/quangpao/customrp-assets/main/customrp-animated-logo.gif`).

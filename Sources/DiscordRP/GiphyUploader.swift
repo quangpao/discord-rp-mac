@@ -49,19 +49,13 @@ public enum GiphyUploader {
         "\(home)/.giphy/api_key"
     }
 
-    /// Returns the key, or nil when it is missing/blank.
+    /// Returns the key, or nil when it is missing/blank. BYOK: resolution order is
+    /// Keychain (saved by the user in the app) → `$GIPHY_API_KEY` → `~/.giphy/api_key`.
     public static func apiKey(
         path: String? = nil,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> String? {
-        if let value = getenv("GIPHY_API_KEY").map({ String(cString: $0) }), !value.isEmpty {
-            return value
-        }
-        if let value = environment["GIPHY_API_KEY"], !value.isEmpty { return value }
-        let file = path ?? defaultKeyPath()
-        guard let contents = try? String(contentsOfFile: file, encoding: .utf8) else { return nil }
-        let trimmed = contents.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        GiphyKeyStore.apiKey(environment: environment, file: path)
     }
 
     // MARK: - request building

@@ -14,3 +14,4 @@ xcuserdata/
 
 # local app data
 *.log
+.vscode/

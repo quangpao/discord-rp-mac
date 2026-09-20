@@ -172,7 +172,7 @@ final class ActivityRulesTests: XCTestCase {
     func testStreamingTypeIsRejectedLocallyAndNeverOffered() {
         var activity = Activity(name: "T", details: "ok")
         activity.kind = .streaming
-        let issues = ActivityRules.validate(activity, appID: "1041550572223995925")
+        let issues = ActivityRules.validate(activity, appID: "123456789012345678")
         XCTAssertTrue(issues.contains { $0.field == .kind && $0.isError },
                       "streaming must be an error: \(issues.map(\.message))")
 
