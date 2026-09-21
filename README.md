@@ -73,6 +73,7 @@ Conventions, the headless CLI flags and how the screenshot in this file is regen
 | [Wiki](https://github.com/quangpao/discord-rp-mac/wiki) | user guide — [Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup) · [FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ) · [Giphy key](https://github.com/quangpao/discord-rp-mac/wiki/Giphy-key) · [Images](https://github.com/quangpao/discord-rp-mac/wiki/Images) · [Uninstall](https://github.com/quangpao/discord-rp-mac/wiki/Uninstall) |
 | [docs/release.md](docs/release.md) | versioning, tagging, signing and notarization |
 | [docs/ui/README.md](docs/ui/README.md) | logo assets, icon pipeline, design artifacts |
+| [CHANGELOG.md](CHANGELOG.md) | what changed in each release |
 | [SECURITY.md](SECURITY.md) | what is stored, what is sent, how to report a problem |
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | attribution and disclaimers |
 

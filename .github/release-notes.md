@@ -37,3 +37,5 @@ security delete-generic-password -s dev.quangpao.discordrp.giphy -a api-key 2>/d
 Verify the download against the attached `sha256.txt`. Questions, setup steps and known quirks: [https://github.com/quangpao/discord-rp-mac/wiki](https://github.com/quangpao/discord-rp-mac/wiki).
 
 *Not affiliated with Giphy or Discord. See THIRD_PARTY_NOTICES.md.*
+
+Full history: [CHANGELOG.md](https://github.com/quangpao/discord-rp-mac/blob/main/CHANGELOG.md).
