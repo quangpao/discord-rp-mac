@@ -16,9 +16,10 @@ hits Gatekeeper and teaches users to bypass it, which is worse than asking them 
 
 ## Cutting a release
 
-1. Bump the version in **both** places (they are the only two sources):
-   - `Sources/DiscordRP/Version.swift`
-   - `Resources/Info.plist` (`CFBundleShortVersionString`, `CFBundleVersion`)
+1. Bump the version — it lives in two files and they must agree, so use the script:
+   `./scripts/bump-version.sh X.Y.Z [BUILD]`
+   (that is `Sources/DiscordRP/Version.swift` and `Resources/Info.plist`'s
+   `CFBundleShortVersionString` / `CFBundleVersion`).
 2. `swift test` — must be green (currently 93 tests).
 3. `./scripts/build-app.sh --install --run`, then confirm the menu bar item appears and a preset
    applies against a running Discord client.

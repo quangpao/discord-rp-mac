@@ -32,7 +32,7 @@ body:
     id: diagnostics
     attributes:
       label: Diagnostics
-      description: Output of `--self-test` and the tail of `~/Library/Logs/DiscordRP/customrp.log`
+      description: Output of `--self-test` and the tail of `~/Library/Logs/DiscordRP/discord-rp.log`
       render: shell
     validations:
       required: false

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rasterise an SVG to a square PNG at the requested size.
 #
-#   ./scripts/svg-to-png.sh Resources/logo/c1-mark.svg build/c1-mark.png 512 [background]
+#   ./scripts/svg-to-png.sh Resources/logo/c2-mark.svg build/c2-mark.png 512 [background]
 #
 # The SVGs from a design sheet carry small intrinsic width/height (32 px), so a naive rasteriser
 # renders a tiny mark in the corner of a big canvas. We wrap the markup in a page that forces

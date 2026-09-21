@@ -125,6 +125,7 @@ swift run DiscordRPMac --self-test # headless checks that work with CommandLineT
 DiscordRPMac --version | --login-item status | --live --app-id <ID>
 DiscordRPMac --presets              # print the exact payload every stored preset would send
 python3 scripts/seed-demo-presets.py   # (re)write the demo preset set
+./scripts/bump-version.sh 1.0.1 2      # bump both version files (see docs/release.md)
 ```
 
 The README screenshots are real renders of the real views — no Screen Recording permission needed,

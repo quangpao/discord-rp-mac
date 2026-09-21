@@ -16,7 +16,21 @@ public enum PresenceLog {
     }
 
     public static var lastPayloadURL: URL { directory.appendingPathComponent("last-presence.json") }
-    private static var logURL: URL { directory.appendingPathComponent("customrp.log") }
+    /// The log was `customrp.log` before the app was renamed to Discord RP. The pre-rename file is
+    /// carried over once (renamed, so the history survives) instead of leaving a stale file behind.
+    /// Internal rather than private so `PresenceLogTests` can exercise it without a reset hook; the
+    /// two `fileExists` calls are free next to an actual log write.
+    static func migratedLogURL(in directory: URL) -> URL {
+        let current = directory.appendingPathComponent("discord-rp.log")
+        let legacy = directory.appendingPathComponent("customrp.log")
+        if !FileManager.default.fileExists(atPath: current.path),
+           FileManager.default.fileExists(atPath: legacy.path) {
+            try? FileManager.default.moveItem(at: legacy, to: current)
+        }
+        return current
+    }
+
+    private static var logURL: URL { migratedLogURL(in: directory) }
 
     private static let maxLogBytes = 1 << 20
 

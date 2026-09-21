@@ -19,13 +19,20 @@ source = pathlib.Path(sys.argv[1])
 out_dir = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "Resources/logo")
 raw = source.read_text(encoding="utf-8")
 
+# Only the canonical concept ships (`c2`, see docs/ui/README.md); the sheet still contains the
+# rejected rounds c1/c3, which should not be re-created unless you ask for them.
+ONLY_CONCEPTS = None if "--all" in sys.argv else ("c2",)
+
 # id → requested file name, and which concept the id belongs to (c1/c2/c3 prefix in the id).
 targets = []
 for attrs in re.findall(r"(?is)<pre([^>]*)>", raw):
     code = re.search(r'data-code="#([^"]+)"', attrs)
     name = re.search(r'data-file="([^"]+)"', attrs)
     if code and name:
-        targets.append((code.group(1), name.group(1)))
+        identifier, filename = code.group(1), name.group(1)
+        if ONLY_CONCEPTS and not filename.startswith(ONLY_CONCEPTS):
+            continue
+        targets.append((identifier, filename))
 
 if not targets:
     sys.exit("no data-code/data-file pairs found — is this a logo sheet?")

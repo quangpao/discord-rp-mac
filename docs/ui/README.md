@@ -8,7 +8,7 @@ behaviour (and its tests) wins, and this directory should be updated.
 | --- | --- |
 | `discord-rp-editor-window-spec.html` (+ `-spec.txt`) | Window/editor layout handoff used to rebuild `ActivityEditorView.swift` (2-tier rows, fixed label column, pinned footer). |
 | `discord-rp-menu-spec.html` | Menu layout handoff. |
-| `discord-rp-logo-sheet.html` | Logo exploration sheet; the canonical mark geometry was extracted from it. |
+| `discord-rp-logo-sheet.html` | Logo exploration sheet (three concepts). Only the canonical **c2** round ships — `scripts/extract-svgs.py` extracts just that one unless you pass `--all`. |
 
 ## Canonical assets
 

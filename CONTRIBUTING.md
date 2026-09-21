@@ -36,5 +36,5 @@ thing you need the Discord desktop app and your own Application ID (see the READ
 
 Please include: macOS version, whether the Discord client was running, the output of
 `"/Applications/Discord RP.app/Contents/MacOS/DiscordRPMac" --self-test`, and the last lines of
-`~/Library/Logs/DiscordRP/customrp.log`. That log contains the exact payload that was sent — it never
+`~/Library/Logs/DiscordRP/discord-rp.log`. That log contains the exact payload that was sent — it never
 contains your API key.

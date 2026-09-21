@@ -22,7 +22,7 @@ Tests/
 | `ActivityRules.swift` | Discord's validation rules with readable reasons; returns Discord's own wording when it rejects something. |
 | `ReconnectPlan.swift` | Pure decision for the Reconnect button (unchanged settings still reapply). Testable here because the app target has no test target. |
 | `PresetStore.swift` | JSON persistence of presets/settings (`~/Library/Application Support/DiscordRPMac`), epoch **milliseconds** pinned. |
-| `PresenceLog.swift` | Appends to `~/Library/Logs/DiscordRP/customrp.log` and writes `last-presence.json`; directory is overridable so tests never touch the real one. |
+| `PresenceLog.swift` | Appends to `~/Library/Logs/DiscordRP/discord-rp.log` and writes `last-presence.json`; directory is overridable so tests never touch the real one. |
 | `GiphyUploader.swift` | Multipart upload to Giphy. Sends only `api_key` (+ optional hidden/tags/source). |
 | `GiphyKeyStore.swift` | Key resolution: Keychain → `$GIPHY_API_KEY` → `~/.giphy/api_key`. Validation, save/clear, source reporting (never the value). |
 | `GiphyLibrary.swift` | Local upload history (Giphy's API cannot list your own uploads). |

@@ -7,7 +7,7 @@
 | Presets + settings | `~/Library/Application Support/DiscordRPMac/*.json` | no |
 | Upload history (Giphy ids/URLs) | `~/Library/Application Support/DiscordRPMac/giphy-uploads.json` | no |
 | Your Giphy API key | macOS Keychain, item `dev.quangpao.discordrp.giphy` / `api-key` | **yes** |
-| Last presence payload sent to Discord | `~/Library/Logs/DiscordRP/last-presence.json` + `customrp.log` | no |
+| Last presence payload sent to Discord | `~/Library/Logs/DiscordRP/last-presence.json` + `discord-rp.log` | no |
 
 The API key is read from the Keychain first, then `$GIPHY_API_KEY`, then `~/.giphy/api_key`. It is
 never logged, never written into this repository, and never displayed back to you — the UI only
@@ -50,7 +50,7 @@ until a fix is out — use **GitHub's private vulnerability reporting** on this 
 (*Security* → *Report a vulnerability*).
 
 Please include: the app version (`--version`), your macOS version, your Discord client build, and the
-tail of `~/Library/Logs/DiscordRP/customrp.log` with anything personal redacted. **Never** include your
+tail of `~/Library/Logs/DiscordRP/discord-rp.log` with anything personal redacted. **Never** include your
 Giphy API key, a Discord token, or private image URLs — none of them are needed to investigate.
 
 Acknowledgement within 7 days; a fix or a mitigation plan as soon as the report can be reproduced.

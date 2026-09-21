@@ -7,10 +7,10 @@ the asset **names** you choose. Files to upload are pre-rendered in `dist/discor
 
 | Field | Source | Current demo value |
 |---|---|---|
-| card name (byline) | the activity `name` field | `Discord RP by quangpao` (overrides the portal app name) |
-| big image | `large_image` key **or** an https URL | `https://github.com/quangpao.png` (used because no art asset is uploaded yet) |
-| subtitle | `details` (with `status_display_type = details`) | `Đang code` |
-| second line | `state` | `discord-rp-mac` |
+| card name (byline) | the activity `name` field | `Discord RP` (overrides the portal app name) |
+| big image | `large_image` key **or** an https URL | `https://example.com/logo.png` (an external URL works before you upload an art asset) |
+| subtitle | `details` (with `status_display_type = details`) | `Editing a preset` |
+| second line | `state` | `Trying out Discord RP` |
 | buttons | up to 2 label/URL pairs | `quangpao.dev`, `GitHub` |
 
 If no `large_image` is set, Discord falls back to the **application icon** from the portal — which is
