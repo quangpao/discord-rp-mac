@@ -93,7 +93,12 @@ final class DiscordIPCClientTests: XCTestCase {
 /// End-to-end through the engine: connect, push a preset, clear.
 @MainActor
 final class PresenceEngineTests: XCTestCase {
-    private var server: FakeDiscordServer!
+    /// `nonisolated(unsafe)`: on the CI runner's older toolchain (Xcode 16 / Swift 6.0–6.1) XCTest's
+    /// synchronous `setUpWithError`/`tearDownWithError` are nonisolated even inside a `@MainActor`
+    /// test class, so an isolated stored property cannot be assigned there. This file has to compile
+    /// on both the local 6.2 toolchain and the runner's, and XCTest only ever touches this from the
+    /// main thread.
+    private nonisolated(unsafe) var server: FakeDiscordServer!
 
     override func setUpWithError() throws {
         server = FakeDiscordServer()
