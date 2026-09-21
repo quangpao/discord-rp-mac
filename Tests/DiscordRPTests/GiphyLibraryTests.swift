@@ -9,7 +9,7 @@ final class GiphyLibraryTests: XCTestCase {
 
     override func setUpWithError() throws {
         directory = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("customrp-giphy-\(UUID().uuidString)")
+            .appendingPathComponent("discordrp-giphy-\(UUID().uuidString)")
     }
 
     override func tearDownWithError() throws {

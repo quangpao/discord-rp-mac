@@ -1,13 +1,13 @@
-<!-- Renamed after this document was written: the app was called “customrp-mac” / “CustomRP” while it was being designed. It is now **Discord RP**; mentions of CustomRP in this file refer either to that earlier working name or to the Windows app it was modelled on. Not affiliated with CustomRP. -->
+<!-- This document predates the rename: the app was called “customrp-mac” while it was being designed and is now **Discord RP**. The earlier working name has been updated throughout; nothing else changed. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CustomRP — Menu Bar &amp; Editor Spec</title>
+<title>Discord RP — Menu Bar &amp; Editor Spec</title>
 <style>
 /* ============================================================
-   CustomRP spec page — dark-first editorial frame.
+   Discord RP spec page — dark-first editorial frame.
    Page palette bound from the editorial-monocle direction
    (light values in :root), inverted for body.dark.
    macOS mock tokens (--mac-*, --menu-*, --win-*) are separate
@@ -268,7 +268,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
 </head>
 <body class="dark">
 <script>
-(function(){try{var s=localStorage.getItem('customrp-theme');if(s==='light'||s==='dark'){if(s==='light')document.body.classList.remove('dark');}else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches){document.body.classList.remove('dark');}}catch(e){}})();
+(function(){try{var s=localStorage.getItem('discordrp-theme');if(s==='light'||s==='dark'){if(s==='light')document.body.classList.remove('dark');}else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches){document.body.classList.remove('dark');}}catch(e){}})();
 </script>
 
 <!-- ======== hand-drawn SF-style icon sprite (stroke 1.5, 16x16) ======== -->
@@ -339,7 +339,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
 
 <header class="topbar" data-od-id="spec-header">
   <div class="brand">
-    <b>CustomRP</b><span>Menu Bar &amp; Editor — Design Spec</span>
+    <b>Discord RP</b><span>Menu Bar &amp; Editor — Design Spec</span>
   </div>
   <button class="toggle" id="themeToggle" type="button" aria-pressed="true" data-od-id="appearance-toggle">
     <svg id="toggleIcon" aria-hidden="true"><use href="#i-sun"/></svg>
@@ -362,7 +362,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
   <!-- ================= SECTION 1 ================= -->
   <section class="sec" id="sec1" data-od-id="section-menubar">
     <div class="sec-head"><div class="sec-num">01</div><h2>Menu bar strip — four states</h2></div>
-    <p class="sec-lede">A 24 px translucent strip. Left: Apple logo, Finder, File, Edit, View. Right: the CustomRP status item, then Wi‑Fi, battery and the clock. The icon is a template image, so its tint — not its shape — carries the state. Below each strip: the tooltip string and the SF Symbol the shape maps to.</p>
+    <p class="sec-lede">A 24 px translucent strip. Left: Apple logo, Finder, File, Edit, View. Right: the Discord RP status item, then Wi‑Fi, battery and the clock. The icon is a template image, so its tint — not its shape — carries the state. Below each strip: the tooltip string and the SF Symbol the shape maps to.</p>
 
     <div class="mockrow">
       <div class="mock mock-narrow" data-od-id="strip-connected">
@@ -373,14 +373,14 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
               <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
             </div>
             <div class="mbs-r">
-              <span class="stitem active" title="CustomRP — Connected as kun#0"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem active" title="Discord RP — Connected as kun#0"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
               <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
               <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
               <span>Wed 00:41</span>
             </div>
           </div>
         </div>
-        <div class="mock-cap"><b>Connected</b><span>Tooltip “CustomRP — Connected as kun#0”</span><span class="sym">bolt.horizontal.circle.fill</span></div>
+        <div class="mock-cap"><b>Connected</b><span>Tooltip “Discord RP — Connected as kun#0”</span><span class="sym">bolt.horizontal.circle.fill</span></div>
       </div>
 
       <div class="mock mock-narrow" data-od-id="strip-connecting">
@@ -391,14 +391,14 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
               <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
             </div>
             <div class="mbs-r">
-              <span class="stitem dim" title="CustomRP — Connecting…"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem dim" title="Discord RP — Connecting…"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
               <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
               <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
               <span>Wed 00:41</span>
             </div>
           </div>
         </div>
-        <div class="mock-cap"><b>Connecting</b><span>Tooltip “CustomRP — Connecting…” · icon at 60% opacity</span><span class="sym">bolt.horizontal.circle</span></div>
+        <div class="mock-cap"><b>Connecting</b><span>Tooltip “Discord RP — Connecting…” · icon at 60% opacity</span><span class="sym">bolt.horizontal.circle</span></div>
       </div>
 
       <div class="mock mock-narrow" data-od-id="strip-disconnected">
@@ -409,14 +409,14 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
               <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
             </div>
             <div class="mbs-r">
-              <span class="stitem muted" title="CustomRP — Discord not running"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem muted" title="Discord RP — Discord not running"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
               <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
               <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
               <span>Wed 00:41</span>
             </div>
           </div>
         </div>
-        <div class="mock-cap"><b>Disconnected</b><span>Tooltip “CustomRP — Discord not running” · secondary grey</span><span class="sym">bolt.horizontal.circle</span></div>
+        <div class="mock-cap"><b>Disconnected</b><span>Tooltip “Discord RP — Discord not running” · secondary grey</span><span class="sym">bolt.horizontal.circle</span></div>
       </div>
 
       <div class="mock mock-narrow" data-od-id="strip-error">
@@ -427,14 +427,14 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
               <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
             </div>
             <div class="mbs-r">
-              <span class="stitem muted" title="CustomRP — Invalid Application ID"><svg aria-hidden="true"><use href="#i-bolt"/></svg><span class="badge"></span></span>
+              <span class="stitem muted" title="Discord RP — Invalid Application ID"><svg aria-hidden="true"><use href="#i-bolt"/></svg><span class="badge"></span></span>
               <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
               <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
               <span>Wed 00:41</span>
             </div>
           </div>
         </div>
-        <div class="mock-cap"><b>Error</b><span>Tooltip “CustomRP — Invalid Application ID” · grey + red dot badge</span><span class="sym">bolt.horizontal.circle</span></div>
+        <div class="mock-cap"><b>Error</b><span>Tooltip “Discord RP — Invalid Application ID” · grey + red dot badge</span><span class="sym">bolt.horizontal.circle</span></div>
       </div>
     </div>
     <p class="note">The badge is a 6 px red dot with a 1.5 px ring in the menu bar’s solid fallback colour so it reads against any wallpaper. It is the only place colour is added to the icon; the glyph itself stays a template image.</p>
@@ -456,7 +456,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
               <span class="app">Finder</span><span>File</span><span>Edit</span><span>View</span>
             </div>
             <div class="mbs-r">
-              <span class="stitem open" title="CustomRP — Connected as kun#0"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <span class="stitem open" title="Discord RP — Connected as kun#0"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span>
               <span class="stitem muted"><svg aria-hidden="true"><use href="#i-wifi"/></svg></span>
               <span class="stitem"><svg aria-hidden="true"><use href="#i-battery"/></svg></span>
               <span>Wed 00:41</span>
@@ -680,7 +680,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
       <div class="window" data-od-id="editor-window">
         <div class="titlebar" data-od-id="editor-titlebar">
           <div class="lights"><span class="light r"></span><span class="light y"></span><span class="light g"></span></div>
-          <div class="wintitle">CustomRP — Edit Preset</div>
+          <div class="wintitle">Discord RP — Edit Preset</div>
         </div>
         <div class="winbody">
           <div class="fld">
@@ -820,7 +820,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
     <h3 class="sub">Deliberately cut for compactness</h3>
     <p class="note" style="margin-top:0">The menu is capped at 11 rows and exactly one status line. These items were removed; each either duplicates an action reachable elsewhere or is too rare to earn a permanent row.</p>
     <ul class="rules cut">
-      <li><b>About CustomRP / version</b> — moved to the standard About panel in Settings.</li>
+      <li><b>About Discord RP / version</b> — moved to the standard About panel in Settings.</li>
       <li><b>Check for Updates…</b> — Sparkle handles it automatically; manual check lives in Settings.</li>
       <li><b>Copy / Paste presence JSON</b> — developer affordance, moved to Settings ▸ Advanced.</li>
       <li><b>Pause / Resume presence</b> — collapsed into Clear Presence + Reapply Now.</li>
@@ -837,7 +837,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
   </section>
 
   <footer class="deliver" data-od-id="footer">
-    <span>CustomRP — menu bar &amp; editor spec · v1.0</span>
+    <span>Discord RP — menu bar &amp; editor spec · v1.0</span>
     <span>Single self-contained file · no external assets · light + dark</span>
   </footer>
 
@@ -857,7 +857,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
   }
   btn.addEventListener('click', function(){
     b.classList.toggle('dark');
-    try{localStorage.setItem('customrp-theme', b.classList.contains('dark')?'dark':'light');}catch(e){}
+    try{localStorage.setItem('discordrp-theme', b.classList.contains('dark')?'dark':'light');}catch(e){}
     sync();
   });
   sync();

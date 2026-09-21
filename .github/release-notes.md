@@ -36,4 +36,4 @@ security delete-generic-password -s dev.quangpao.discordrp.giphy -a api-key 2>/d
 
 Verify the download against the attached `sha256.txt`.
 
-*Not affiliated with CustomRP, Giphy, or Discord. See THIRD_PARTY_NOTICES.md.*
+*Not affiliated with Giphy or Discord. See THIRD_PARTY_NOTICES.md.*

@@ -1,9 +1,8 @@
 import AppKit
 import Foundation
 
-/// A second launch must not become a second presence owner (CustomRP uses a mutex plus a
-/// window message). Here: an exclusive `flock` on a lock file; the newcomer activates the
-/// running copy and exits.
+/// A second launch must not become a second presence owner. Here: an exclusive `flock` on a
+/// lock file; the newcomer activates the running copy and exits.
 enum SingleInstance {
     private static var lockDescriptor: Int32 = -1
 

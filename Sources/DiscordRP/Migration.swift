@@ -2,7 +2,8 @@ import Foundation
 
 /// One-time move from the pre-rename layout.
 ///
-/// The app used to be `CustomRP` / `customrp-mac` with bundle id `dev.kun.customrp`; it is now
+/// The app used to be `customrp-mac` (its own earlier working name, with bundle id
+/// `dev.kun.customrp`) and is now
 /// **Discord RP** (`dev.quangpao.discordrp`), so its Application Support folder and its Keychain
 /// service both moved. Files are **copied, never deleted** — if anything goes wrong the old ones are
 /// still there, and the new copy is never allowed to overwrite an existing file.

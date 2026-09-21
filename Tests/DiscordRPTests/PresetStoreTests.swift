@@ -7,7 +7,7 @@ final class PresetStoreTests: XCTestCase {
 
     override func setUpWithError() throws {
         directory = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("customrp-tests-\(UUID().uuidString)")
+            .appendingPathComponent("discordrp-tests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 

@@ -4,8 +4,8 @@ import Foundation
 ///
 /// macOS: `$TMPDIR/discord-ipc-<n>` (`/var/folders/…/T/…` — verifiably connectable, no
 /// `/private` prefix needed). Windows-style named pipes do not exist here; index 0 is the
-/// stable client, 1 PTB, 2 Canary. The original CustomRP exposes the same index to the user
-/// as its "pipe" setting, so we keep `pipeIndex` configurable.
+/// stable client, 1 PTB, 2 Canary. The index stays configurable because a user may be running
+/// a beta client.
 public enum SocketLocator {
     public static let socketName = "discord-ipc"
 
@@ -18,7 +18,7 @@ public enum SocketLocator {
         var out: [String] = []
         // `getenv` (not `ProcessInfo`) so tests can point the client at a fake server with
         // `setenv` — ProcessInfo caches the environment on first access.
-        let explicit = getenv("CUSTOMRP_IPC_PATH").map { String(cString: $0) } ?? env["CUSTOMRP_IPC_PATH"]
+        let explicit = getenv("DISCORDRP_IPC_PATH").map { String(cString: $0) } ?? env["DISCORDRP_IPC_PATH"]
         if let explicit, !explicit.isEmpty {
             out.append(explicit)
         }

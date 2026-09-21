@@ -137,5 +137,5 @@ and where, is listed in [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Not affiliated with CustomRP, Giphy or Discord; see
+MIT — see [LICENSE](LICENSE). Not affiliated with Giphy or Discord; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CustomRP app icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Discord RP app icon">
               <defs>
-                <path id="customrpTile" d="M 529.072 0 c 103.2345 0 154.8517 0 194.2821 20.0908 a 184.33 184.33 0 0 1 80.5552 80.5552 c 20.0908 39.4304 20.0908 91.0476 20.0908 194.2821 L 824 529.072 c 0 103.2345 0 154.8517 -20.0908 194.2821 a 184.33 184.33 0 0 1 -80.5552 80.5552 c -39.4304 20.0908 -91.0476 20.0908 -194.2821 20.0908 L 294.928 824 c -103.2345 0 -154.8517 0 -194.2821 -20.0908 a 184.33 184.33 0 0 1 -80.5552 -80.5552 c -20.0908 -39.4304 -20.0908 -91.0476 -20.0908 -194.2821 L 0 294.928 c 0 -103.2345 0 -154.8517 20.0908 -194.2821 a 184.33 184.33 0 0 1 80.5552 -80.5552 c 39.4304 -20.0908 91.0476 -20.0908 194.2821 -20.0908 Z"/>
-                <linearGradient id="customrpTileFill" x1="0" y1="0" x2="0" y2="1">
+                <path id="drpTile" d="M 529.072 0 c 103.2345 0 154.8517 0 194.2821 20.0908 a 184.33 184.33 0 0 1 80.5552 80.5552 c 20.0908 39.4304 20.0908 91.0476 20.0908 194.2821 L 824 529.072 c 0 103.2345 0 154.8517 -20.0908 194.2821 a 184.33 184.33 0 0 1 -80.5552 80.5552 c -39.4304 20.0908 -91.0476 20.0908 -194.2821 20.0908 L 294.928 824 c -103.2345 0 -154.8517 0 -194.2821 -20.0908 a 184.33 184.33 0 0 1 -80.5552 -80.5552 c -20.0908 -39.4304 -20.0908 -91.0476 -20.0908 -194.2821 L 0 294.928 c 0 -103.2345 0 -154.8517 20.0908 -194.2821 a 184.33 184.33 0 0 1 80.5552 -80.5552 c 39.4304 -20.0908 91.0476 -20.0908 194.2821 -20.0908 Z"/>
+                <linearGradient id="drpTileFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
                   <stop offset="0.52" stop-color="#FFFFFF" stop-opacity="0"/>
                   <stop offset="1" stop-color="#000000" stop-opacity="0.16"/>
                 </linearGradient>
-                <linearGradient id="customrpKeyline" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="drpKeyline" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18"/>
                   <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.09"/>
                   <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.04"/>
@@ -14,24 +14,24 @@
                   <stop offset="0.65" stop-color="#000000" stop-opacity="0.08"/>
                   <stop offset="1" stop-color="#000000" stop-opacity="0.15"/>
                 </linearGradient>
-                <filter id="customrpMarkShadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-                  <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="customrpBlur"/>
-                  <feOffset in="customrpBlur" dx="0" dy="5" result="customrpShadowOffset"/>
-                  <feFlood flood-color="#000000" flood-opacity="0.32" result="customrpShadowInk"/>
-                  <feComposite in="customrpShadowInk" in2="customrpShadowOffset" operator="in"/>
+                <filter id="drpMarkShadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+                  <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="drpBlur"/>
+                  <feOffset in="drpBlur" dx="0" dy="5" result="drpShadowOffset"/>
+                  <feFlood flood-color="#000000" flood-opacity="0.32" result="drpShadowInk"/>
+                  <feComposite in="drpShadowInk" in2="drpShadowOffset" operator="in"/>
                 </filter>
-                <clipPath id="customrpTileClip">
+                <clipPath id="drpTileClip">
                   <path d="M 529.072 0 c 103.2345 0 154.8517 0 194.2821 20.0908 a 184.33 184.33 0 0 1 80.5552 80.5552 c 20.0908 39.4304 20.0908 91.0476 20.0908 194.2821 L 824 529.072 c 0 103.2345 0 154.8517 -20.0908 194.2821 a 184.33 184.33 0 0 1 -80.5552 80.5552 c -39.4304 20.0908 -91.0476 20.0908 -194.2821 20.0908 L 294.928 824 c -103.2345 0 -154.8517 0 -194.2821 -20.0908 a 184.33 184.33 0 0 1 -80.5552 -80.5552 c -20.0908 -39.4304 -20.0908 -91.0476 -20.0908 -194.2821 L 0 294.928 c 0 -103.2345 0 -154.8517 20.0908 -194.2821 a 184.33 184.33 0 0 1 80.5552 -80.5552 c 39.4304 -20.0908 91.0476 -20.0908 194.2821 -20.0908 Z"/>
                 </clipPath>
               </defs>
               <!-- geometry nudge applied by scripts/centre-appicon.py: mark group shifted +23.2/-19.5 units so the lockup bbox margins are equal (measured on the built .icns). -->
               <!-- geometry nudge applied by scripts/centre-appicon.py: mark group shifted +23.2/-26.5 units so the lockup bbox margins are equal (measured on the built .icns). -->
-              <g id="customrpIconArt">
+              <g id="drpIconArt">
                 <g transform="translate(100 100)">
-                  <use href="#customrpTile" fill="#F5A524"/>
-                  <use href="#customrpTile" fill="url(#customrpTileFill)"/>
-                  <g clip-path="url(#customrpTileClip)">
-                    <g filter="url(#customrpMarkShadow)">
+                  <use href="#drpTile" fill="#F5A524"/>
+                  <use href="#drpTile" fill="url(#drpTileFill)"/>
+                  <g clip-path="url(#drpTileClip)">
+                    <g filter="url(#drpMarkShadow)">
                       <g transform="translate(135.52 134.58) scale(17.2824)">
                         <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="#000000"/>
                         <circle cx="25.5" cy="5.5" r="3.2" fill="#000000"/>
@@ -41,7 +41,7 @@
                       <path d="M16 3 Q18.4 13.6 29 16 Q18.4 18.4 16 29 Q13.6 18.4 3 16 Q13.6 13.6 16 3 Z" fill="#2B1B02"/>
                       <circle cx="25.5" cy="5.5" r="3.2" fill="#2B1B02"/>
                     </g>
-                    <use href="#customrpTile" fill="none" stroke="url(#customrpKeyline)" stroke-width="2"/>
+                    <use href="#drpTile" fill="none" stroke="url(#drpKeyline)" stroke-width="2"/>
                   </g>
                 </g>
               </g>

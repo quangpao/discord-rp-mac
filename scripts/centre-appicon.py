@@ -33,7 +33,7 @@ if matched is None:
 
 count = text.count(matched)
 text = text.replace(matched, NEW)
-text = text.replace('              <g id="customrpIconArt">',
-                    '              ' + NOTE + '\n              <g id="customrpIconArt">', 1)
+text = text.replace('              <g id="drpIconArt">',
+                    '              ' + NOTE + '\n              <g id="drpIconArt">', 1)
 SVG.write_text(text)
 print(f"patched {count} mark group(s) and added the note")

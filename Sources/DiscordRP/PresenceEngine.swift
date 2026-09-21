@@ -257,8 +257,8 @@ private final class Worker: @unchecked Sendable {
             let user = candidate.readyUser?.username ?? "Discord"
             emit(.connected(user: user))
             onIssues?([])
-            // (Re)send the current presence as soon as we are ready — CustomRP does the same
-            // on its OnReady event (MainForm.cs:835).
+            // (Re)send the current presence as soon as the handshake completes, so a preset is
+            // live the moment Discord is reachable.
             if currentActivity != nil {
                 needsPush = true
                 pushAt = Date()

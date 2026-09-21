@@ -17,7 +17,7 @@ final class GiphyUploaderTests: XCTestCase {
 
     override func setUpWithError() throws {
         directory = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("customrp-giphy-\(UUID().uuidString)")
+            .appendingPathComponent("discordrp-giphy-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         previousStorage = GiphyKeyStore.storage
         GiphyKeyStore.storage = EmptyStorage()

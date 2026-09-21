@@ -5,7 +5,7 @@ import XCTest
 final class SocketLocatorTests: XCTestCase {
     func testEnvOverrideWins() {
         let candidates = SocketLocator.candidates(
-            env: ["CUSTOMRP_IPC_PATH": "/custom/path"], tmpdir: "/tmp/x", home: "/Users/nobody"
+            env: ["DISCORDRP_IPC_PATH": "/custom/path"], tmpdir: "/tmp/x", home: "/Users/nobody"
         )
         XCTAssertEqual(candidates.first, "/custom/path")
     }
@@ -23,7 +23,7 @@ final class SocketLocatorTests: XCTestCase {
 
     func testNoDuplicates() {
         let candidates = SocketLocator.candidates(
-            env: ["CUSTOMRP_IPC_PATH": "/tmp/x/discord-ipc-0"], tmpdir: "/tmp/x", home: "/Users/nobody"
+            env: ["DISCORDRP_IPC_PATH": "/tmp/x/discord-ipc-0"], tmpdir: "/tmp/x", home: "/Users/nobody"
         )
         XCTAssertEqual(candidates.count, Set(candidates).count)
     }

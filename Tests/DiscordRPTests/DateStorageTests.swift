@@ -9,7 +9,7 @@ import XCTest
 final class DateStorageTests: XCTestCase {
     func testPresetDatesAreStoredAsEpochMilliseconds() throws {
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("customrp-dates-\(UUID().uuidString)")
+            .appendingPathComponent("discordrp-dates-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let store = PresetStore(directory: directory)
@@ -34,7 +34,7 @@ final class DateStorageTests: XCTestCase {
     /// A settings round-trip must not need a date at all, but it shares the coder — keep it honest.
     func testSettingsRoundTrip() throws {
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("customrp-settings-\(UUID().uuidString)")
+            .appendingPathComponent("discordrp-settings-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let store = PresetStore(directory: directory)

@@ -33,7 +33,7 @@ Tests/
 
 | File | Responsibility |
 | --- | --- |
-| `CustomRPMacApp.swift` | `MenuBarExtra` entry point, `LSUIElement` (no Dock icon). |
+| `DiscordRPMacApp.swift` | `MenuBarExtra` entry point, `LSUIElement` (no Dock icon). |
 | `AppModel.swift` | Observable state: settings, presets, active preset, issues, reconnect, persistence. |
 | `MenuContentView.swift` | The menu: status, preset list, quick actions. |
 | `ActivityEditorView.swift` | The editor window. Hand-built `label | control` grid — see the comment at the top of the file for why a SwiftUI `Form` was abandoned. |
@@ -72,9 +72,5 @@ These are the facts that shaped the code, each verified against the live client 
   `code 4000`, so the picker does not offer it and the validator echoes Discord's own wording.
 - A rejected payload must **not** pause the engine — it retries, because the usual cause is a stale
   setting the user is about to fix.
-- CustomRP ships its own public Application ID as a fallback; this project deliberately does **not**
-  reuse it (the activity would render as *CustomRP*, with their assets).
-- The upstream rules were transcribed from CustomRP's source rather than guessed — minimum 2 characters
-  (`MainForm.cs:1658`), byte-counted button labels (`:1656`), the timestamp window (`:371-376`), the
-  external-image budget (`:955-958`), the type restrictions (`:1607-1616`). They are Discord's rules;
-  the references exist so the reasoning stays auditable.
+- The Application ID you supply is what Discord renders. The app never substitutes an id of its own,
+  so the card can never show a different project's name or assets.

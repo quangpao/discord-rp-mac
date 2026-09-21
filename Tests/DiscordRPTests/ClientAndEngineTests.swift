@@ -9,7 +9,7 @@ final class DiscordIPCClientTests: XCTestCase {
     override func setUpWithError() throws {
         server = FakeDiscordServer()
         try server.start()
-        setenv("CUSTOMRP_IPC_PATH", server.path, 1)
+        setenv("DISCORDRP_IPC_PATH", server.path, 1)
         // Never write into the developer's real log directory: a test run used to overwrite
         // ~/Library/Logs/DiscordRP/last-presence.json with the fixture payload.
         PresenceLog.directoryOverride = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -17,7 +17,7 @@ final class DiscordIPCClientTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        unsetenv("CUSTOMRP_IPC_PATH")
+        unsetenv("DISCORDRP_IPC_PATH")
         PresenceLog.directoryOverride = nil
         server.stop()
     }
@@ -103,7 +103,7 @@ final class PresenceEngineTests: XCTestCase {
     override func setUpWithError() throws {
         server = FakeDiscordServer()
         try server.start()
-        setenv("CUSTOMRP_IPC_PATH", server.path, 1)
+        setenv("DISCORDRP_IPC_PATH", server.path, 1)
         // Never write into the developer's real log directory: a test run used to overwrite
         // ~/Library/Logs/DiscordRP/last-presence.json with the fixture payload.
         PresenceLog.directoryOverride = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -111,7 +111,7 @@ final class PresenceEngineTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        unsetenv("CUSTOMRP_IPC_PATH")
+        unsetenv("DISCORDRP_IPC_PATH")
         PresenceLog.directoryOverride = nil
         server.stop()
     }

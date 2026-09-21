@@ -17,10 +17,10 @@ public struct ActivityIssue: Equatable, Sendable {
     }
 }
 
-/// Discord's own rules, transcribed from the CustomRP source so we do not re-derive them:
-/// min 2 chars (`MainForm.cs:1658`), 32-**byte** button labels (`:1656`), timestamp window
-/// (`:371-376`), `mp:external` 256-char budget (`:955-958`), party only for Playing,
-/// no timestamps for Competing (`:1607-1616`), zero-width-space guard for a leading NBSP (`:850`).
+/// Discord's own rules, verified against the live client so we do not re-derive them:
+/// min 2 chars, 32-**byte** button labels, the timestamp window, the `mp:external` 256-char
+/// budget, party only for Playing, no timestamps for Competing, and a zero-width-space guard
+/// for a leading NBSP.
 public enum ActivityRules {
     public static let minTextLength = 2
     public static let maxTextLength = 128

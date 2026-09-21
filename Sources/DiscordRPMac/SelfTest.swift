@@ -13,7 +13,7 @@ enum SelfTest {
     static func runIfRequested() -> Int32? {
         let args = CommandLine.arguments
         if args.contains("--version") {
-            print("CustomRP \(Version.string)")
+            print("Discord RP \(Version.string)")
             return 0
         }
         if let index = args.firstIndex(of: "--login-item") {
@@ -92,7 +92,7 @@ enum SelfTest {
         if let index = args.firstIndex(of: "--render-editor") {
             let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
                 ? args[index + 1]
-                : "/tmp/customrp-editor.png"
+                : "/tmp/discordrp-editor.png"
             let width = index + 2 < args.count ? Double(args[index + 2]) ?? 720 : 720
             let height = index + 3 < args.count ? Double(args[index + 3]) ?? 800 : 800
             return renderEditor(to: path, width: width, height: height)
@@ -164,7 +164,7 @@ enum SelfTest {
     private static func checkSocketLocator() {
         print("socket locator:")
         let candidates = SocketLocator.candidates(
-            env: ["CUSTOMRP_IPC_PATH": "/custom/path"],
+            env: ["DISCORDRP_IPC_PATH": "/custom/path"],
             tmpdir: "/tmp/x", home: "/Users/nobody", pipeIndex: 1
         )
         print("  candidates: \(candidates)")
@@ -239,7 +239,7 @@ enum SelfTest {
     private static func checkPresetStore() {
         print("preset store:")
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("customrp-selftest-\(UUID().uuidString)")
+            .appendingPathComponent("discordrp-selftest-\(UUID().uuidString)")
         let store = PresetStore(directory: directory)
         let preset = Preset(name: "Round trip", activity: Activity.sample("RT"))
         try? store.save(presets: [preset])
@@ -383,7 +383,7 @@ enum SelfTest {
             }
         }
         if let data = try? JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]) {
-            let out = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("customrp-presets.json")
+            let out = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("discordrp-presets.json")
             try? data.write(to: out)
             print("machine-readable: \(out.path)")
         }
@@ -402,7 +402,7 @@ enum SelfTest {
         Task {
             do {
                 let result = try await GiphyUploader.upload(
-                    file: URL(fileURLWithPath: file), apiKey: key, hidden: hidden, tags: "customrp,quangpao"
+                    file: URL(fileURLWithPath: file), apiKey: key, hidden: hidden
                 )
                 output = """
                 id:        \(result.id)
@@ -432,7 +432,7 @@ enum SelfTest {
             let path = try client.connect()
             print("  socket: \(path)")
             print("  user:   \(client.readyUser?.username ?? "unknown")")
-            var activity = Activity(name: "CustomRP", details: "Live probe", state: "discord-rp-mac")
+            var activity = Activity(name: "Discord RP", details: "Live probe", state: "discord-rp-mac")
             activity.timestampMode = .sincePresenceUpdate
             let payload = ActivityRules.payload(activity, appID: appID, appStarted: Date(),
                                                 connectionStarted: Date(), presenceStarted: Date()) ?? [:]

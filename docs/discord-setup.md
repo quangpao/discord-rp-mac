@@ -20,10 +20,8 @@ why an app with no uploaded icon shows Discord's grey "?" placeholder.
 
 1. Open <https://discord.com/developers/applications> and pick your app (ID `<your-application-id>`).
 2. **General Information**:
-   - **Name** — this is what Discord shows when the activity has no `name` override. Pick your own
-     name (e.g. `Discord RP`, or your handle). Do **not** call it `CustomRP`: that is someone else's
-     project, this app is not affiliated with it, and using their name would misrepresent the activity
-     card to whoever looks at your profile.
+   - **Name** — this is what Discord shows when the activity has no `name` override. It is your
+     application, so pick your own name (e.g. `Discord RP`, or your handle).
    - **App Icon** — drag `dist/discord/0-app-icon-square-1024.png` (1024×1024, tile filling the frame).
    - **Description / Tags** — fill anything sensible; the portal wants a description before it lets
      you save some fields.
@@ -105,8 +103,7 @@ Discord's own documentation, Rich Presence → *Setting Buttons*:
 
 > **Buttons are only visible to other users — you cannot see buttons on your own Rich Presence.**
 
-CustomRP's FAQ says the same thing ("you can't see your own buttons, but others will see them"). So a missing
-button on your own profile card is **not** a payload bug — the app sends them correctly
+So a missing button on your own profile card is **not** a payload bug — the app sends them correctly
 (`buttons:[{label,url}]`, label ≤ 32 UTF-8 bytes, https URL). To verify: have someone else open your
 profile, or log in a second account (mobile or web) and look at the main account.
 

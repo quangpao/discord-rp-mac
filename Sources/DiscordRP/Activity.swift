@@ -26,8 +26,7 @@ public enum ActivityKind: Int, Codable, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /// Mirrors CustomRP `MainForm.cs:1607-1616`: only Playing supports a party, and
-    /// Competing cannot carry timestamps.
+    /// Discord's rule: only Playing supports a party, and Competing cannot carry timestamps.
     public var allowsParty: Bool { self == .playing }
     public var allowsTimestamps: Bool { self != .competing }
 }
@@ -49,7 +48,7 @@ public enum DisplayType: Int, Codable, CaseIterable, Sendable, Identifiable {
     }
 }
 
-/// CustomRP's timestamp modes (`MainForm.cs:1035-1068`).
+/// Discord's five timestamp modes, as the client accepts them.
 public enum TimestampMode: Int, Codable, CaseIterable, Sendable, Identifiable {
     case off = 0
     /// Since this app connected to Discord.
@@ -105,9 +104,9 @@ public struct Button: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-/// One preset's worth of presence. Field set mirrors CustomRP's `Settings.settings`
+/// One preset's worth of presence. The field set covers what Discord accepts
 /// (`id,type,display,name,details,detailsURL,state,stateURL,partySize,partyMax,timestamps,
-/// customTimestamp,customTimestampEnd*,large*,small*,button1*,button2*`) minus its telemetry.
+/// customTimestamp,customTimestampEnd*,large*,small*,button1*,button2*`).
 public struct Activity: Codable, Equatable, Sendable {
     public var name: String = ""
     public var kind: ActivityKind = .playing

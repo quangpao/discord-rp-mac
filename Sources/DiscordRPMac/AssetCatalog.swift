@@ -10,9 +10,8 @@ struct DiscordAsset: Decodable, Equatable, Identifiable {
     let id: String
 }
 
-/// Discord exposes an application's uploaded Art Assets without authentication — the same
-/// call CustomRP makes (`MainForm.cs:1758-1797`). Cached for a minute; a failure is never fatal,
-/// the editor just falls back to free text.
+/// Discord exposes an application's uploaded Art Assets without authentication. Cached for a
+/// minute; a failure is never fatal, the editor just falls back to free text.
 enum AssetCatalog {
     private static var cache: (appID: String, assets: [DiscordAsset], at: Date)?
 

@@ -23,8 +23,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
 }
 
 /// JSON persistence in `~/Library/Application Support/DiscordRPMac/`.
-/// A corrupt file is moved aside to `<name>.bak` and replaced by defaults, mirroring
-/// CustomRP's corrupt-settings recovery (`Program.cs:128-145`).
+/// A corrupt file is moved aside to `<name>.bak` and replaced by defaults, so one bad write
+/// cannot leave the app unusable.
 public final class PresetStore: @unchecked Sendable {
     public let directory: URL
 
