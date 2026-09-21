@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & test (macOS)
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: swift --version
+
+      - name: Build (debug)
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+      - name: Build (release) and headless checks
+        run: |
+          swift build -c release
+          BIN="$(swift build -c release --show-bin-path)/DiscordRPMac"
+          "$BIN" --version
+          "$BIN" --presets          # deterministic, offline: prints the payload per stored preset
+
+  secret-scan:
+    name: No committed secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on anything that looks like an API key
+        run: |
+          # BYOK: this repo must never contain a Giphy key (or any 32-char alphanumeric literal)
+          # in the sources. False positives: none expected — ids used here are 18 chars.
+          if git grep -nE '"([A-Za-z0-9]{32})"' -- Sources Tests scripts; then
+            echo "::error::A 32-character literal was found — if this is a real API key, rotate it and remove it."
+            exit 1
+          fi
+          echo "clean"
