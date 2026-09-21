@@ -146,6 +146,18 @@ struct ActivityEditorView: View {
         }
     }
 
+    /// What the Application ID field currently means, in the user's terms: nothing sent, this
+    /// project's application, or their own.
+    private var applicationHint: String {
+        if appIDField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Empty means nothing is sent to Discord. Use the default application, or paste your own id."
+        }
+        if DefaultApplication.isDefault(appIDField) {
+            return "Using this project's application — the card reads “Discord RP”. Paste your own id for your own name, icon and assets."
+        }
+        return "Your own application: the card shows its name and can use its uploaded art assets."
+    }
+
     private var statusRow: some View {
         HStack(spacing: 6) {
             Circle()
@@ -172,6 +184,11 @@ struct ActivityEditorView: View {
                     .onSubmit { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
             }
             hint("From the Discord Developer Portal — discord.com/developers/applications")
+            row("") {
+                Button("Use the default application") { appIDField = DefaultApplication.id }
+                    .disabled(DefaultApplication.isDefault(appIDField))
+            }
+            hint(applicationHint)
             row("Pipe index") {
                 Picker("", selection: $pipeIndex) {
                     ForEach(0...9, id: \.self) { index in Text("\(index)").tag(index) }

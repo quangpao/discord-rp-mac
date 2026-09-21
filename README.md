@@ -47,9 +47,10 @@ cd discord-rp-mac
 
 ## Configure
 
-1. Create an application at <https://discord.com/developers/applications> and copy its
-   **Application ID**. It is *your* application, so name it whatever you like — the full portal
-   walkthrough, including art assets, is in **[wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup)**.
+1. **Optional, but recommended** — create your own application at
+   <https://discord.com/developers/applications> and copy its **Application ID**. With no id of your
+   own the app uses this project's application and the card reads *Discord RP*; your own id gives you
+   your own name, icon and art assets. Walkthrough: **[wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup)**.
 2. In the app: menu bar → **Edit This Preset…** → **Connection → Apply**. That is what pushes the
    activity to Discord, and it also recovers when Discord restarts.
 3. Optionally upload images under the application's *Art Assets* and use their names as image keys,

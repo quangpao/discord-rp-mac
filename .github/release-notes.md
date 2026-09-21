@@ -21,7 +21,7 @@ cd discord-rp-mac
 
 - macOS 14+
 - The **Discord desktop app**, running (Rich Presence is set over a local socket)
-- Your own Discord **Application ID** (free — see the [wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup))
+- Your own Discord **Application ID**, if you want your own name and icon — optional, the app works without it (see the [wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup))
 - Your own **Giphy API key** if you want the *Upload to Giphy…* buttons (BYOK; the app ships no key)
 
 ## Uninstall

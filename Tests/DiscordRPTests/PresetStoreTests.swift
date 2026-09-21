@@ -39,7 +39,8 @@ final class PresetStoreTests: XCTestCase {
     func testMissingFilesYieldDefaults() {
         let store = PresetStore(directory: directory)
         XCTAssertEqual(store.loadPresets(), [])
-        XCTAssertEqual(store.loadSettings().appID, "")
+        XCTAssertEqual(store.loadSettings().appID, DefaultApplication.id,
+                       "a fresh store starts from the built-in application")
     }
 
     func testCorruptPresetsAreQuarantined() throws {
@@ -55,7 +56,8 @@ final class PresetStoreTests: XCTestCase {
     func testCorruptSettingsAreQuarantined() throws {
         let store = PresetStore(directory: directory)
         try Data([0x00, 0x01, 0x02]).write(to: directory.appendingPathComponent("settings.json"))
-        XCTAssertEqual(store.loadSettings().appID, "")
+        XCTAssertEqual(store.loadSettings().appID, DefaultApplication.id,
+                       "a quarantined settings file falls back to the built-in application")
         XCTAssertTrue(FileManager.default.fileExists(
             atPath: directory.appendingPathComponent("settings.json.bak").path
         ))
