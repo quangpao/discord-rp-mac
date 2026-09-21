@@ -20,6 +20,9 @@ reports which source supplied it.
 - **`discord.com/api/oauth2/applications/<id>/assets`** — read-only, unauthenticated, to list the
   art assets you uploaded to your own Discord application (so the editor can offer them by name).
 - **`cdn.discordapp.com`** — only to draw an asset thumbnail in the editor.
+- **`api.github.com/repos/quangpao/discord-rp-mac/releases/latest`** — only when you pick *Check for
+  Updates…* in the menu, to compare your version with the latest release. Nothing runs on a timer and no
+  data about you or your Mac is sent.
 - **`upload.giphy.com`** — only when you press an *Upload to Giphy…* button, and only with your key.
   That request contains the file you chose, your Giphy API key, and the *Private on Giphy* flag if you
   ticked it. It contains **no** tags and no source URL: the app used to send a project tag and a

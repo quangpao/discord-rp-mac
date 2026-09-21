@@ -11,6 +11,7 @@ final class AppModel: ObservableObject {
     @Published var status: PresenceStatus = .idle
     @Published var issues: [ActivityIssue] = []
     @Published var launchAtLogin: Bool = false
+    @Published var updateStatus: UpdateStatus = .idle
 
     let engine: PresenceEngine
     private let store: PresetStore
@@ -225,6 +226,20 @@ final class AppModel: ObservableObject {
 
     /// Errors are logged rather than swallowed: a user who thinks a preset was saved (but the disk
     /// refused) has no way to find out otherwise. The message never contains secrets.
+    /// Manual by design — nothing polls on a timer, so the app keeps making only the network calls
+    /// the user triggers. See `UpdateCheck` and SECURITY.md.
+    func checkForUpdates() async {
+        updateStatus = .checking
+        switch await UpdateCheck.fetchLatest() {
+        case .upToDate(let current): updateStatus = .upToDate(current)
+        case .newer(let version, let url): updateStatus = .available(version, url)
+        case .failed(let reason): updateStatus = .failed(reason)
+        }
+    }
+
+    /// Opens a link in the default browser (the release page, normally).
+    func openURL(_ url: URL) { NSWorkspace.shared.open(url) }
+
     private func persistPresets() {
         do { try store.save(presets: presets) }
         catch { PresenceLog.note("presets save failed: \(error.localizedDescription)") }
@@ -241,4 +256,13 @@ final class AppModel: ObservableObject {
         persistSettings()
         persistPresets()
     }
+}
+
+/// What the menu shows about the last manual update check.
+enum UpdateStatus: Equatable {
+    case idle
+    case checking
+    case upToDate(String)
+    case available(String, URL)
+    case failed(String)
 }

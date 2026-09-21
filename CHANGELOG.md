@@ -2,6 +2,14 @@
 
 Notable changes per release. Dates are the release/tag dates.
 
+## [Unreleased]
+
+### Added
+
+- **Check for Updates…** in the menu bar menu: it compares the running version with the latest GitHub
+  release and offers the download page when one is newer. Manual on purpose — nothing polls on a timer,
+  so the app still only makes the network calls you trigger (`SECURITY.md` lists the new endpoint).
+
 ## [1.1.0] — 2026-09-22
 
 ### Added

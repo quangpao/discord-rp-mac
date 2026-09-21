@@ -6,7 +6,8 @@ import SwiftUI
 ///
 /// Structure is taken from the Open Design spec (`docs/ui/discord-rp-menu-spec.html`,
 /// section 5 “Handoff”): one status line, presets in exactly one submenu, maximum 11 rows,
-/// no other nesting. Row order, labels, SF Symbols and shortcuts match the handoff table.
+/// no other nesting. Row order, labels, SF Symbols and shortcuts match the handoff table, except the
+/// update row (8): it was added after that handoff, and it stays one row plus at most one result row.
 struct MenuContentView: View {
     @ObservedObject var model: AppModel
 
@@ -102,9 +103,39 @@ struct MenuContentView: View {
             }
         }
 
+        // 8 — update check. Manual on purpose: nothing polls on a timer, so the app only makes the
+        // network calls the user asks for (see SECURITY.md).
+        Button {
+            Task { await model.checkForUpdates() }
+        } label: {
+            Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
+        }
+        .disabled(model.updateStatus == .checking)
+
+        if case .checking = model.updateStatus {
+            Text("Checking for updates…")
+        }
+        if case .upToDate(let current) = model.updateStatus {
+            Text("Up to date (\(current))")
+        }
+        if case .available(let version, let url) = model.updateStatus {
+            Button {
+                model.openURL(url)
+            } label: {
+                Label("Download \(version)", systemImage: "arrow.down.circle")
+            }
+        }
+        if case .failed = model.updateStatus {
+            Button {
+                model.openURL(UpdateCheck.releasesPage)
+            } label: {
+                Label("Update check failed — open Releases", systemImage: "exclamationmark.triangle")
+            }
+        }
+
         Divider()
 
-        // 7 — quit
+        // 9 — quit
         Button {
             NSApp.terminate(nil)
         } label: {

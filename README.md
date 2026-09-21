@@ -20,6 +20,8 @@ elapsed timer and up to two link buttons, kept alive while you work. Written fro
   the presence when you quit.
 - **Menu bar only** (`LSUIElement`, no Dock icon), single instance, optional launch at login.
 - **Discord's own limits enforced up front**, with readable reasons instead of silent failures.
+- **Manual update check** — the menu compares your version with the latest GitHub release when you ask
+  it to; nothing polls on a timer.
 - **No telemetry, no account, no bundled keys** — presence travels over the local Discord IPC socket.
 
 ## Requirements

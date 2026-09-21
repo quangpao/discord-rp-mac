@@ -49,6 +49,7 @@ BIN="/Applications/Discord RP.app/Contents/MacOS/DiscordRPMac"
 "$BIN" --version
 "$BIN" --self-test                 # framing, socket locator, rules, preset store
 "$BIN" --presets [support-dir]     # the exact SET_ACTIVITY payload per stored preset
+"$BIN" --check-updates [version]   # the update check, against the real GitHub API
 "$BIN" --login-item status         # the real registration, not the stored flag
 "$BIN" --giphy-key status|set|clear|migrate    # `set` reads the key from stdin, never argv
 "$BIN" --giphy-upload <file> [--hidden]
