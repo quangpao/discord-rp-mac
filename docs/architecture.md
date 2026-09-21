@@ -59,3 +59,22 @@ maintains this app):
   can be measured without Screen Recording permission.
 - **Discord accepts activity types 0, 2, 3, 5 only.** Type 1 (Streaming) is rejected with a generic
   `code 4000`, so the picker does not offer it.
+
+## Discord protocol findings
+
+These are the facts that shaped the code, each verified against the live client rather than assumed:
+
+- An invalid Application ID comes back as an IPC **CLOSE frame (opcode 2) carrying
+  `{"code":4000,"message":"Invalid Client ID"}`** — not the `evt: ERROR` frame the documentation
+  describes. A docs-only implementation looks like a timeout and sends you debugging in the wrong
+  direction.
+- The activity type must be one of **0, 2, 3 or 5**. Type 1 (Streaming) is rejected with a generic
+  `code 4000`, so the picker does not offer it and the validator echoes Discord's own wording.
+- A rejected payload must **not** pause the engine — it retries, because the usual cause is a stale
+  setting the user is about to fix.
+- CustomRP ships its own public Application ID as a fallback; this project deliberately does **not**
+  reuse it (the activity would render as *CustomRP*, with their assets).
+- The upstream rules were transcribed from CustomRP's source rather than guessed — minimum 2 characters
+  (`MainForm.cs:1658`), byte-counted button labels (`:1656`), the timestamp window (`:371-376`), the
+  external-image budget (`:955-958`), the type restrictions (`:1607-1616`). They are Discord's rules;
+  the references exist so the reasoning stays auditable.

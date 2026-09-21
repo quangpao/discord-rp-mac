@@ -38,3 +38,44 @@ Please include: macOS version, whether the Discord client was running, the outpu
 `"/Applications/Discord RP.app/Contents/MacOS/DiscordRPMac" --self-test`, and the last lines of
 `~/Library/Logs/DiscordRP/discord-rp.log`. That log contains the exact payload that was sent — it never
 contains your API key.
+
+## Headless CLI
+
+The app binary doubles as a diagnostic tool. Every mode works without a window, and most of them need
+no Discord client at all:
+
+```bash
+BIN="/Applications/Discord RP.app/Contents/MacOS/DiscordRPMac"
+"$BIN" --version
+"$BIN" --self-test                 # framing, socket locator, rules, preset store
+"$BIN" --presets [support-dir]     # the exact SET_ACTIVITY payload per stored preset
+"$BIN" --login-item status         # the real registration, not the stored flag
+"$BIN" --giphy-key status|set|clear|migrate    # `set` reads the key from stdin, never argv
+"$BIN" --giphy-upload <file> [--hidden]
+"$BIN" --render-editor <out.png> [w h] [--demo <dir>] [--no-key]
+"$BIN" --render-menu  <out.png> [w h] [--demo <dir>]
+"$BIN" --live --app-id <ID>        # push a sample activity to the running client
+```
+
+## Regenerating the screenshots in the README
+
+They are real renders of the real views — no Screen Recording permission needed, and no personal data,
+because they are drawn from the built-in demo preset set (`--demo` swaps the store and shows a neutral
+connected status):
+
+```bash
+rm -rf /tmp/discordrp-demo
+DISCORD_APP_ID=123456789012345678 \
+DEMO_IMAGE_URL="https://picsum.photos/seed/discordrp/400" \
+DEMO_SMALL_KEY="https://picsum.photos/seed/discordrp-small/200" \
+python3 scripts/seed-demo-presets.py /tmp/discordrp-demo --force
+python3 - <<'EOF'
+import json, pathlib
+p = pathlib.Path('/tmp/discordrp-demo/settings.json'); s = json.loads(p.read_text())
+s['appID'] = '123456789012345678'; p.write_text(json.dumps(s, indent=2, sort_keys=True) + '\n')
+EOF
+DiscordRPMac --render-editor docs/screenshots/editor.png 720 1500 --demo /tmp/discordrp-demo
+DiscordRPMac --render-menu  docs/screenshots/menu.png  320  430 --demo /tmp/discordrp-demo
+```
+
+The same `--render-editor` mode is how UI changes get verified as pixels instead of assumptions.

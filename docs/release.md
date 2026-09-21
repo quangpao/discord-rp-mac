@@ -35,7 +35,7 @@ There is still no Homebrew cask and no auto-update.
    (that is `Sources/DiscordRP/Version.swift` and `Resources/Info.plist`'s
    `CFBundleShortVersionString` / `CFBundleVersion`). The release workflow refuses a tag that does not
    match `CFBundleShortVersionString`.
-2. `swift test` — must be green (currently 101 tests).
+2. `swift test` — must be green (the CI badge is the source of truth for that).
 3. Optional but recommended: `./scripts/build-app.sh --dmg`, then mount the image and confirm the app
    inside launches and that the version in the Finder/Get Info matches the tag.
 4. `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z` — the workflow publishes the release.
