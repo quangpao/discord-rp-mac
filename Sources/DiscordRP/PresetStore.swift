@@ -13,7 +13,9 @@ public struct Preset: Codable, Equatable, Sendable, Identifiable {
 }
 
 public struct AppSettings: Codable, Equatable, Sendable {
-    public var appID: String = ""
+    /// Defaults to the built-in application so a fresh install can push a presence immediately;
+    /// clearing it still means "send nothing". See `DefaultApplication`.
+    public var appID: String = DefaultApplication.id
     public var pipeIndex: Int = 0
     public var activePresetID: UUID?
     /// Mirror of the real login-item state (SMAppService / LaunchAgent), never optimistic.

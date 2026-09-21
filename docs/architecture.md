@@ -28,6 +28,7 @@ Tests/
 | `GiphyLibrary.swift` | Local upload history (Giphy's API cannot list your own uploads). |
 | `PreviewTarget.swift` | Decides what a preview should load: Discord asset by numeric id, or a Giphy URL. |
 | `Migration.swift` | One-time copy of data + Keychain service after the app was renamed. Copy-only, never destructive. |
+| `DefaultApplication.swift` | The built-in application id used when the user has not set their own, so a fresh install can push a presence immediately. |
 
 ## `Sources/DiscordRPMac` (app)
 
