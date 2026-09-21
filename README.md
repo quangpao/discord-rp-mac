@@ -1,5 +1,11 @@
 # Discord RP
 
+[![CI](https://github.com/quangpao/discord-rp-mac/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/quangpao/discord-rp-mac/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/quangpao/discord-rp-mac)](https://github.com/quangpao/discord-rp-mac/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/quangpao/discord-rp-mac)](LICENSE)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)
+![Bring your own key](https://img.shields.io/badge/keys-BYOK-informational)
+
 Native macOS menu bar app for **custom Discord Rich Presence** — a from-scratch Swift
 implementation, *not* a port of [CustomRP](https://github.com/maximmax42/Discord-CustomRP)
 (which is C#/.NET WinForms and Windows-only).
