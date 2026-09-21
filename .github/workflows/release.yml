@@ -42,7 +42,9 @@ jobs:
         run: ./scripts/build-app.sh --dmg
 
       - name: Checksum
-        run: shasum -a 256 build/*.dmg | tee build/sha256.txt
+        # Relative name only, so `shasum -a 256 -c sha256.txt` works in the directory the files land in.
+        working-directory: build
+        run: shasum -a 256 *.dmg | tee sha256.txt
 
       - name: Publish the release
         env:
