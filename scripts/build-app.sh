@@ -13,10 +13,12 @@ APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
 
 RUN=0
 INSTALL=0
+DMG=0
 for arg in "$@"; do
   case "$arg" in
     --run) RUN=1 ;;
     --install) INSTALL=1; RUN=1 ;;
+    --dmg) DMG=1 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -57,6 +59,41 @@ codesign --verify --verbose=2 "$APP_BUNDLE" 2>&1 | sed 's/^/    /'
 
 echo "==> signature"
 codesign -dv --verbose=4 "$APP_BUNDLE" 2>&1 | grep -E "Identifier|Signature|TeamIdentifier" | sed 's/^/    /'
+
+# A .dmg for people who will not build from source. It is **not notarized**, so Gatekeeper will warn
+# on first open — the note inside the disk image says exactly what to do about it. `--dmg` is what the
+# release workflow uses on a tag; run it locally to check the packaging without publishing anything.
+if [ "$DMG" = "1" ]; then
+  VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Contents/Info.plist")"
+  DMG_PATH="$BUILD_DIR/DiscordRP-$VERSION.dmg"
+  STAGE="$BUILD_DIR/dmg-stage"
+  echo "==> packaging $DMG_PATH"
+  rm -rf "$STAGE" "$DMG_PATH"
+  mkdir -p "$STAGE"
+  cp -R "$APP_BUNDLE" "$STAGE/"
+  ln -s /Applications "$STAGE/Applications"
+  cat > "$STAGE/How to open.txt" <<EOF
+Discord RP $VERSION — unsigned build
+
+This app is not notarized by Apple, so macOS will refuse the first launch with
+"Apple could not verify ... is free of malware" (or "is damaged").
+
+To open it:
+  1. Drag "Discord RP.app" onto the Applications folder in this window.
+  2. Open it once from Applications and let macOS refuse.
+  3. Go to System Settings > Privacy & Security, scroll down, and click
+     "Open Anyway" next to the Discord RP message.
+  4. Or, from a terminal:  xattr -dr com.apple.quarantine "/Applications/Discord RP.app"
+
+Building from source avoids all of this:
+  git clone https://github.com/quangpao/discord-rp-mac && cd discord-rp-mac
+  ./scripts/build-app.sh --install --run
+EOF
+  hdiutil create -volname "Discord RP" -srcfolder "$STAGE" -ov -format UDZO "$DMG_PATH" >/dev/null
+  rm -rf "$STAGE"
+  echo "    $(du -h "$DMG_PATH" | cut -f1)  $(shasum -a 256 "$DMG_PATH" | cut -d' ' -f1)"
+  echo "    $DMG_PATH"
+fi
 
 if [ "$INSTALL" = "1" ]; then
   echo "==> installing to /Applications"

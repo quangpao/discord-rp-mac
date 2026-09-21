@@ -2,30 +2,45 @@
 
 ## What ships today
 
-**Source-only.** There is no signed or notarized download, no Homebrew cask and no auto-update. A
-release is a git tag plus a GitHub Release whose notes tell people to build from source:
+Pushing a tag builds and publishes automatically:
 
 ```bash
-git clone https://github.com/quangpao/discord-rp-mac
-cd discord-rp-mac
-./scripts/build-app.sh --install --run
+./scripts/bump-version.sh 1.0.0 1     # tag and Info.plist version must agree — the workflow checks
+git tag -a v1.0.0 -m v1.0.0 && git push origin v1.0.0
 ```
 
-Unsigned binaries are deliberately **not** attached: an ad-hoc signed `.app` downloaded from a browser
-hits Gatekeeper and teaches users to bypass it, which is worse than asking them to build.
+`.github/workflows/release.yml` then runs the tests, builds **`DiscordRP-<version>.dmg`** (with the app
+and a `/Applications` symlink), writes a SHA-256 file, and creates the GitHub Release with the notes in
+`.github/release-notes.md`.
+
+The disk image is **ad-hoc signed, not notarized**, so Gatekeeper refuses the first launch on someone
+else's Mac (`spctl -a -vvv -t exec` says `rejected` — verified locally). The release notes and the
+`How to open.txt` inside the image both explain the two ways around it. Building from source is
+recommended in the notes as the friction-free path.
+
+To check the packaging without publishing anything:
+
+```bash
+./scripts/build-app.sh --dmg        # → build/DiscordRP-<version>.dmg, prints size + sha256
+hdiutil attach build/DiscordRP-*.dmg -nobrowse -mountpoint /tmp/drpmount && ls /tmp/drpmount
+hdiutil detach /tmp/drpmount
+```
+
+There is still no Homebrew cask and no auto-update.
 
 ## Cutting a release
 
 1. Bump the version — it lives in two files and they must agree, so use the script:
    `./scripts/bump-version.sh X.Y.Z [BUILD]`
    (that is `Sources/DiscordRP/Version.swift` and `Resources/Info.plist`'s
-   `CFBundleShortVersionString` / `CFBundleVersion`).
-2. `swift test` — must be green (currently 93 tests).
-3. `./scripts/build-app.sh --install --run`, then confirm the menu bar item appears and a preset
-   applies against a running Discord client.
-4. `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z`
-5. GitHub → Releases → draft a release on that tag. Title `vX.Y.Z`; body: what changed, any migration
-   note, and the build-from-source instructions above.
+   `CFBundleShortVersionString` / `CFBundleVersion`). The release workflow refuses a tag that does not
+   match `CFBundleShortVersionString`.
+2. `swift test` — must be green (currently 101 tests).
+3. Optional but recommended: `./scripts/build-app.sh --dmg`, then mount the image and confirm the app
+   inside launches and that the version in the Finder/Get Info matches the tag.
+4. `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z` — the workflow publishes the release.
+5. Read the published release: the notes come from `.github/release-notes.md`, the asset list should be
+   `DiscordRP-X.Y.Z.dmg` + `sha256.txt`.
 
 ## If signed binaries are added later
 

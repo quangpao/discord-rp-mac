@@ -1,0 +1,53 @@
+name: Release
+
+# Tag-driven: `git tag -a v1.0.0 && git push origin v1.0.0` builds a .dmg and publishes it.
+# The tag must match the version in Resources/Info.plist, so the asset name, the app and the release
+# can never disagree.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release (e.g. v1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build .dmg and publish
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Tag matches the app version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          echo "tag=$TAG version=$VERSION"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match CFBundleShortVersionString ($VERSION) — bump it with ./scripts/bump-version.sh"
+            exit 1
+          fi
+
+      - name: Test
+        run: swift test
+
+      - name: Build the .dmg
+        run: ./scripts/build-app.sh --dmg
+
+      - name: Checksum
+        run: shasum -a 256 build/*.dmg | tee build/sha256.txt
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/*.dmg build/sha256.txt \
+            --title "Discord RP $GITHUB_REF_NAME" \
+            --notes-file .github/release-notes.md
