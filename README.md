@@ -48,8 +48,8 @@ cd discord-rp-mac
 ## Configure
 
 1. Create an application at <https://discord.com/developers/applications> and copy its
-   **Application ID**. It is *your* application, so name it whatever you like — the portal steps,
-   including the image assets, are in [docs/discord-setup.md](docs/discord-setup.md).
+   **Application ID**. It is *your* application, so name it whatever you like — the full portal
+   walkthrough, including art assets, is in **[wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup)**.
 2. In the app: menu bar → **Edit This Preset…** → **Connection → Apply**. That is what pushes the
    activity to Discord, and it also recovers when Discord restarts.
 3. Optionally upload images under the application's *Art Assets* and use their names as image keys,
@@ -78,14 +78,13 @@ because Giphy's API cannot list them.
 
 | Symptom | Cause / fix |
 | --- | --- |
-| Status stays red, or "Invalid Client ID" | Wrong Application ID, or Discord is not running. |
 | The activity does not show, but a game does | Discord shows one activity in the compact slot and auto-detected games win. Open your own profile to see the Rich Presence. |
+| Status stays red, or "Invalid Client ID" | Wrong Application ID, or Discord is not running. |
 | My buttons are invisible | By Discord's design, buttons are shown only to *other* users — never to the account that set them. |
-| The asset list is empty | Assets are per-application: upload them under *Art Assets* in the portal, then press *Load from Discord*. |
 | *Upload to Giphy…* is greyed out | No Giphy key yet — that is deliberate. Add yours in the *Giphy* card. |
-| Giphy upload fails with 401/403 / 429 | The key was revoked or is wrong / the 10-uploads-per-day quota is used up. |
-| An animated image key shows a still frame | Discord animates GIF/MP4 keys only in some clients; use a Giphy URL or an uploaded asset. |
-| Nothing happens after sleep | The app reasserts the socket on wake; press *Reconnect* if Discord restarted while asleep. |
+
+Everything else — asset lists, Giphy errors, animation, sleep/reconnect, Gatekeeper, whether it is safe
+— is answered in **[wiki: FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ)**.
 
 ## Uninstall
 
@@ -122,7 +121,7 @@ Conventions, the headless CLI flags and how the screenshots in this file are reg
 | | |
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | module map, and the protocol findings that shaped the code |
-| [docs/discord-setup.md](docs/discord-setup.md) | Discord Developer Portal walkthrough, art assets, image hosting |
+| [Wiki](https://github.com/quangpao/discord-rp-mac/wiki) | user guide: [Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup) · [FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ) · [Giphy key](https://github.com/quangpao/discord-rp-mac/wiki/Giphy-key) · [Images](https://github.com/quangpao/discord-rp-mac/wiki/Images) · [Uninstall](https://github.com/quangpao/discord-rp-mac/wiki/Uninstall) |
 | [docs/release.md](docs/release.md) | versioning, tagging, signing and notarization |
 | [docs/ui/README.md](docs/ui/README.md) | logo assets, icon pipeline, design artifacts |
 | [SECURITY.md](SECURITY.md) | what is stored, what is sent, how to report a problem |

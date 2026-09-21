@@ -23,4 +23,4 @@ python3 scripts/svg-to-png.sh Resources/logo/c2-mark.svg dist/discord/2-asset-lo
 ```
 
 If you fork this and want a different look, replace these files rather than deleting the directory —
-`docs/discord-setup.md` refers to them by name.
+[wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup) refers to them by name.
