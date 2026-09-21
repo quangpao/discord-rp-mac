@@ -2,11 +2,12 @@
 
 These files are **design handoff artifacts**, not application source. Nothing here is loaded at
 runtime and nothing here is normative for behaviour — if a spec and the app disagree, the app's
-behaviour (and its tests) wins, and this directory should be updated.
+behaviour (and its tests) wins, and this directory should be updated. The editor's own handoff spec was
+deleted once `ActivityEditorView.swift` had been rebuilt from it and then moved on; the code is the
+reference now.
 
 | File | What it is |
 | --- | --- |
-| `discord-rp-editor-window-spec.html` (+ `-spec.txt`) | Window/editor layout handoff used to rebuild `ActivityEditorView.swift` (2-tier rows, fixed label column, pinned footer). |
 | `discord-rp-menu-spec.html` | Menu layout handoff. |
 | `discord-rp-logo-sheet.html` | Logo exploration sheet (three concepts). Only the canonical **c2** round ships — `scripts/extract-svgs.py` extracts just that one unless you pass `--all`. |
 

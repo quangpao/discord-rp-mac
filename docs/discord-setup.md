@@ -11,7 +11,7 @@ the asset **names** you choose. Files to upload are pre-rendered in `dist/discor
 | big image | `large_image` key **or** an https URL | `https://example.com/logo.png` (an external URL works before you upload an art asset) |
 | subtitle | `details` (with `status_display_type = details`) | `Editing a preset` |
 | second line | `state` | `Trying out Discord RP` |
-| buttons | up to 2 label/URL pairs | `quangpao.dev`, `GitHub` |
+| buttons | up to 2 label/URL pairs | `Website`, `Second link` |
 
 If no `large_image` is set, Discord falls back to the **application icon** from the portal — which is
 why an app with no uploaded icon shows Discord's grey "?" placeholder.
@@ -82,12 +82,11 @@ python3 scripts/make-animated-logo.py build/anim 30 512     # 30 frames: sparkle
 swift scripts/frames-to-gif.swift build/anim dist/discord/discord-rp-animated-logo.gif 15
 ```
 
-Then host the file somewhere public and use that URL as the image key. Current host: **Giphy** —
-`https://media.giphy.com/media/<your-gif-id>/giphy.gif` (58 chars, `mp:external` budget ≈ 100/256,
-page: <https://giphy.com/gifs/<your-gif-id>>), uploaded with `scripts/upload-gif-to-giphy.py`.
-The API key lives **outside the repo** at `~/.giphy/api_key` (mode 600); the script never prints it.
-Fallback host if Giphy ever drops the file: the same GIF in the public repo `quangpao/customrp-assets`
-(`raw.githubusercontent.com/quangpao/customrp-assets/main/discord-rp-animated-logo.gif`).
+Then host the file somewhere public and use that URL as the image key. **Giphy** is the convenient
+host: `https://media.giphy.com/media/<your-gif-id>/giphy.gif` is 58 characters, comfortably inside
+Discord's `mp:external` budget of 256. The shortest path there is the app itself — **Edit This Preset…**
+→ *Images* → **Upload to Giphy…** — which uses **your own** Giphy API key, kept in your macOS Keychain
+(see the README's *Bring your own key* section). Any other public host works exactly the same way.
 
 Giphy notes: dashboard keys are rate-limited to **10 uploads/day**; without `is_hidden` the upload lands
 in Giphy's public, searchable library; Giphy re-encodes the file (71 KB → ~166 KB).

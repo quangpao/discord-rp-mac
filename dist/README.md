@@ -11,7 +11,6 @@ drawing anything, and means the icons the README shows are reproducible.
 | File | Where it goes |
 | --- | --- |
 | `0-app-icon-square-1024.png` | Portal → *General Information* → App Icon (1024×1024, tile fills the frame) |
-| `1-app-icon-1024.png` | Same, with the icon's own corner radius (use if the portal preview looks too tight) |
 | `2-asset-logo-1024.png` | Portal → *Rich Presence* → Art Assets, as a large image key |
 | `3-asset-small-512.png` | Same, as a small image key |
 | `discord-rp-animated-logo.gif` | Upload to Giphy (or your own host) and paste the URL as an external image key |
