@@ -10,8 +10,6 @@ A native macOS menu bar app that sets a **custom Discord Rich Presence**: your a
 elapsed timer and up to two link buttons, kept alive while you work. Written from scratch in Swift
 (SwiftUI + AppKit) — a ~2 MB app bundle, no Electron, no runtime to install.
 
-![The preset editor](docs/screenshots/editor.png)
-
 ## Features
 
 - **Full activity editor** — type, display type, name, details and state with links, party size, five
