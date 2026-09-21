@@ -110,3 +110,97 @@ final class MigrationTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: file.path), "the user's file is left alone")
     }
 }
+
+/// A storage that records whether it was read through the prompting API or the prompt-free one, so a
+/// regression that reintroduces a blocking Keychain prompt on the startup path fails the suite.
+private final class ProbeRecordingStorage: GiphyKeyStorage, @unchecked Sendable {
+    private var stored: String?
+    private(set) var interactiveReads = 0
+    private(set) var promptFreeReads = 0
+
+    init(value: String? = nil) { stored = value }
+
+    func read() -> String? { interactiveReads += 1; return stored }
+    func readWithoutPrompt() -> String? { promptFreeReads += 1; return stored }
+    func write(_ value: String) throws { stored = value }
+    func delete() { stored = nil }
+}
+
+final class KeychainProbeTests: XCTestCase {
+    func testMigrationNeverUsesThePromptingRead() {
+        let target = ProbeRecordingStorage()
+        let legacy = ProbeRecordingStorage(value: "fixture-key-not-a-real-key")
+
+        let outcome = Migration.migrateKeychain(target: target, legacy: legacy,
+                                                legacyFilePath: "/nonexistent/giphy/api_key")
+
+        XCTAssertEqual(outcome, .movedFromLegacyKeychain)
+        XCTAssertEqual(target.interactiveReads, 0,
+                       "the startup probe must not be able to put a Keychain prompt on screen")
+        XCTAssertEqual(legacy.interactiveReads, 0,
+                       "reading the pre-rename item must not prompt either")
+        XCTAssertGreaterThan(legacy.promptFreeReads, 0)
+    }
+
+    func testExistingKeyShortCircuitsWithoutPrompting() {
+        let target = ProbeRecordingStorage(value: "fixture-key-not-a-real-key")
+        let legacy = ProbeRecordingStorage(value: "fixture-key-not-a-real-key")
+
+        XCTAssertEqual(Migration.migrateKeychain(target: target, legacy: legacy), .alreadyPresent)
+        XCTAssertEqual(target.interactiveReads, 0)
+        XCTAssertEqual(legacy.promptFreeReads, 0, "nothing to read once the target already has a key")
+    }
+}
+
+/// The Keychain half of the rename must never run on the main thread: a prompt for a legacy item
+/// blocked `AppModel.init` and left the app alive but doing nothing (no socket, no log).
+final class KeychainBackgroundMigrationTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        Migration.resetKeychainMigrationForTesting()
+    }
+
+    func testRunsOffTheMainThreadAndReportsTheOutcome() {
+        let target = ProbeRecordingStorage()
+        let legacy = ProbeRecordingStorage(value: "fixture-key-not-a-real-key")
+        let done = expectation(description: "migration ran")
+        let box = OutcomeBox()
+
+        Migration.migrateKeychainInBackground(target: target, legacy: legacy,
+                                             legacyFilePath: "/nonexistent/giphy/api_key") { outcome in
+            box.outcome = outcome
+            box.onMainThread = Thread.isMainThread
+            done.fulfill()
+        }
+
+        wait(for: [done], timeout: 5)
+        XCTAssertEqual(box.outcome, .movedFromLegacyKeychain)
+        XCTAssertFalse(box.onMainThread, "a Keychain prompt here must not be able to freeze the app")
+    }
+
+    func testStartsOnlyOncePerProcess() {
+        let first = expectation(description: "first run")
+        Migration.migrateKeychainInBackground(target: ProbeRecordingStorage(),
+                                             legacy: ProbeRecordingStorage(),
+                                             legacyFilePath: "/nonexistent") { _ in first.fulfill() }
+        wait(for: [first], timeout: 5)
+
+        let second = OutcomeBox()
+        Migration.migrateKeychainInBackground(target: ProbeRecordingStorage(),
+                                             legacy: ProbeRecordingStorage(),
+                                             legacyFilePath: "/nonexistent") { _ in second.ran = true }
+        // Give the utility queue a moment to (not) do anything.
+        let idle = expectation(description: "idle")
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.3) { idle.fulfill() }
+        wait(for: [idle], timeout: 5)
+
+        XCTAssertFalse(second.ran, "the migration is once per process, so it cannot prompt twice")
+    }
+}
+
+/// Mutable state shared with the migration's completion handler, which runs on another queue.
+private final class OutcomeBox: @unchecked Sendable {
+    var outcome: Migration.KeyMigrationOutcome?
+    var onMainThread = true
+    var ran = false
+}

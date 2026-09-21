@@ -48,6 +48,18 @@ public protocol GiphyKeyStorage: Sendable {
     func read() -> String?
     func write(_ value: String) throws
     func delete()
+
+    /// A read that must never put a system prompt on screen.
+    ///
+    /// The migration probe runs on the startup path, and a modal Keychain prompt there **hung the
+    /// app**: the sampled stack was `AppModel.init` → `Migration.migrateKeychain` →
+    /// `KeychainGiphyKeyStorage.read`, with `SecurityAgent` waiting for an answer that never came.
+    /// That is also why "launch at login" looked broken after a reboot. Default: the normal read.
+    func readWithoutPrompt() -> String?
+}
+
+public extension GiphyKeyStorage {
+    func readWithoutPrompt() -> String? { read() }
 }
 
 public struct KeychainGiphyKeyStorage: GiphyKeyStorage {
@@ -73,10 +85,19 @@ public struct KeychainGiphyKeyStorage: GiphyKeyStorage {
         ]
     }
 
-    public func read() -> String? {
+    public func read() -> String? { read(promptFree: false) }
+
+    public func readWithoutPrompt() -> String? { read(promptFree: true) }
+
+    private func read(promptFree: Bool) -> String? {
         var query = self.query
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
+        if promptFree {
+            // Refuse rather than prompt: an item this build cannot read (created by an earlier,
+            // differently-signed bundle) makes the probe fail, which is the fallback path anyway.
+            query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
+        }
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
               let data = item as? Data,

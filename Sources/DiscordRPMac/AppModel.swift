@@ -25,8 +25,10 @@ final class AppModel: ObservableObject {
     /// `store` is injectable so the screenshot renderer can draw the built-in demo preset set from
     /// a throwaway directory instead of the developer's own presets.
     init(startEngine: Bool = true, store injected: PresetStore? = nil) {
-        // Before anything reads presets/settings: move data + the Giphy key over from the
-        // pre-rename names (`CustomRP` → `Discord RP`). Copies only, never destructive.
+        // Before anything reads presets/settings: move the data files over from the pre-rename names
+        // (`CustomRP` → `Discord RP`). Files only — the Keychain half runs later, off the main
+        // thread, because a Keychain prompt on this path used to hang the launch (see
+        // `Migration.migrateKeychainInBackground`).
         Migration.runIfNeeded()
 
         let store = injected ?? PresetStore()
@@ -61,6 +63,12 @@ final class AppModel: ObservableObject {
         }
 
         guard startEngine else { return }
+
+        // The Keychain half of the rename, off the main thread: it can wait for a system prompt
+        // without freezing the app or the presence engine.
+        Migration.migrateKeychainInBackground { outcome in
+            PresenceLog.note("giphy key migration: \(outcome.rawValue)")
+        }
 
         // Launch-at-login: the registration is the source of truth, not the stored flag. Replacing
         // the app bundle (every rebuild) can silently drop an SMAppService registration, and the
