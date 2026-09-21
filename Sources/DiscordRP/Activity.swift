@@ -146,12 +146,13 @@ public struct Activity: Codable, Equatable, Sendable {
         self.kind = kind
     }
 
-    /// Starter preset. The name carries the credit line on purpose — Discord renders `name`
-    /// instead of the application's own name, so this is the visible byline on every profile.
-    public static func sample(_ name: String = "Discord RP by quangpao") -> Activity {
-        var activity = Activity(name: name, details: "Đang code", state: "discord-rp-mac")
+    /// Starter preset for a first run. Deliberately neutral: this is what a stranger's Discord profile
+    /// shows before they edit anything, so it carries no byline, no personal text and no outbound
+    /// link. `name` overrides the application's own name in the activity card, so it is the byline.
+    public static func sample(_ name: String = "Discord RP") -> Activity {
+        var activity = Activity(name: name, details: "Editing a preset", state: "Trying out Discord RP")
         activity.timestampMode = .sinceConnection
-        activity.buttons = [Button(label: "quangpao.dev", url: "https://quangpao.dev")]
+        activity.buttons = []
         return activity
     }
 }

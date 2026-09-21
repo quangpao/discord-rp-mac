@@ -20,8 +20,10 @@ why an app with no uploaded icon shows Discord's grey "?" placeholder.
 
 1. Open <https://discord.com/developers/applications> and pick your app (ID `<your-application-id>`).
 2. **General Information**:
-   - **Name** — this is what Discord shows when the activity has no `name` override. `CustomRP` is the
-     clean choice; `Discord RP by quangpao` also works if you want the credit line here instead.
+   - **Name** — this is what Discord shows when the activity has no `name` override. Pick your own
+     name (e.g. `Discord RP`, or your handle). Do **not** call it `CustomRP`: that is someone else's
+     project, this app is not affiliated with it, and using their name would misrepresent the activity
+     card to whoever looks at your profile.
    - **App Icon** — drag `dist/discord/0-app-icon-square-1024.png` (1024×1024, tile filling the frame).
    - **Description / Tags** — fill anything sensible; the portal wants a description before it lets
      you save some fields.

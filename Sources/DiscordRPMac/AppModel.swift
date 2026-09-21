@@ -22,12 +22,14 @@ final class AppModel: ObservableObject {
     private var activityToken: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
 
-    init(startEngine: Bool = true) {
+    /// `store` is injectable so the screenshot renderer can draw the built-in demo preset set from
+    /// a throwaway directory instead of the developer's own presets.
+    init(startEngine: Bool = true, store injected: PresetStore? = nil) {
         // Before anything reads presets/settings: move data + the Giphy key over from the
         // pre-rename names (`CustomRP` → `Discord RP`). Copies only, never destructive.
         Migration.runIfNeeded()
 
-        let store = PresetStore()
+        let store = injected ?? PresetStore()
         var settings = store.loadSettings()
         var presets = store.loadPresets()
 
@@ -151,6 +153,26 @@ final class AppModel: ObservableObject {
 
     // MARK: settings
 
+    /// Always re-applies, even when the settings did not change: `updateConnection` returns early
+    /// for unchanged values, which made the Reconnect button a no-op exactly when it is needed
+    /// (Discord restarted, socket stale, active preset needs re-pushing).
+    func reconnect(appID: String, pipeIndex: Int) {
+        let plan = ReconnectPlan.plan(
+            current: ConnectionSettings(appID: settings.appID, pipeIndex: settings.pipeIndex),
+            requestedAppID: appID,
+            requestedPipeIndex: pipeIndex)
+        if case .updateAndReapply(let next) = plan {
+            settings.appID = next.appID
+            settings.pipeIndex = next.pipeIndex
+            persistSettings()
+            engine.update(appID: next.appID, pipeIndex: next.pipeIndex)
+        }
+        PresenceLog.note("reconnect requested (settingsChanged=\(plan.changesSettings))")
+        engine.reassert()
+        if !settings.appID.isEmpty { engine.start() }
+        reapply()
+    }
+
     func updateConnection(appID: String, pipeIndex: Int) {
         let trimmed = appID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed != settings.appID || pipeIndex != settings.pipeIndex else { return }
@@ -193,11 +215,17 @@ final class AppModel: ObservableObject {
 
     // MARK: persistence
 
-    private func persistPresets() { try? store.save(presets: presets) }
+    /// Errors are logged rather than swallowed: a user who thinks a preset was saved (but the disk
+    /// refused) has no way to find out otherwise. The message never contains secrets.
+    private func persistPresets() {
+        do { try store.save(presets: presets) }
+        catch { PresenceLog.note("presets save failed: \(error.localizedDescription)") }
+    }
 
     func persistSettings() {
         settings.launchAtLogin = LaunchAtLogin.isEnabled
-        try? store.save(settings: settings)
+        do { try store.save(settings: settings) }
+        catch { PresenceLog.note("settings save failed: \(error.localizedDescription)") }
     }
 
     func shutdown() {

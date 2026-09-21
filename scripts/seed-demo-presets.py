@@ -8,7 +8,11 @@ import sys
 import uuid
 from datetime import datetime, timedelta
 
-SUPPORT = pathlib.Path.home() / "Library/Application Support/DiscordRPMac"
+# Optional first positional argument = target directory (used to render clean README screenshots
+# from a throwaway demo set, e.g. `seed-demo-presets.py /tmp/discordrp-demo`).
+_positional = [a for a in sys.argv[1:] if not a.startswith("--")]
+SUPPORT = (pathlib.Path(_positional[0]) if _positional
+           else pathlib.Path.home() / "Library/Application Support/DiscordRPMac")
 SUPPORT.mkdir(parents=True, exist_ok=True)
 
 # TimestampMode: 0 off · 1 since connection · 2 since app start · 3 since presence update
@@ -19,10 +23,12 @@ SUPPORT.mkdir(parents=True, exist_ok=True)
 # leave empty and set the image keys with the app's “Upload to Giphy…” button instead.
 IMAGE = os.environ.get("DEMO_IMAGE_URL", "")
 # ↑ animated logo (GIF): Discord renders animation only for EXTERNAL URLs, not for uploaded assets.
-#   Static alternative if animation is unwanted: "2-asset-logo-1024" (uploaded portal asset).
+#   Static alternative if animation is unwanted: the *name* of an asset you uploaded in your own
+#   Discord application's Art Assets page.
 SMALL = os.environ.get("DEMO_SMALL_KEY", "")   # a Discord art asset name, if you have one
-LINK = "https://quangpao.dev"
-GH = "https://github.com/quangpao"
+# Neutral placeholders: nothing personal is baked in. Override with your own two button links.
+LINK = os.environ.get("DEMO_BUTTON_LINK", "https://example.com")
+GH = os.environ.get("DEMO_BUTTON_LINK_2", "https://example.com/2")
 
 now = datetime.now()
 # Epoch MILLISECONDS: PresetStore pins dates to .millisecondsSince1970, so a value written in
@@ -43,7 +49,7 @@ if "--force" not in sys.argv:
 
 def activity(**overrides):
     base = {
-        "name": "Discord RP by quangpao",
+        "name": "Discord RP",
         "kind": 0,
         "display": 1,
         "details": "",
@@ -72,24 +78,24 @@ presets = [
     {
         "name": "1 · Coding",
         "activity": activity(
-            details="Đang code", state="discord-rp-mac",
-            largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
-            buttons=[{"label": "quangpao.dev", "url": LINK}, {"label": "GitHub", "url": GH}],
+            details="Editing a preset", state="Trying out Discord RP",
+            largeKey=IMAGE, largeText="Logo", smallKey=SMALL, smallText="Mark",
+            buttons=[{"label": "Website", "url": LINK}, {"label": "GitHub", "url": GH}],
         ),
     },
     {
         "name": "2 · Nghe nhạc",
         "activity": activity(
             kind=2, details="Lo-fi beats to code to", state="Focus mode",
-            timestampMode=4, largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
-            buttons=[{"label": "quangpao.dev", "url": LINK}],
+            timestampMode=4, largeKey=IMAGE, largeText="Logo", smallKey=SMALL, smallText="Mark",
+            buttons=[{"label": "Website", "url": LINK}],
         ),
     },
     {
         "name": "3 · Chơi game (party 3/5)",
         "activity": activity(
             kind=0, details="Ranked", state="Đang vào trận",
-            partySize=3, partyMax=5, largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
+            partySize=3, partyMax=5, largeKey=IMAGE, largeText="Logo", smallKey=SMALL, smallText="Mark",
             buttons=[{"label": "GitHub", "url": GH}],
         ),
     },
@@ -98,8 +104,8 @@ presets = [
         "activity": activity(
             kind=0, details="Sprint sắp hết", state="Còn lại",
             timestampMode=5, customEndEnabled=True,
-            largeKey=IMAGE, largeText="quangpao", smallKey=SMALL, smallText="quangpao",
-            buttons=[{"label": "quangpao.dev", "url": LINK}],
+            largeKey=IMAGE, largeText="Logo", smallKey=SMALL, smallText="Mark",
+            buttons=[{"label": "Website", "url": LINK}],
         ),
     },
     {

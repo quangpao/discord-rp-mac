@@ -157,6 +157,9 @@ struct ActivityEditorView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
+        // The dot alone carries meaning by colour; VoiceOver gets the words instead.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Connection status: \(model.status.shortText)")
         .padding(.leading, labelColumn + columnGap)
     }
 
@@ -174,11 +177,12 @@ struct ActivityEditorView: View {
                     ForEach(0...9, id: \.self) { index in Text("\(index)").tag(index) }
                 }
                 .labelsHidden()
+                    .accessibilityLabel("Pipe index")
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             hint("0 = Discord · 1 = PTB · 2 = Canary")
             row("Connection") {
-                Button("Reconnect") { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
+                Button("Reconnect") { model.reconnect(appID: appIDField, pipeIndex: pipeIndex) }
             }
             hint("Reconnect re-applies the connection and the active preset.")
             statusRow
@@ -200,6 +204,7 @@ struct ActivityEditorView: View {
                     ForEach(ActivityKind.selectable) { kind in Text(kind.label).tag(kind) }
                 }
                 .labelsHidden()
+                    .accessibilityLabel("Activity type")
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             row("Show as") {
@@ -207,6 +212,7 @@ struct ActivityEditorView: View {
                     ForEach(DisplayType.allCases) { type in Text(type.label).tag(type) }
                 }
                 .labelsHidden()
+                    .accessibilityLabel("Status display type")
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             row("Details") {
@@ -250,6 +256,7 @@ struct ActivityEditorView: View {
                     ForEach(TimestampMode.allCases) { mode in Text(mode.label).tag(mode) }
                 }
                 .labelsHidden()
+                    .accessibilityLabel("Timestamp mode")
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .disabled(!draft.kind.allowsTimestamps)
             }
@@ -261,15 +268,18 @@ struct ActivityEditorView: View {
                     DatePicker("", selection: $draft.customStart,
                                in: ActivityRules.earliestTimestamp...ActivityRules.latestTimestamp)
                         .labelsHidden()
+                    .accessibilityLabel("Start timestamp")
                         .datePickerStyle(.field)
                 }
                 row("Show end") {
                     Toggle("", isOn: $draft.customEndEnabled).labelsHidden()
+                    .accessibilityLabel("Use a separate end timestamp")
                 }
                 row("End") {
                     DatePicker("", selection: $draft.customEnd,
                                in: ActivityRules.earliestTimestamp...ActivityRules.latestTimestamp)
                         .labelsHidden()
+                    .accessibilityLabel("End timestamp")
                         .datePickerStyle(.field)
                         .disabled(!draft.customEndEnabled)
                 }
@@ -553,7 +563,7 @@ struct ActivityEditorView: View {
     /// Pick a file, push it to Giphy, and drop the CDN URL into the given image slot.
     private func uploadToGiphy(into slot: Binding<String>, slot slotName: String) {
         guard let key = GiphyUploader.apiKey() else {
-            giphyStatus = "✗ No API key. Save one at \(GiphyUploader.defaultKeyPath()) (chmod 600)."
+            giphyStatus = "✗ No Giphy API key. Add yours in the \"Giphy — bring your own key\" card below; it is saved in your macOS Keychain."
             return
         }
 
@@ -561,9 +571,8 @@ struct ActivityEditorView: View {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.message = "Choose an animated GIF (or MP4/WebM) to upload to Giphy for the \(slotName) image"
-        if let gif = UTType(filenameExtension: "gif"), let mp4 = UTType(filenameExtension: "mp4") {
-            panel.allowedContentTypes = [gif, mp4]
-        }
+        // Match the message above and `GiphyUploader.allowedExtensions`: gif, mp4, webm.
+        panel.allowedContentTypes = ["gif", "mp4", "webm"].compactMap { UTType(filenameExtension: $0) }
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
         giphyUploading = true
@@ -571,7 +580,7 @@ struct ActivityEditorView: View {
         Task {
             do {
                 let result = try await GiphyUploader.upload(
-                    file: url, apiKey: key, hidden: giphyHidden, tags: "customrp,quangpao"
+                    file: url, apiKey: key, hidden: giphyHidden
                 )
                 await MainActor.run {
                     slot.wrappedValue = result.mediaURL

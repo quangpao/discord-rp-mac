@@ -33,7 +33,7 @@ final class GiphyKeyStoreTests: XCTestCase {
         try contents.write(toFile: keyFile, atomically: true, encoding: .utf8)
     }
 
-    private let goodKey = "abcdefghijklmnopqrstuvwxyz123456"
+    private let goodKey = "fixture-key-not-a-real-key"
 
     // MARK: resolution order
 

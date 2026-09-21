@@ -97,6 +97,14 @@ enum SelfTest {
             let height = index + 3 < args.count ? Double(args[index + 3]) ?? 800 : 800
             return renderEditor(to: path, width: width, height: height)
         }
+        if let index = args.firstIndex(of: "--render-menu") {
+            let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
+                ? args[index + 1]
+                : "/tmp/discord-rp-menu.png"
+            let width = index + 2 < args.count ? Double(args[index + 2]) ?? 300 : 300
+            let height = index + 3 < args.count ? Double(args[index + 3]) ?? 420 : 420
+            return renderMenu(to: path, width: width, height: height)
+        }
         if let index = args.firstIndex(of: "--giphy-upload") {
             let file = index + 1 < args.count && !args[index + 1].hasPrefix("--")
                 ? args[index + 1]
@@ -106,7 +114,7 @@ enum SelfTest {
         let live = args.contains("--live")
         guard args.contains("--self-test") || live else { return nil }
 
-        print("CustomRP \(Version.string) — self-test")
+        print("Discord RP \(Version.string) — self-test")
         checkFraming()
         checkSocketLocator()
         checkRules()
@@ -258,45 +266,87 @@ enum SelfTest {
                 setenv("GIPHY_API_KEY", "", 1)
                 GiphyKeyStore.legacyPathOverride = "/nonexistent/giphy/api_key"
             }
-            let model = AppModel(startEngine: false)
-            let hosting = NSHostingView(rootView: ActivityEditorView(model: model))
-            let frame = NSRect(x: 0, y: 0, width: width, height: height)
-            hosting.frame = frame
-            let window = NSWindow(contentRect: frame, styleMask: [.titled], backing: .buffered, defer: false)
-            window.setFrameOrigin(NSPoint(x: -20_000, y: -20_000))  // never shown, only rendered
-            window.contentView = hosting
-            hosting.layoutSubtreeIfNeeded()
-            window.displayIfNeeded()
-            hosting.display()
-            // Image previews load asynchronously; let them land before capturing, or the shot shows
-            // spinners instead of the images the user actually sees.
-            RunLoop.main.run(until: Date().addingTimeInterval(3.0))
-            hosting.layoutSubtreeIfNeeded()
-            window.displayIfNeeded()
-            hosting.display()
-            guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
-                print("render failed: no bitmap rep")
-                return
-            }
-            hosting.cacheDisplay(in: hosting.bounds, to: rep)
-            guard let data = rep.representation(using: .png, properties: [:]) else {
-                print("render failed: no PNG data")
-                return
-            }
-            do {
-                try data.write(to: URL(fileURLWithPath: path))
-                print("rendered \(Int(width))x\(Int(height)) → \(path)")
-            } catch {
-                print("render failed: \(error.localizedDescription)")
-            }
+            let model = demoModel()
+            capture(NSHostingView(rootView: ActivityEditorView(model: model)),
+                    titled: true, to: path, width: width, height: height, settle: 3.0)
         }
+        return runOnMain(render)
+    }
 
+    /// `--render-menu <out.png> [width height]` — the same capture for the menu bar menu, so the
+    /// README screenshot is a real render of the real view rather than a mock.
+    private static func renderMenu(to path: String, width: Double, height: Double) -> Int32 {
+        let render: @MainActor () -> Void = {
+            let model = demoModel()
+            let root = MenuContentView(model: model)
+                .padding(10)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .frame(width: width)
+            capture(NSHostingView(rootView: root), titled: false, to: path,
+                    width: width, height: height, settle: 1.5)
+        }
+        return runOnMain(render)
+    }
+
+    /// The model a screenshot is drawn from. With `--demo <dir>` it reads that throwaway preset set
+    /// (no personal data) and shows a neutral connected status, because a screenshot of an app that
+    /// is still mid-start reads as broken. The README states the screenshots come from the demo set.
+    @MainActor
+    private static func demoModel() -> AppModel {
+        let args = CommandLine.arguments
+        guard let index = args.firstIndex(of: "--demo"), index + 1 < args.count else {
+            return AppModel(startEngine: false)
+        }
+        let store = PresetStore(directory: URL(fileURLWithPath: args[index + 1]))
+        let model = AppModel(startEngine: false, store: store)
+        model.status = .connected(user: "demo")
+        return model
+    }
+
+    /// Not `@MainActor` itself: it is called from the nonisolated CLI entry point and does its own
+    /// hop onto the main thread, which is what the original inline version did.
+    private static func runOnMain(_ work: @MainActor () -> Void) -> Int32 {
         if Thread.isMainThread {
-            MainActor.assumeIsolated { render() }
+            MainActor.assumeIsolated { work() }
         } else {
-            DispatchQueue.main.sync { MainActor.assumeIsolated { render() } }
+            DispatchQueue.main.sync { MainActor.assumeIsolated { work() } }
         }
         return 0
+    }
+
+    /// Renders `hosting` off-screen (never shown to the user) and writes a PNG. The settle time
+    /// matters: image previews load asynchronously, so capturing at once shows spinners instead.
+    @MainActor
+    private static func capture(_ hosting: NSView, titled: Bool, to path: String,
+                                width: Double, height: Double, settle: TimeInterval) {
+        let frame = NSRect(x: 0, y: 0, width: width, height: height)
+        hosting.frame = frame
+        let window = NSWindow(contentRect: frame, styleMask: titled ? [.titled] : [.borderless],
+                              backing: .buffered, defer: false)
+        window.setFrameOrigin(NSPoint(x: -20_000, y: -20_000))  // never shown, only rendered
+        window.contentView = hosting
+        hosting.layoutSubtreeIfNeeded()
+        window.displayIfNeeded()
+        hosting.display()
+        RunLoop.main.run(until: Date().addingTimeInterval(settle))
+        hosting.layoutSubtreeIfNeeded()
+        window.displayIfNeeded()
+        hosting.display()
+        guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
+            print("render failed: no bitmap rep")
+            return
+        }
+        hosting.cacheDisplay(in: hosting.bounds, to: rep)
+        guard let data = rep.representation(using: .png, properties: [:]) else {
+            print("render failed: no PNG data")
+            return
+        }
+        do {
+            try data.write(to: URL(fileURLWithPath: path))
+            print("rendered \(Int(width))x\(Int(height)) → \(path)")
+        } catch {
+            print("render failed: \(error.localizedDescription)")
+        }
     }
 
     /// `--presets [support-dir]` prints, for every stored preset, the exact SET_ACTIVITY payload the

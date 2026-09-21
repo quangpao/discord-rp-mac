@@ -27,7 +27,7 @@ public enum GiphyError: Error, Equatable, Sendable {
             "Giphy accepts animated GIF, MP4 or WebM — not “.\(ext)”."
         case .http(let status, let body):
             status == 401 || status == 403
-                ? "Giphy rejected the API key (HTTP \(status)). Check ~/.giphy/api_key."
+                ? "Giphy rejected the API key (HTTP \(status)). Update the saved key in the app's Giphy card, or check $GIPHY_API_KEY / ~/.giphy/api_key if you use the CLI."
                 : status == 429
                 ? "Giphy rate limit hit (10 uploads/day on a dashboard key) — try again tomorrow."
                 : "Giphy returned HTTP \(status): \(body.prefix(200))"
@@ -38,7 +38,7 @@ public enum GiphyError: Error, Equatable, Sendable {
 }
 
 /// Uploads a local GIF to Giphy and returns the CDN URL, so the editor can turn a file into an
-/// image key. Credentials: API key read from `~/.giphy/api_key` or `$GIPHY_API_KEY` — never from
+/// image key. Credentials: API key read from the macOS Keychain (saved in the app), `$GIPHY_API_KEY`
 /// the repo, never logged.
 public enum GiphyUploader {
     public static let endpoint = URL(string: "https://upload.giphy.com/v1/gifs")!
@@ -50,7 +50,7 @@ public enum GiphyUploader {
     }
 
     /// Returns the key, or nil when it is missing/blank. BYOK: resolution order is
-    /// Keychain (saved by the user in the app) → `$GIPHY_API_KEY` → `~/.giphy/api_key`.
+    /// Keychain (saved by the user in the app) → `$GIPHY_API_KEY` → `~/.giphy/api_key` (legacy).
     public static func apiKey(
         path: String? = nil,
         environment: [String: String] = ProcessInfo.processInfo.environment
@@ -103,6 +103,7 @@ public enum GiphyUploader {
         apiKey key: String,
         hidden: Bool = false,
         tags: String? = nil,
+        sourcePostURL: String? = nil,
         session: URLSession = .shared
     ) async throws -> GiphyUploadResult {
         let path = file.path
@@ -118,11 +119,15 @@ public enum GiphyUploader {
             throw GiphyError.fileTooLarge(bytes: data.count, limit: maxBytes)
         }
 
-        var fields = ["api_key": key, "source_post_url": "https://quangpao.dev"]
+        // BYOK: send only what Giphy needs. No `source_post_url` and no tags unless the caller asks
+        // for them — the upload belongs to the user, not to this project, and tagging every upload
+        // with the project name would leak the user's tooling choice into a public GIF page.
+        var fields = ["api_key": key]
         if hidden { fields["is_hidden"] = "true" }
         if let tags, !tags.isEmpty { fields["tags"] = tags }
+        if let sourcePostURL, !sourcePostURL.isEmpty { fields["source_post_url"] = sourcePostURL }
 
-        let boundary = "----customrp\(UUID().uuidString)"
+        let boundary = "----discordrp\(UUID().uuidString)"
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")

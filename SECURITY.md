@@ -21,6 +21,9 @@ reports which source supplied it.
   art assets you uploaded to your own Discord application (so the editor can offer them by name).
 - **`cdn.discordapp.com`** — only to draw an asset thumbnail in the editor.
 - **`upload.giphy.com`** — only when you press an *Upload to Giphy…* button, and only with your key.
+  That request contains the file you chose, your Giphy API key, and the *Private on Giphy* flag if you
+  ticked it. It contains **no** tags and no source URL: the app used to send a project tag and a
+  `source_post_url`, and that was removed so your upload is attributable only to you.
 - **`media.giphy.com`** — only to preview an image key that already points at a Giphy URL.
 
 There is no telemetry, no analytics, no auto-update, and no server run by this project. The app
@@ -36,7 +39,18 @@ a third party other than the Giphy endpoints listed above (which only run on an 
 - Presence data is public by design: Discord shows it to anyone who can see your profile, and a
   Giphy upload is public unless you tick *Private on Giphy*.
 
+## Supported versions
+
+Before 1.0, only the latest release tag and `main` are supported.
+
 ## Reporting
 
 Open a GitHub issue for anything non-sensitive. For a vulnerability, please avoid a public issue
-until a fix is out — use GitHub's private vulnerability reporting on this repository.
+until a fix is out — use **GitHub's private vulnerability reporting** on this repository
+(*Security* → *Report a vulnerability*).
+
+Please include: the app version (`--version`), your macOS version, your Discord client build, and the
+tail of `~/Library/Logs/DiscordRP/customrp.log` with anything personal redacted. **Never** include your
+Giphy API key, a Discord token, or private image URLs — none of them are needed to investigate.
+
+Acknowledgement within 7 days; a fix or a mitigation plan as soon as the report can be reproduced.

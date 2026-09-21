@@ -1,0 +1,38 @@
+name: Bug report
+description: Something is wrong with the app
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do not paste your Giphy API key, your Discord token, or
+        screenshots with personal data — none of them are needed to fix a bug.
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "14.5 / 15.1 / 26.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: discord-running
+    attributes:
+      label: Was the Discord desktop client running?
+      options: ["Yes", "No", "Discord was starting/restarting"]
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, what you saw instead. If a preset is involved, describe the fields (type, images, timestamps, buttons).
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Output of `--self-test` and the tail of `~/Library/Logs/DiscordRP/customrp.log`
+      render: shell
+    validations:
+      required: false

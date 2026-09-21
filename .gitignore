@@ -15,3 +15,21 @@ xcuserdata/
 # local app data
 *.log
 .vscode/
+
+# local agent workspaces / indexes
+.hermes/
+.codebase-memory/
+
+# local env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.mobileprovision
+.giphy/
+
+# Apple build/test products
+*.xcresult
+*.dSYM/
+*.app/

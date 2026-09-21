@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+    validations:
+      required: false
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      description: This app deliberately stays small. Please confirm your idea fits.
+      options:
+        - label: It does not require a Discord user token, self-botting, or anything against Discord's ToS
+          required: true
+        - label: It does not ship or bundle an API key or someone else's Application ID
+          required: true

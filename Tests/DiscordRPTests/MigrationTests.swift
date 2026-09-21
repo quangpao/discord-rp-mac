@@ -69,12 +69,12 @@ final class MigrationTests: XCTestCase {
 
     func testKeyIsMovedOnceAndTheOldCopyIsDeleted() {
         let target = FakeStorage()
-        let legacy = FakeStorage(value: "abcdefghijklmnopqrstuvwxyz123456")
+        let legacy = FakeStorage(value: "fixture-key-not-a-real-key")
 
         let outcome = Migration.migrateKeychain(target: target, legacy: legacy,
                                                 legacyFilePath: base.appendingPathComponent("absent").path)
         XCTAssertEqual(outcome, .movedFromLegacyKeychain)
-        XCTAssertEqual(target.value, "abcdefghijklmnopqrstuvwxyz123456")
+        XCTAssertEqual(target.value, "fixture-key-not-a-real-key")
         XCTAssertEqual(legacy.deletes, 1)
         XCTAssertNil(legacy.value)
     }
