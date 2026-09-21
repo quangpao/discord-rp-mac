@@ -135,6 +135,19 @@ public struct NoGiphyKeyStorage: GiphyKeyStorage {
     public func delete() {}
 }
 
+/// A storage that reports a key without holding one, so a headless render can show the "a key is
+/// present" state without reading the developer's real Keychain.
+///
+/// A render that reads the real Keychain **hangs**: the binary's ad-hoc signature changes on every
+/// rebuild, so macOS raises a fresh ACL prompt, and the render blocks in `mach_msg` inside
+/// `SecurityAgent` until somebody answers a dialog nobody can see. Same failure the app had at startup.
+public struct StubGiphyKeyStorage: GiphyKeyStorage {
+    public init() {}
+    public func read() -> String? { "stub-key-for-rendering" }
+    public func write(_ value: String) throws {}
+    public func delete() {}
+}
+
 public enum GiphyKeyStore {
     private static let storageLock = NSLock()
     nonisolated(unsafe) private static var backingStorage: GiphyKeyStorage = KeychainGiphyKeyStorage()

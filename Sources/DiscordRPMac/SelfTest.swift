@@ -85,6 +85,14 @@ enum SelfTest {
             }
             return 0
         }
+        if let index = args.firstIndex(of: "--check-updates") {
+            // An optional version after the flag stands in for the running one, so the "newer
+            // release" branch can be exercised against the real API.
+            let current = index + 1 < args.count && !args[index + 1].hasPrefix("--")
+                ? args[index + 1]
+                : Version.string
+            return checkForUpdates(current: current)
+        }
         if let index = args.firstIndex(of: "--presets") {
             let directory = index + 1 < args.count && !args[index + 1].hasPrefix("--") ? args[index + 1] : nil
             return dumpPresetPayloads(directory: directory)
@@ -260,12 +268,15 @@ enum SelfTest {
     /// permission and still yields real pixels to inspect the layout with.
     private static func renderEditor(to path: String, width: Double, height: Double) -> Int32 {
         let render: @MainActor () -> Void = {
-            if CommandLine.arguments.contains("--no-key") {
-                // The "no key yet" state, so the BYOK gating can be verified as pixels.
-                GiphyKeyStore.storage = NoGiphyKeyStorage()
-                setenv("GIPHY_API_KEY", "", 1)
-                GiphyKeyStore.legacyPathOverride = "/nonexistent/giphy/api_key"
-            }
+            // A render must never read the developer's real Keychain: the binary is ad-hoc signed, so
+            // every rebuild changes its identity, macOS raises an ACL prompt, and the render blocks in
+            // `mach_msg` until somebody answers a dialog it cannot show. Stub storage instead; with
+            // `--no-key` the stub is swapped for the empty one so the BYOK gating can be seen.
+            GiphyKeyStore.storage = CommandLine.arguments.contains("--no-key")
+                ? NoGiphyKeyStorage()
+                : StubGiphyKeyStorage()
+            setenv("GIPHY_API_KEY", "", 1)
+            GiphyKeyStore.legacyPathOverride = "/nonexistent/giphy/api_key"
             let model = demoModel()
             capture(NSHostingView(rootView: ActivityEditorView(model: model)),
                     titled: true, to: path, width: width, height: height, settle: 3.0)
@@ -320,6 +331,10 @@ enum SelfTest {
     private static func capture(_ hosting: NSView, titled: Bool, to path: String,
                                 width: Double, height: Double, settle: TimeInterval) {
         let frame = NSRect(x: 0, y: 0, width: width, height: height)
+        // Pin the appearance. The harness used to follow the system theme, so regenerating the
+        // screenshots at night produced dark images while the committed ones were light, and the two
+        // README screenshots could disagree. Switch to `.darkAqua` to ship dark ones.
+        hosting.appearance = NSAppearance(named: .aqua)
         hosting.frame = frame
         let window = NSWindow(contentRect: frame, styleMask: titled ? [.titled] : [.borderless],
                               backing: .buffered, defer: false)
@@ -347,6 +362,27 @@ enum SelfTest {
         } catch {
             print("render failed: \(error.localizedDescription)")
         }
+    }
+
+    /// `--check-updates` — the same call the menu makes, so the network path can be verified
+    /// headlessly instead of by clicking a menu item.
+    private static func checkForUpdates(current: String) -> Int32 {
+        var exit: Int32 = 0
+        let done = DispatchSemaphore(value: 0)
+        Task.detached {
+            switch await UpdateCheck.fetchLatest(current: current) {
+            case .upToDate(let current):
+                print("up to date (\(current))")
+            case .newer(let version, let url):
+                print("update available: \(version) — \(url.absoluteString)")
+            case .failed(let reason):
+                print("check failed: \(reason)")
+                exit = 1
+            }
+            done.signal()
+        }
+        done.wait()
+        return exit
     }
 
     /// `--presets [support-dir]` prints, for every stored preset, the exact SET_ACTIVITY payload the
