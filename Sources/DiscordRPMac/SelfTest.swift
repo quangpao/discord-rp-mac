@@ -252,6 +252,12 @@ enum SelfTest {
     /// permission and still yields real pixels to inspect the layout with.
     private static func renderEditor(to path: String, width: Double, height: Double) -> Int32 {
         let render: @MainActor () -> Void = {
+            if CommandLine.arguments.contains("--no-key") {
+                // The "no key yet" state, so the BYOK gating can be verified as pixels.
+                GiphyKeyStore.storage = NoGiphyKeyStorage()
+                setenv("GIPHY_API_KEY", "", 1)
+                GiphyKeyStore.legacyPathOverride = "/nonexistent/giphy/api_key"
+            }
             let model = AppModel(startEngine: false)
             let hosting = NSHostingView(rootView: ActivityEditorView(model: model))
             let frame = NSRect(x: 0, y: 0, width: width, height: height)

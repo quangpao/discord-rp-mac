@@ -105,9 +105,21 @@ public struct KeychainGiphyKeyStorage: GiphyKeyStorage {
     }
 }
 
+/// A storage that never holds a key. Used to render/verify the "user has not brought a key yet"
+/// state without touching the developer's real Keychain.
+public struct NoGiphyKeyStorage: GiphyKeyStorage {
+    public init() {}
+    public func read() -> String? { nil }
+    public func write(_ value: String) throws {}
+    public func delete() {}
+}
+
 public enum GiphyKeyStore {
     private static let storageLock = NSLock()
     nonisolated(unsafe) private static var backingStorage: GiphyKeyStorage = KeychainGiphyKeyStorage()
+    /// Overridden by `--render-editor … --no-key` and by tests, so the "no key yet" state can be
+    /// rendered and asserted without touching the developer's real key.
+    nonisolated(unsafe) public static var legacyPathOverride: String?
 
     /// Swapped by tests; the app uses the Keychain. Lock-guarded so it is safe under strict
     /// concurrency (a bare `static var` is rejected in Swift 6).
@@ -125,7 +137,8 @@ public enum GiphyKeyStore {
     }
 
     public static func legacyPath(home: String = NSHomeDirectory()) -> String {
-        "\(home)/.giphy/api_key"
+        if let override = legacyPathOverride { return override }
+        return "\(home)/.giphy/api_key"
     }
 
     /// Keychain first, then the environment, then the legacy file — so a user who saved a key in

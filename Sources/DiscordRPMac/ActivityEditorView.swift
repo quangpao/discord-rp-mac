@@ -336,6 +336,8 @@ struct ActivityEditorView: View {
             }
             row("Giphy") {
                 Toggle("Private", isOn: $giphyHidden)
+                    // Only meaningful for an upload, so it is disabled with the upload buttons.
+                    .disabled(keySource == .none)
             }
             row("Asset names") {
                 Button("Load from Discord") { Task { await loadAssets() } }
