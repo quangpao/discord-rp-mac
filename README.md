@@ -33,9 +33,8 @@ elapsed timer and up to two link buttons, kept alive while you work. Written fro
 ## Install
 
 **Download** — take the `.dmg` from [Releases](https://github.com/quangpao/discord-rp-mac/releases/latest)
-and drag the app to Applications. The build is **not notarized**, so macOS will refuse the first
-launch: open it once, then allow it in **System Settings → Privacy & Security → Open Anyway**
-(or `xattr -dr com.apple.quarantine "/Applications/Discord RP.app"`).
+and drag the app to Applications. The build is **not notarized**, so macOS asks once before the first
+launch — the exact steps are in the [wiki FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ).
 
 **Build from source** — no Gatekeeper involvement:
 
@@ -47,56 +46,34 @@ cd discord-rp-mac
 
 ## Configure
 
-1. **Optional, but recommended** — create your own application at
-   <https://discord.com/developers/applications> and copy its **Application ID**. With no id of your
-   own the app uses this project's application and the card reads *Discord RP*; your own id gives you
-   your own name, icon and art assets. Walkthrough: **[wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup)**.
-2. In the app: menu bar → **Edit This Preset…** → **Connection → Apply**. That is what pushes the
-   activity to Discord, and it also recovers when Discord restarts.
-3. Optionally upload images under the application's *Art Assets* and use their names as image keys,
-   or paste an https image URL directly (Discord's external-image budget is 256 characters).
+The app works immediately: a fresh install uses this project's application, so pressing **Apply** in
+**Edit This Preset… → Connection** is all it takes to push the activity to Discord (it also recovers a
+connection Discord dropped).
+
+For your own name, icon and art assets, create an application in the
+[Discord Developer Portal](https://discord.com/developers/applications) and paste its **Application
+ID** in the same card — the walkthrough, including art assets, is in **[wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup)**.
 
 ![The menu bar menu](docs/screenshots/menu.png)
 
-## Images and your Giphy key
+## Giphy key
 
-The app ships **no API keys**. The *Upload to Giphy…* buttons work with your own free Giphy key:
-create one at <https://developers.giphy.com/dashboard/?create=true>, then paste it in
-**Edit This Preset… → “Giphy — bring your own key” → Save to Keychain**.
-
-| Looked up in this order | Set by |
-| --- | --- |
-| macOS Keychain (`dev.quangpao.discordrp.giphy`) | the app, from the field above |
-| `$GIPHY_API_KEY` | your shell or CI |
-| `~/.giphy/api_key` | a hand-written file, for scripting |
-
-The key is never logged, never written into this repository and never shown back — the UI only reports
-which source supplied it. Uploads use **your** Giphy account, are public unless you tick *Private on
-Giphy*, and a dashboard key allows 10 uploads per day. The app keeps a local history of its uploads
-because Giphy's API cannot list them.
+The app ships **no API keys**. *Upload to Giphy…* needs your own free key
+(<https://developers.giphy.com/dashboard/?create=true>), pasted in **Edit This Preset… → “Giphy —
+bring your own key” → Save to Keychain**; `$GIPHY_API_KEY` and `~/.giphy/api_key` also work. The key is
+never logged, never committed and never shown back — **[wiki: Giphy key](https://github.com/quangpao/discord-rp-mac/wiki/Giphy-key)** covers the
+lookup order, what an upload sends, quota and the local upload history.
 
 ## Troubleshooting
 
-| Symptom | Cause / fix |
-| --- | --- |
-| The activity does not show, but a game does | Discord shows one activity in the compact slot and auto-detected games win. Open your own profile to see the Rich Presence. |
-| Status stays red, or "Invalid Client ID" | Wrong Application ID, or Discord is not running. |
-| My buttons are invisible | By Discord's design, buttons are shown only to *other* users — never to the account that set them. |
-| *Upload to Giphy…* is greyed out | No Giphy key yet — that is deliberate. Add yours in the *Giphy* card. |
-
-Everything else — asset lists, Giphy errors, animation, sleep/reconnect, Gatekeeper, whether it is safe
-— is answered in **[wiki: FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ)**.
+Check the status line in the app (green means connected) and press **Apply** once. The common cases —
+one activity slot, a red status or *Invalid Client ID*, buttons invisible to you, a greyed-out Giphy
+upload, sleep, Gatekeeper, whether it is safe — are answered in **[wiki: FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ)**.
 
 ## Uninstall
 
-```bash
-# quit the app first (menu bar → Quit), then:
-rm -rf "/Applications/Discord RP.app"
-rm -rf "$HOME/Library/Application Support/DiscordRPMac" "$HOME/Library/Logs/DiscordRP"
-security delete-generic-password -s dev.quangpao.discordrp.giphy -a api-key 2>/dev/null || true
-```
-
-Also remove it from **System Settings → General → Login Items** if you enabled launch at login.
+Quit it from the menu bar, delete the app, then remove its data and its Keychain item — the commands,
+plus what was stored where, are in **[wiki: Uninstall](https://github.com/quangpao/discord-rp-mac/wiki/Uninstall)**.
 
 ## Limitations
 
@@ -122,7 +99,7 @@ Conventions, the headless CLI flags and how the screenshots in this file are reg
 | | |
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | module map, and the protocol findings that shaped the code |
-| [Wiki](https://github.com/quangpao/discord-rp-mac/wiki) | user guide: [Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup) · [FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ) · [Giphy key](https://github.com/quangpao/discord-rp-mac/wiki/Giphy-key) · [Images](https://github.com/quangpao/discord-rp-mac/wiki/Images) · [Uninstall](https://github.com/quangpao/discord-rp-mac/wiki/Uninstall) |
+| [Wiki](https://github.com/quangpao/discord-rp-mac/wiki) | user guide: setup, FAQ, Giphy key, images, uninstall |
 | [docs/release.md](docs/release.md) | versioning, tagging, signing and notarization |
 | [docs/ui/README.md](docs/ui/README.md) | logo assets, icon pipeline, design artifacts |
 | [SECURITY.md](SECURITY.md) | what is stored, what is sent, how to report a problem |
