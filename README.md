@@ -54,33 +54,6 @@ ID** in the same card — the walkthrough, including art assets, is in **[wiki: 
 
 ![The menu bar menu](docs/screenshots/menu.png)
 
-## Giphy key
-
-The app ships **no API keys**. *Upload to Giphy…* needs your own free key
-(<https://developers.giphy.com/dashboard/?create=true>), pasted in **Edit This Preset… → “Giphy —
-bring your own key” → Save to Keychain**; `$GIPHY_API_KEY` and `~/.giphy/api_key` also work. The key is
-never logged, never committed and never shown back — **[wiki: Giphy key](https://github.com/quangpao/discord-rp-mac/wiki/Giphy-key)** covers the
-lookup order, what an upload sends, quota and the local upload history.
-
-## Troubleshooting
-
-Check the status line in the app (green means connected) and press **Apply** once. The common cases —
-one activity slot, a red status or *Invalid Client ID*, buttons invisible to you, a greyed-out Giphy
-upload, sleep, Gatekeeper, whether it is safe — are answered in **[wiki: FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ)**.
-
-## Uninstall
-
-Quit it from the menu bar, delete the app, then remove its data and its Keychain item — the commands,
-plus what was stored where, are in **[wiki: Uninstall](https://github.com/quangpao/discord-rp-mac/wiki/Uninstall)**.
-
-## Limitations
-
-- Around 75 MB resident. That is the SwiftUI/AppKit baseline, not a leak; getting under 30 MB would
-  mean rebuilding the menu with a raw `NSStatusItem`/`NSMenu`.
-- The name and icon on the activity card come from *your* Discord application — the app only fills the
-  fields Discord exposes.
-- Party size, secrets and game auto-detection are intentionally out of scope.
-
 ## Development
 
 ```bash
@@ -89,7 +62,7 @@ swift build && swift test         # unit tests (needs the Xcode-selected toolcha
 ./scripts/bump-version.sh 1.0.1   # bump both version files before tagging
 ```
 
-Conventions, the headless CLI flags and how the screenshots in this file are regenerated:
+Conventions, the headless CLI flags and how the screenshot in this file is regenerated:
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Documentation
@@ -97,7 +70,7 @@ Conventions, the headless CLI flags and how the screenshots in this file are reg
 | | |
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | module map, and the protocol findings that shaped the code |
-| [Wiki](https://github.com/quangpao/discord-rp-mac/wiki) | user guide: setup, FAQ, Giphy key, images, uninstall |
+| [Wiki](https://github.com/quangpao/discord-rp-mac/wiki) | user guide — [Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup) · [FAQ](https://github.com/quangpao/discord-rp-mac/wiki/FAQ) · [Giphy key](https://github.com/quangpao/discord-rp-mac/wiki/Giphy-key) · [Images](https://github.com/quangpao/discord-rp-mac/wiki/Images) · [Uninstall](https://github.com/quangpao/discord-rp-mac/wiki/Uninstall) |
 | [docs/release.md](docs/release.md) | versioning, tagging, signing and notarization |
 | [docs/ui/README.md](docs/ui/README.md) | logo assets, icon pipeline, design artifacts |
 | [SECURITY.md](SECURITY.md) | what is stored, what is sent, how to report a problem |
@@ -105,10 +78,8 @@ Conventions, the headless CLI flags and how the screenshots in this file are reg
 
 ## Privacy
 
-No telemetry, no analytics, no auto-update and no server run by this project. Rich Presence goes over
-the local Discord IPC socket; the only network calls are the ones you trigger — listing your own
-application's assets, loading an image preview, and uploading to Giphy with your key. What is stored,
-and where, is listed in [SECURITY.md](SECURITY.md).
+No telemetry, no analytics, no auto-update, no server. The only network calls are the ones you trigger;
+what is stored, and what is sent, is in [SECURITY.md](SECURITY.md).
 
 ## License
 
