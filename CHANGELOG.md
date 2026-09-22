@@ -2,7 +2,7 @@
 
 Notable changes per release. Dates are the release/tag dates.
 
-## [Unreleased]
+## [1.2.0] - 2026-09-23
 
 ### Fixed
 
@@ -16,6 +16,10 @@ Notable changes per release. Dates are the release/tag dates.
 
 
 ### Changed
+
+- The menu bar panel dropped its `Presets ▸` submenu and the `Edit This Preset…` row: choosing a card's
+  preset and editing presets happen in Settings → Cards and Settings → Presets, so the panel keeps only
+  daily actions (status line · Settings… · Reapply Now · Clear Presence · Quit).
 
 - **Preset editing moved into Settings → Presets**: a preset list on the left (each row saying which
   card uses it) and the full editor form on the right, so editing no longer means opening a separate

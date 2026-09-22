@@ -443,11 +443,11 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
   <!-- ================= SECTION 2 ================= -->
   <section class="sec" id="sec2" data-od-id="section-dropdown">
     <div class="sec-head"><div class="sec-num">02</div><h2>The open dropdown menu</h2></div>
-    <p class="sec-lede">The centrepiece. Rows are 22 px, the panel is 6 px radius with 4 px vertical / 5 px horizontal inner padding, and separators are 1 px lines with 5 px vertical margin. Presets live in exactly one submenu; nothing else nests. Panels open right-aligned to the screen edge, as status-item menus do on macOS.</p>
+    <p class="sec-lede">The centrepiece. Rows are 22 px, the panel is 6 px radius with 4 px vertical / 5 px horizontal inner padding, and the only separator is a 1 px line with 5 px vertical margin before Quit. Preset choice and preset editing live in Settings, so the menu stays as a compact command surface. Panels open right-aligned to the screen edge, as status-item menus do on macOS.</p>
 
     <div class="mockrow">
 
-      <!-- (a) connected + submenu -->
+      <!-- (a) connected -->
       <div class="mock" data-od-id="panel-a-mock">
         <div class="stripwrap" style="padding-bottom:0">
           <div class="mbs">
@@ -467,29 +467,15 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
           <div class="menu-cluster">
             <div class="mpanel" data-od-id="menu-panel-connected">
               <div class="mrow status"><span class="mi"><span class="dot dot-green"></span></span><span class="mlabel">Connected as kun#0</span></div>
-              <div class="msep"></div>
-              <div class="mrow is-open"><span class="mi"><svg aria-hidden="true"><use href="#i-stack"/></svg></span><span class="mlabel">Presets</span><span class="marrow"><svg aria-hidden="true"><use href="#i-chev"/></svg></span></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-slider"/></svg></span><span class="mlabel">Edit This Preset…</span><span class="mshort">⌘E</span></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-gear"/></svg></span><span class="mlabel">Settings…</span><span class="mshort">⌘,</span></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="mlabel">Reapply Now</span><span class="mshort">⌘R</span></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear All Presences</span></div>
               <div class="msep"></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-power"/></svg></span><span class="mlabel">Quit Discord RP</span><span class="mshort">⌘Q</span></div>
             </div>
-            <div class="mpanel sub" data-od-id="submenu-presets">
-              <div class="mrow is-open"><span class="mi"><svg aria-hidden="true"><use href="#i-check"/></svg></span><span class="mlabel">Gaming</span></div>
-              <div class="mrow"><span class="mi"></span><span class="mlabel">Working</span></div>
-              <div class="mrow"><span class="mi"></span><span class="mlabel">Streaming</span></div>
-              <div class="msep"></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-check"/></svg></span><span class="mlabel">Card 1 — Gaming</span></div>
-              <div class="mrow"><span class="mi"></span><span class="mlabel">Card 2 — Streaming</span></div>
-              <div class="msep"></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-pluscircle"/></svg></span><span class="mlabel">Save current as new preset…</span></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-list"/></svg></span><span class="mlabel">Manage presets…</span></div>
-            </div>
           </div>
         </div>
-        <div class="mock-cap"><b>(a) Connected · 3 presets · 2 cards</b><span>“Gaming” is active; card toggles appear in the same Presets submenu only when more than one card exists.</span></div>
+        <div class="mock-cap"><b>(a) Connected · multiple cards</b><span>Clear reads “Clear All Presences” when more than one enabled card is running.</span></div>
       </div>
 
       <!-- (b) discord not running -->
@@ -508,9 +494,6 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
           <div class="menu-cluster">
             <div class="mpanel" data-od-id="menu-panel-disconnected">
               <div class="mrow status"><span class="mi"><span class="dot dot-grey"></span></span><span class="mlabel">Discord not running</span></div>
-              <div class="msep"></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-stack"/></svg></span><span class="mlabel">Presets</span><span class="marrow"><svg aria-hidden="true"><use href="#i-chev"/></svg></span></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-slider"/></svg></span><span class="mlabel">Edit This Preset…</span><span class="mshort">⌘E</span></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-gear"/></svg></span><span class="mlabel">Settings…</span><span class="mshort">⌘,</span></div>
               <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="mlabel">Reapply Now</span><span class="mshort">⌘R</span></div>
               <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear Presence</span></div>
@@ -519,7 +502,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
             </div>
           </div>
         </div>
-        <div class="mock-cap"><b>(b) Discord not running</b><span>Reapply and Clear are disabled because there is no connection; the menu keeps the same main-level row count.</span></div>
+        <div class="mock-cap"><b>(b) Discord not running</b><span>Reapply and Clear are disabled because there is no connection; the menu keeps the same row count.</span></div>
       </div>
 
       <!-- (c) error -->
@@ -538,10 +521,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
           <div class="menu-cluster">
             <div class="mpanel" data-od-id="menu-panel-error">
               <div class="mrow status error"><span class="mi"><span class="dot dot-red"></span></span><span class="mlabel">Invalid Application ID</span></div>
-              <div class="msep"></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-gear"/></svg></span><span class="mlabel">Fix in Settings…</span></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-stack"/></svg></span><span class="mlabel">Presets</span><span class="marrow"><svg aria-hidden="true"><use href="#i-chev"/></svg></span></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-slider"/></svg></span><span class="mlabel">Edit This Preset…</span><span class="mshort">⌘E</span></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-gear"/></svg></span><span class="mlabel">Settings…</span><span class="mshort">⌘,</span></div>
               <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="mlabel">Reapply Now</span><span class="mshort">⌘R</span></div>
               <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear Presence</span></div>
@@ -550,7 +530,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
             </div>
           </div>
         </div>
-        <div class="mock-cap"><b>(c) Invalid Application ID</b><span>The status line turns accent-red and a “Fix in Settings…” row is injected directly under it; it opens the Settings window.</span></div>
+        <div class="mock-cap"><b>(c) Invalid Application ID</b><span>The status line turns accent-red and a “Fix in Settings…” row is injected directly under it; it opens Settings on Cards.</span></div>
       </div>
 
       <!-- (d) first run -->
@@ -569,28 +549,19 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
           <div class="menu-cluster">
             <div class="mpanel" data-od-id="menu-panel-firstrun">
               <div class="mrow status"><span class="mi"><span class="dot dot-green"></span></span><span class="mlabel">Connected as kun#0</span></div>
-              <div class="msep"></div>
-              <div class="mrow is-open"><span class="mi"><svg aria-hidden="true"><use href="#i-stack"/></svg></span><span class="mlabel">Presets</span><span class="marrow"><svg aria-hidden="true"><use href="#i-chev"/></svg></span></div>
-              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-slider"/></svg></span><span class="mlabel">Edit This Preset…</span><span class="mshort">⌘E</span></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-gear"/></svg></span><span class="mlabel">Settings…</span><span class="mshort">⌘,</span></div>
               <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-refresh"/></svg></span><span class="mlabel">Reapply Now</span><span class="mshort">⌘R</span></div>
-              <div class="mrow disabled"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear Presence</span></div>
+              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-xcircle"/></svg></span><span class="mlabel">Clear Presence</span></div>
               <div class="msep"></div>
               <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-power"/></svg></span><span class="mlabel">Quit Discord RP</span><span class="mshort">⌘Q</span></div>
             </div>
-            <div class="mpanel sub" data-od-id="submenu-presets-empty">
-              <div class="mrow empty"><span class="mi"></span><span class="mlabel">No presets yet</span></div>
-              <div class="msep"></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-pluscircle"/></svg></span><span class="mlabel">Save current as new preset…</span></div>
-              <div class="mrow"><span class="mi"><svg aria-hidden="true"><use href="#i-list"/></svg></span><span class="mlabel">Manage presets…</span></div>
-            </div>
           </div>
         </div>
-        <div class="mock-cap"><b>(d) First run · no presets</b><span>Preset-dependent rows are disabled, never hidden, so the menu keeps a stable shape. The empty state sits one level down, inside the submenu, and is muted + non-interactive.</span></div>
+        <div class="mock-cap"><b>(d) First run · no runnable card</b><span>Reapply is disabled until a runnable card exists. Preset setup happens in Settings, not in this panel.</span></div>
       </div>
 
     </div>
-    <p class="note">The Presets row is the single submenu. In (a) and (d) it is exploded to the right of its parent so its row styling is legible; single-panel states (b, c) sit right-aligned under the status item exactly as the open menu does on screen. Bringing the submenu up twice is intentional — (a) specifies the populated styling, (d) specifies the empty state, which lives in the same submenu.</p>
+    <p class="note">All states are single-panel states and sit right-aligned under the status item exactly as the open menu does on screen. The panel intentionally duplicates neither card preset switching nor preset editing: choose a card’s preset in Settings → Cards, and create, edit, duplicate, import, or delete presets in Settings → Presets.</p>
   </section>
 
   <!-- ================= SECTION 3 ================= -->
@@ -608,14 +579,10 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
           <tr><td><b>Normal row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--menu-fg</span> / <span class="tok">--menu-icon</span></td><td>same tokens</td><td>per item</td><td>Radius 4 px, padding 0 6 px 0 3 px, icon cell 16 px + 6 px gap.</td></tr>
           <tr><td><b>Hover / selected row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--mac-accent</span> bg, <span class="tok">--mac-accent-fg</span></td><td>same tokens</td><td>—</td><td>Whole row inverts to accent + white; icon, shortcut and arrow all go white in the same rule.</td></tr>
           <tr><td><b>Disabled row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--menu-disabled</span></td><td>same tokens</td><td>per item</td><td>Label, icon, shortcut and arrow all drop to the disabled token. Never hover-highlights.</td></tr>
-          <tr><td><b>Checked submenu row</b></td><td>22 px</td><td>13 px regular</td><td>tick <span class="tok">--menu-fg</span>, no tick = empty cell</td><td>same tokens</td><td><code>checkmark</code></td><td>State occupies the leading icon cell. Active preset and enabled card toggles use it inside the Presets submenu.</td></tr>
-          <tr><td><b>Separator</b></td><td>1 px (+5 px above/below)</td><td>—</td><td><span class="tok">--menu-sep</span></td><td>same tokens</td><td>—</td><td>Margin 5 px 4 px. Main menu has one divider before Quit; submenu dividers split presets, card toggles and management actions.</td></tr>
-          <tr><td><b>Shortcut label</b></td><td>—</td><td>13 px regular</td><td><span class="tok">--menu-muted</span></td><td>same tokens</td><td>—</td><td>Right-aligned, ≥20 px clear of the label. ⌘E / ⌘, / ⌘R / ⌘Q. White when the row is selected.</td></tr>
-          <tr><td><b>Submenu arrow</b></td><td>10 × 14 px</td><td>—</td><td><span class="tok">--menu-muted</span></td><td>same tokens</td><td><code>chevron.right</code></td><td>Hand-drawn stroke 1.5 px, inline-end, ≥16 px from the label.</td></tr>
+          <tr><td><b>Separator</b></td><td>1 px (+5 px above/below)</td><td>—</td><td><span class="tok">--menu-sep</span></td><td>same tokens</td><td>—</td><td>Margin 5 px 4 px. The main menu has one divider before Quit.</td></tr>
+          <tr><td><b>Shortcut label</b></td><td>—</td><td>13 px regular</td><td><span class="tok">--menu-muted</span></td><td>same tokens</td><td>—</td><td>Right-aligned, ≥20 px clear of the label. ⌘, / ⌘R / ⌘Q. White when the row is selected.</td></tr>
           <tr><td><b>Icon cell</b></td><td>16 × 16 px</td><td>—</td><td><span class="tok">--menu-icon</span></td><td>same tokens</td><td>per item</td><td>Fixed 16 px column, 6 px gap to the label. Empty but reserved when a row has no icon.</td></tr>
-          <tr><td><b>Empty-state row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--menu-muted</span></td><td>same tokens</td><td>—</td><td>Non-interactive, no hover. Used only for “No presets yet” inside the Presets submenu.</td></tr>
           <tr><td><b>Error row</b></td><td>22 px</td><td>13 px regular</td><td><span class="tok">--danger</span></td><td>same tokens</td><td><code>circle.fill</code> (red)</td><td>Status line in the error state. Red dot + red label; paired with the “Fix in Settings…” gear row.</td></tr>
-          <tr><td><b>Checkmark column</b></td><td>16 px</td><td>—</td><td><span class="tok">--menu-fg</span></td><td>same tokens</td><td><code>checkmark</code></td><td>Same 16 px leading cell as icons. Active preset is checked; every other preset keeps the cell empty so labels align.</td></tr>
         </tbody>
       </table>
       </div>
@@ -775,7 +742,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
   <!-- ================= SECTION 5 ================= -->
   <section class="sec" id="sec5" data-od-id="section-handoff">
     <div class="sec-head"><div class="sec-num">05</div><h2>Handoff — implementation table</h2></div>
-    <p class="sec-lede">One row per menu item, in exact render order. Indices 1–6 plus Quit are the seven normal main-level rows; <code>E1</code> is the only injected main-level row. <code>S*</code> rows live in the Presets submenu. “Enabled when” names the state predicate the item observes.</p>
+    <p class="sec-lede">One row per menu item, in exact render order. Indices 1–4 are the normal command rows; <code>E1</code> is the only injected main-level row. “Enabled when” names the state predicate the item observes. Card preset choice belongs in Settings → Cards, and preset editing belongs in Settings → Presets.</p>
 
     <div class="tablecard" data-od-id="handoff-table">
       <div class="tscroll">
@@ -783,21 +750,27 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
         <thead><tr><th>#</th><th>Label (exact string)</th><th>SF Symbol</th><th>Enabled when</th><th>Action</th><th>Shortcut</th><th>Notes</th></tr></thead>
         <tbody>
           <tr><td class="num">0</td><td>— status line</td><td><code>circle.fill</code></td><td>always (not interactive)</td><td>none</td><td>—</td><td>“Connected as &lt;user&gt;” / “Discord not running” / “Invalid Application ID”. Dot: green / grey / red.</td></tr>
-          <tr><td class="num">1</td><td>Presets</td><td><code>square.stack</code></td><td>always</td><td>open submenu</td><td><code>→</code></td><td>Only submenu in the app. Rendered title-case from the brief’s “PRESETS ▸”.</td></tr>
-          <tr><td class="num">2</td><td>Edit This Preset…</td><td><code>slider.horizontal.3</code></td><td>active preset exists</td><td>open editor window</td><td><code>⌘E</code></td><td>Disabled on first run.</td></tr>
-          <tr><td class="num">3</td><td>Settings…</td><td><code>gearshape</code></td><td>always</td><td>open Settings window</td><td><code>⌘,</code></td><td>Permanent main-level access to Settings.</td></tr>
-          <tr><td class="num">4</td><td>Reapply Now</td><td><code>arrow.clockwise</code></td><td>discord connected and at least one runnable card exists</td><td>re-send current presence</td><td><code>⌘R</code></td><td>Disabled unless the current card set can run.</td></tr>
-          <tr><td class="num">5</td><td>Clear Presence / Clear All Presences</td><td><code>xmark.circle</code></td><td>discord connected</td><td>clear Discord activity</td><td>—</td><td>Label switches to “Clear All Presences” when more than one card is enabled.</td></tr>
+          <tr><td class="num">1</td><td>Settings…</td><td><code>gearshape</code></td><td>always</td><td>open Settings window</td><td><code>⌘,</code></td><td>Permanent access to Settings. Cards choose presets in Settings → Cards; presets are edited in Settings → Presets.</td></tr>
+          <tr><td class="num">2</td><td>Reapply Now</td><td><code>arrow.clockwise</code></td><td>discord connected and at least one runnable card exists</td><td>re-send current presence</td><td><code>⌘R</code></td><td>Disabled unless the current card set can run.</td></tr>
+          <tr><td class="num">3</td><td>Clear Presence / Clear All Presences</td><td><code>xmark.circle</code></td><td>discord connected</td><td>clear Discord activity</td><td>—</td><td>Label switches to “Clear All Presences” when more than one card is enabled.</td></tr>
           <tr class="rowsep"><td colspan="7">separator · 1 px · 5 px vertical margin</td></tr>
-          <tr><td class="num">6</td><td>Quit Discord RP</td><td><code>power</code></td><td>always</td><td>terminate app</td><td><code>⌘Q</code></td><td>Last row, always present.</td></tr>
+          <tr><td class="num">4</td><td>Quit Discord RP</td><td><code>power</code></td><td>always</td><td>terminate app</td><td><code>⌘Q</code></td><td>Last row, always present.</td></tr>
           <tr class="rowsep"><td colspan="7">conditional · error state only</td></tr>
-          <tr><td class="num">E1</td><td>Fix in Settings…</td><td><code>gearshape</code></td><td>invalid Application ID</td><td>open Settings window</td><td>—</td><td>Injected immediately after the status line; not present in any other state.</td></tr>
-          <tr class="rowsep"><td colspan="7">Presets submenu (level 2)</td></tr>
-          <tr><td class="num">S1</td><td>&lt;preset name&gt;</td><td><code>checkmark</code> (state cell)</td><td>preset exists</td><td>activate preset</td><td>—</td><td>Active preset checked; others keep an empty 16 px cell.</td></tr>
-          <tr><td class="num">S2</td><td>&lt;card name&gt; — &lt;preset name&gt;</td><td><code>checkmark</code> (state cell)</td><td>more than one card exists</td><td>toggle card enabled state</td><td>—</td><td>Enabled cards are checked; hidden completely for single-card users.</td></tr>
-          <tr><td class="num">S3</td><td>Save current as new preset…</td><td><code>plus.circle</code></td><td>active preset exists</td><td>duplicate active preset</td><td>—</td><td>Disabled when there are no presets.</td></tr>
-          <tr><td class="num">S4</td><td>Manage presets…</td><td><code>list.bullet.rectangle</code></td><td>always</td><td>open editor window</td><td>—</td><td>Preset management lives in the editor/settings surfaces, not as deeper menu levels.</td></tr>
-          <tr><td class="num">S0</td><td>No presets yet</td><td>—</td><td>never (empty state)</td><td>none</td><td>—</td><td>Muted, non-hover. Shown only when there are zero presets.</td></tr>
+          <tr><td class="num">E1</td><td>Fix in Settings…</td><td><code>gearshape</code></td><td>invalid Application ID</td><td>open Settings window on Cards</td><td>—</td><td>Injected immediately after the status line; not present in any other state.</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <h3 class="sub">Shortcut table</h3>
+    <div class="tablecard" data-od-id="shortcut-table">
+      <div class="tscroll">
+      <table>
+        <thead><tr><th>Shortcut</th><th>Row</th><th>Action</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>⌘,</code></td><td>Settings…</td><td>Open Settings</td><td>Default pane is Cards.</td></tr>
+          <tr><td><code>⌘R</code></td><td>Reapply Now</td><td>Re-send current presence</td><td>Disabled when Discord is disconnected or no runnable card exists.</td></tr>
+          <tr><td><code>⌘Q</code></td><td>Quit Discord RP</td><td>Terminate app</td><td>Always present.</td></tr>
         </tbody>
       </table>
       </div>
@@ -815,23 +788,24 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
     </ul>
 
     <h3 class="sub">Deliberately cut for compactness</h3>
-    <p class="note" style="margin-top:0">The normal main menu is seven rows plus one divider; the error state may inject “Fix in Settings…” for eight rows plus one divider. That stays under the ≤ 11 rows / exactly one status line / exactly one submenu contract. These items stay out of the menu because they duplicate Settings or are too rare to earn a permanent row.</p>
+    <p class="note" style="margin-top:0">Max-row accounting: the normal menu is five rows plus one divider; the error state injects “Fix in Settings…” for six rows plus one divider. That stays under the ≤ 11 rows / exactly one status line / at most one submenu contract. The current shipped menu uses zero submenus. These items stay out of the menu because they duplicate Settings or are too rare to earn a permanent row.</p>
     <ul class="rules cut">
       <li><b>About Discord RP / version</b> — moved to the standard About panel in Settings.</li>
       <li><b>Launch at Login</b> — lives in Settings ▸ General with the other startup and connection preferences.</li>
       <li><b>Check for Updates… and result rows</b> — manual check lives in Settings ▸ General beside its status line.</li>
-      <li><b>Open Discord</b> — connection recovery belongs in Settings; the menu only shows the disabled action state.</li>
+      <li><b>Open Discord</b> — connection recovery belongs in Settings; the menu only shows disabled Reapply / Clear state when Discord is unavailable.</li>
       <li><b>Copy / Paste presence JSON</b> — developer affordance, moved to Settings ▸ Advanced.</li>
       <li><b>Pause / Resume presence</b> — collapsed into Clear Presence + Reapply Now.</li>
       <li><b>Auto-reconnect toggle</b> — always on; exposing it invited a broken state.</li>
       <li><b>Refresh preset list</b> — presets are file-observed and refresh themselves.</li>
-      <li><b>Inline per-preset Edit / Duplicate / Delete</b> — would force a third submenu level; all moved to “Manage presets…”.</li>
-      <li><b>“Recent presets” nested submenu</b> — a second submenu; presets already fit in one.</li>
+      <li><b>Card preset switching</b> — choosing a card’s preset happens in Settings ▸ Cards, where every card and its validation state are visible.</li>
+      <li><b>Preset editing and management</b> — creating, editing, duplicating, importing, exporting, and deleting presets happens in Settings ▸ Presets.</li>
+      <li><b>Recent preset switching</b> — omitted with the rest of preset switching so the menu does not duplicate Settings.</li>
       <li><b>Second live status line / presence preview</b> — breaks the one-status-line rule.</li>
-      <li><b>Set as default preset</b> — the checkmark on activation already communicates this.</li>
+      <li><b>Set as default preset</b> — handled by the card preset picker in Settings ▸ Cards.</li>
       <li><b>Export / Import all presets</b> — Settings ▸ Presets.</li>
       <li><b>Open Logs / Report an issue / Support</b> — help menu in the app itself.</li>
-      <li><b>Keyboard-shortcut cheat sheet</b> — the three shortcuts are inline where they apply.</li>
+      <li><b>Keyboard-shortcut cheat sheet</b> — the three shortcuts are inline where they apply and listed in the shortcut table above.</li>
     </ul>
   </section>
 
