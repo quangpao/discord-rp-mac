@@ -17,6 +17,11 @@ Notable changes per release. Dates are the release/tag dates.
 
 ### Changed
 
+- **Preset editing moved into Settings → Presets**: a preset list on the left (each row saying which
+  card uses it) and the full editor form on the right, so editing no longer means opening a separate
+  window. The editor window is gone; the menu's `Edit This Preset…` (`⌘E`) opens Settings on the active
+  card's preset.
+
 - Configuration moved into a **Settings** window (Cards · Presets · General · Network): the application
   id, pipe index, Reconnect, Launch at Login, the Giphy key and the update check left the menu, and the
   editor now edits one preset's content only. The menu bar menu keeps its daily actions — one status
