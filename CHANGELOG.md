@@ -6,13 +6,23 @@ Notable changes per release. Dates are the release/tag dates.
 
 ### Changed
 
+- Configuration moved into a **Settings** window (Cards · Presets · General · Network): the application
+  id, pipe index, Reconnect, Launch at Login, the Giphy key and the update check left the menu, and the
+  editor now edits one preset's content only. The menu bar menu keeps its daily actions — one status
+  line that reports every card, one submenu, ≤ 11 rows — and `⌘,` is Settings while the editor is `⌘E`.
 - The editor explains itself with **hover tooltips** instead of a caption line under every control:
   placeholders carry the essence, tooltips the detail, and a line of text is spent only on a warning,
   an error or a status. The form is about 226 px shorter.
 
 ### Added
 
-- **Check for Updates…** in the menu bar menu: it compares the running version with the latest GitHub
+- **Several presence cards at once.** One card is the activity shown for one Discord application, and
+  Discord renders exactly one card per application — so a second card needs a **second Discord
+  application** (its own name, icon and assets). Settings → Cards adds, enables and verifies them, each
+  card gets its own IPC connection, and a card that fails never takes the others down. Existing installs
+  migrate to a single card on first launch, and the settings file keeps mirroring it so an older build
+  still pushes the right presence.
+- **Check for Updates…** in Settings: it compares the running version with the latest GitHub
   release and offers the download page when one is newer. Manual on purpose — nothing polls on a timer,
   so the app still only makes the network calls you trigger (`SECURITY.md` lists the new endpoint).
 

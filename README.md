@@ -14,13 +14,16 @@ elapsed timer and up to two link buttons, kept alive while you work. Written fro
 
 - **Full activity editor** — type, display type, name, details and state with links, party size, five
   timestamp modes, large/small images with text and link, up to two buttons.
+- **One or several cards at once** — each card is its own Discord application, so you can show a
+  second activity next to the first; enable any number of them in Settings → Cards.
 - **Named presets**, switched from the menu bar; image keys are listed from your own Discord
   application.
 - **Keeps the presence alive** — 15 s keepalive, backoff 2/5/10/30 s, reconnects after sleep, clears
   the presence when you quit.
 - **Menu bar only** (`LSUIElement`, no Dock icon), single instance, optional launch at login.
 - **Discord's own limits enforced up front**, with readable reasons instead of silent failures.
-- **Manual update check** — the menu compares your version with the latest GitHub release when you ask
+- **A Settings window** (Cards · Presets · General · Network) keeps the menu bar menu to daily actions.
+- **Manual update check** — Settings compares your version with the latest GitHub release when you ask
   it to; nothing polls on a timer.
 - **No telemetry, no account, no bundled keys** — presence travels over the local Discord IPC socket.
 
