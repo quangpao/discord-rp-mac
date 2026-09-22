@@ -90,6 +90,58 @@ final class DiscordIPCClientTests: XCTestCase {
     }
 }
 
+final class PresenceCardPlannerActivityNameTests: XCTestCase {
+    func testEnabledCardsSharingActivityNameAreReported() {
+        let presetA = Preset(id: UUID(), name: "A", activity: Activity(name: "Shared", details: "one"))
+        let presetB = Preset(id: UUID(), name: "B", activity: Activity(name: "Shared", details: "two"))
+        let first = PresenceCard(name: "One", presetID: presetA.id, applicationID: "1", isOn: true)
+        let second = PresenceCard(name: "Two", presetID: presetB.id, applicationID: "2", isOn: true)
+
+        XCTAssertEqual(
+            PresenceCardPlanner.duplicateActivityNameCards([first, second], presets: [presetA, presetB]),
+            [first.id: "Shared", second.id: "Shared"]
+        )
+    }
+
+    func testDisabledCardSharingActivityNameIsIgnored() {
+        let presetA = Preset(id: UUID(), name: "A", activity: Activity(name: "Shared", details: "one"))
+        let presetB = Preset(id: UUID(), name: "B", activity: Activity(name: "Shared", details: "two"))
+        let enabled = PresenceCard(name: "One", presetID: presetA.id, applicationID: "1", isOn: true)
+        let disabled = PresenceCard(name: "Two", presetID: presetB.id, applicationID: "2", isOn: false)
+
+        XCTAssertTrue(PresenceCardPlanner.duplicateActivityNameCards([enabled, disabled], presets: [presetA, presetB]).isEmpty)
+    }
+
+    func testCaseAndWhitespaceDifferencesCollide() {
+        let presetA = Preset(id: UUID(), name: "A", activity: Activity(name: "  Shared  ", details: "one"))
+        let presetB = Preset(id: UUID(), name: "B", activity: Activity(name: "shared", details: "two"))
+        let first = PresenceCard(name: "One", presetID: presetA.id, applicationID: "1", isOn: true)
+        let second = PresenceCard(name: "Two", presetID: presetB.id, applicationID: "2", isOn: true)
+
+        XCTAssertEqual(
+            PresenceCardPlanner.duplicateActivityNameCards([first, second], presets: [presetA, presetB]),
+            [first.id: "Shared", second.id: "shared"]
+        )
+    }
+
+    func testDistinctActivityNamesAreNotReported() {
+        let presetA = Preset(id: UUID(), name: "A", activity: Activity(name: "First", details: "one"))
+        let presetB = Preset(id: UUID(), name: "B", activity: Activity(name: "Second", details: "two"))
+        let first = PresenceCard(name: "One", presetID: presetA.id, applicationID: "1", isOn: true)
+        let second = PresenceCard(name: "Two", presetID: presetB.id, applicationID: "2", isOn: true)
+
+        XCTAssertTrue(PresenceCardPlanner.duplicateActivityNameCards([first, second], presets: [presetA, presetB]).isEmpty)
+    }
+
+    func testMissingPresetIsIgnored() {
+        let preset = Preset(id: UUID(), name: "A", activity: Activity(name: "Shared", details: "one"))
+        let configured = PresenceCard(name: "One", presetID: preset.id, applicationID: "1", isOn: true)
+        let missing = PresenceCard(name: "Two", presetID: UUID(), applicationID: "2", isOn: true)
+
+        XCTAssertTrue(PresenceCardPlanner.duplicateActivityNameCards([configured, missing], presets: [preset]).isEmpty)
+    }
+}
+
 /// End-to-end through the engine: connect, push a preset, clear.
 @MainActor
 final class PresenceEngineTests: XCTestCase {

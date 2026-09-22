@@ -34,16 +34,20 @@ public enum PresenceLog {
 
     private static let maxLogBytes = 1 << 20
 
-    public static func record(payload: Data?, error: String?) {
+    public static func record(payload: Data?, appID: String? = nil, reply: DiscordIPCClient.Reply? = nil, error: String?) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let stamp = ISO8601DateFormatter().string(from: Date())
+        let app = appID.map { " appID=\($0)" } ?? ""
 
         if let payload {
             try? payload.write(to: lastPayloadURL, options: .atomic)
-            append("\(stamp) pushed \(String(decoding: payload, as: UTF8.self))\n")
+            append("\(stamp) pushed\(app) \(String(decoding: payload, as: UTF8.self))\n")
+        }
+        if let reply {
+            append("\(stamp) reply\(app) opcode=\(reply.opcode.rawValue) data=\(reply.data) evt=\(reply.evt)\n")
         }
         if let error {
-            append("\(stamp) error \(error)\n")
+            append("\(stamp) error\(app) \(error)\n")
         }
     }
 

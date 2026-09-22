@@ -197,6 +197,10 @@ final class AppModel: ObservableObject {
 
     var enabledCards: [PresenceCard] { settings.cards.filter(\.isOn) }
 
+    var duplicateActivityNameCards: [UUID: String] {
+        PresenceCardPlanner.duplicateActivityNameCards(settings.cards, presets: presets)
+    }
+
     /// True when at least one enabled card has an application id — the condition for anything being
     /// sent at all.
     var hasRunnableCard: Bool {
@@ -257,6 +261,38 @@ final class AppModel: ObservableObject {
         guard let index = settings.cards.firstIndex(where: { $0.id == id }) else { return }
         settings.cards[index].isOn = isOn
         applyCards()
+    }
+
+    func makeActivityNameUnique(for cardID: UUID) {
+        guard let cardIndex = settings.cards.firstIndex(where: { $0.id == cardID }),
+              let presetIndex = presets.firstIndex(where: { $0.id == settings.cards[cardIndex].presetID })
+        else { return }
+
+        let label = cardLabel(for: settings.cards[cardIndex], index: cardIndex)
+        let existing = presets[presetIndex].activity.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let uniqueName = "\(existing.isEmpty ? "Activity" : existing) · \(label)"
+        var preset = presets[presetIndex]
+        preset.activity.name = uniqueName
+
+        let samePresetCollision = settings.cards.contains { card in
+            card.id != cardID && card.isOn && card.presetID == preset.id
+        }
+        if samePresetCollision {
+            preset.id = UUID()
+            preset.name = "\(preset.name) · \(label)"
+            presets.append(preset)
+            settings.cards[cardIndex].presetID = preset.id
+        } else {
+            presets[presetIndex] = preset
+        }
+
+        persistPresets()
+        applyCards()
+    }
+
+    private func cardLabel(for card: PresenceCard, index: Int) -> String {
+        let name = card.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "Card \(index + 1)" : name
     }
 
     // MARK: settings

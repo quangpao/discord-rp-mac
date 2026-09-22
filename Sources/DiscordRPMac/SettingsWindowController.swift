@@ -194,11 +194,19 @@ struct SettingsView: View {
             }
             if let status = status(for: binding.wrappedValue) {
                 row("Status") {
-                    Text(status.text)
-                        .font(.system(size: 11))
-                        .foregroundStyle(status.color)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .textSelection(.enabled)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(status.text)
+                            .font(.system(size: 11))
+                            .foregroundStyle(status.color)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .textSelection(.enabled)
+                        if status.canMakeUnique {
+                            Button("Make unique") {
+                                model.makeActivityNameUnique(for: card.id)
+                            }
+                            .font(.system(size: 11))
+                        }
+                    }
                 }
             }
         }
@@ -228,13 +236,24 @@ struct SettingsView: View {
         return "Card \(index + 1) — \(name.isEmpty ? "Untitled" : name)"
     }
 
-    private func status(for card: PresenceCard) -> (text: String, color: Color)? {
+    private func status(for card: PresenceCard) -> (text: String, color: Color, canMakeUnique: Bool)? {
         let issues = model.cardIssues.filter { $0.cardID == card.id }
         if !issues.isEmpty {
-            return (issues.map(\.message).joined(separator: " "), issues.contains { $0.kind != .invalidActivity } ? .red : .orange)
+            return (
+                issues.map(\.message).joined(separator: " "),
+                issues.contains { $0.kind != .invalidActivity } ? .red : .orange,
+                false
+            )
+        }
+        if model.duplicateActivityNameCards[card.id] != nil {
+            return (
+                "Another card uses the same activity name — Discord shows only one of them.",
+                .orange,
+                true
+            )
         }
         guard let result = verification[card.id], !result.isEmpty else { return nil }
-        return (result, .secondary)
+        return (result, .secondary, false)
     }
 
     private func verify(card: PresenceCard) {

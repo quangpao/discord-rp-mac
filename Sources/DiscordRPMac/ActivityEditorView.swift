@@ -99,7 +99,7 @@ struct ActivityEditorView: View {
             row("Preset name", help: "This app only — never sent to Discord.") {
                 field("Preset name (this app only)", text: $presetName)
             }
-            row("Shown as", help: "The app name Discord prints on your profile.") {
+            row("Shown as", help: "The app name Discord prints on your profile. When several cards are on, each one needs its own value here — Discord shows a single activity per name.") {
                 field("Shown as (Discord app name)", text: $draft.name)
             }
             row("Type") {

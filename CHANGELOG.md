@@ -4,6 +4,17 @@ Notable changes per release. Dates are the release/tag dates.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Only one of two cards appeared on the profile.** Discord renders a single activity per activity
+  *name*, so two cards whose presets share the same `Shown as` value collide and one of them is
+  dropped — the client keeps whichever arrived last, which is why the visible card could change
+  between restarts. Settings → Cards now warns which cards collide and offers **Make unique**, which
+  appends that card's name to its preset's value. The presence log also records what Discord answers,
+  not just what was sent, so a refused or replaced card can no longer look like a working one, and the
+  editor's `Shown as` tooltip states the rule.
+
+
 ### Changed
 
 - Configuration moved into a **Settings** window (Cards · Presets · General · Network): the application

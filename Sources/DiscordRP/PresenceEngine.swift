@@ -155,6 +155,28 @@ public enum CardWorkerChange: Equatable, Sendable {
 }
 
 public enum PresenceCardPlanner {
+    /// Cards that are enabled and whose preset activity names collide. Discord renders one activity
+    /// per name, so the extra cards never appear on the profile.
+    public static func duplicateActivityNameCards(_ cards: [PresenceCard], presets: [Preset]) -> [UUID: String] {
+        let presetsByID = Dictionary(uniqueKeysWithValues: presets.map { ($0.id, $0) })
+        var cardsByName: [String: [(UUID, String)]] = [:]
+
+        for card in cards where card.isOn {
+            guard let preset = presetsByID[card.presetID] else { continue }
+            let name = preset.activity.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { continue }
+            cardsByName[name.folding(options: [.caseInsensitive], locale: nil), default: []].append((card.id, name))
+        }
+
+        var duplicates: [UUID: String] = [:]
+        for group in cardsByName.values where group.count > 1 {
+            for (cardID, name) in group {
+                duplicates[cardID] = name
+            }
+        }
+        return duplicates
+    }
+
     /// The rules a card must pass before anything is sent. Messages stay generic and every issue
     /// carries the card id — the UI shows the card's own name beside it, so the name is not baked
     /// into the message (that is what made two copies of these rules drift apart).
@@ -528,13 +550,25 @@ private final class Worker: @unchecked Sendable {
             needsPush = false
             pushAt = nil
             guard let client, client.isConnected else { return }
-            try? client.setActivity(nil)
+            do {
+                let reply = try client.setActivityWithReply(nil)
+                PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
+            } catch {
+                PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
+            }
         }
     }
 
     func stop() {
         queue.sync { [self] in
-            if let client, client.isConnected { try? client.setActivity(nil) }
+            if let client, client.isConnected {
+                do {
+                    let reply = try client.setActivityWithReply(nil)
+                    PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
+                } catch {
+                    PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
+                }
+            }
             teardown()
             timer?.cancel()
             timer = nil
@@ -631,7 +665,12 @@ private final class Worker: @unchecked Sendable {
 
     private func present(client: DiscordIPCClient, at now: Date) {
         guard let activity = currentActivity else {
-            try? client.setActivity(nil)
+            do {
+                let reply = try client.setActivityWithReply(nil)
+                PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
+            } catch {
+                PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
+            }
             return
         }
         let payload = ActivityRules.payload(
@@ -649,9 +688,9 @@ private final class Worker: @unchecked Sendable {
         }
         do {
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
-            try client.setActivity(data)
+            let reply = try client.setActivityWithReply(data)
             presenceStarted = now
-            PresenceLog.record(payload: data, error: nil)
+            PresenceLog.record(payload: data, appID: appID, reply: reply, error: nil)
             onIssues?([])
         } catch let error as IPCError {
             if case .discordRejected(let code, let message) = error {
@@ -670,11 +709,11 @@ private final class Worker: @unchecked Sendable {
                 teardown()
                 scheduleRetry()
             }
-            PresenceLog.record(payload: nil, error: "\(error)")
+            PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
         } catch {
             teardown()
             scheduleRetry()
-            PresenceLog.record(payload: nil, error: "\(error)")
+            PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
         }
     }
 

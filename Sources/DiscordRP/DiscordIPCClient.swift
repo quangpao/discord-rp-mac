@@ -11,8 +11,31 @@ public final class DiscordIPCClient: @unchecked Sendable {
         public let id: String
     }
 
+    public struct Reply: Equatable, Sendable {
+        public let opcode: Opcode
+        public let data: String
+        public let evt: String
+
+        init(opcode: Opcode, frame: [String: Any]) {
+            self.opcode = opcode
+            self.data = Self.describe(frame["data"])
+            self.evt = (frame["evt"] as? String) ?? ""
+        }
+
+        private static func describe(_ value: Any?) -> String {
+            guard let value else { return "nil" }
+            if value is NSNull { return "null" }
+            if JSONSerialization.isValidJSONObject(value),
+               let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) {
+                return String(decoding: data, as: UTF8.self)
+            }
+            return String(describing: value)
+        }
+    }
+
     public private(set) var readyUser: ReadyUser?
     public private(set) var path: String?
+    public private(set) var lastReply: Reply?
 
     private var fd: Int32 = -1
     private let appID: String
@@ -131,6 +154,10 @@ public final class DiscordIPCClient: @unchecked Sendable {
 
     /// Pushes an activity. `nil` clears it (`"activity": null`).
     public func setActivity(_ activityJSON: Data?) throws {
+        _ = try setActivityWithReply(activityJSON)
+    }
+
+    func setActivityWithReply(_ activityJSON: Data?) throws -> Reply {
         var args: [String: Any] = ["pid": ProcessInfo.processInfo.processIdentifier]
         if let activityJSON, let object = try? JSONSerialization.jsonObject(with: activityJSON) {
             args["activity"] = object
@@ -139,12 +166,18 @@ public final class DiscordIPCClient: @unchecked Sendable {
         } else {
             throw IPCError.malformedFrame("activity payload is not valid JSON")
         }
-        _ = try command("SET_ACTIVITY", args: args)
+        let (reply, _) = try commandReply("SET_ACTIVITY", args: args)
+        return reply
     }
 
     /// Sends a command and waits for its reply (matched by nonce, skipping unrelated events).
     @discardableResult
     public func command(_ name: String, args: [String: Any] = [:]) throws -> [String: Any] {
+        let (_, frame) = try commandReply(name, args: args)
+        return frame
+    }
+
+    private func commandReply(_ name: String, args: [String: Any] = [:]) throws -> (Reply, [String: Any]) {
         let nonce = UUID().uuidString
         try write(opcode: .frame, payload: ["cmd": name, "args": args, "nonce": nonce])
         while true {
@@ -156,16 +189,19 @@ public final class DiscordIPCClient: @unchecked Sendable {
                 try write(opcode: .pong, body: Data())
                 continue
             case .close:
+                lastReply = Reply(opcode: op, frame: frame)
                 close()
                 throw rejection(fromClose: frame)
             case .frame:
                 if frame["nonce"] as? String == nonce || frame["cmd"] as? String == name {
+                    let reply = Reply(opcode: op, frame: frame)
+                    lastReply = reply
                     if frame["evt"] as? String == "ERROR" {
                         let (code, message) = IPCProtocol.errorCodeAndMessage(frame["data"])
                         throw IPCError.discordRejected(code: code, message: message)
                     }
                     rememberUser(from: frame)
-                    return frame
+                    return (reply, frame)
                 }
                 continue
             case .handshake:
