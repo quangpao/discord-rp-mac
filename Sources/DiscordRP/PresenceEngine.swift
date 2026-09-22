@@ -339,6 +339,7 @@ public final class PresenceEngine: ObservableObject {
             RunningCardSnapshot(cardID: $0.cardID, applicationID: $0.applicationID, activity: $0.activity)
         }
         let changes = PresenceCardPlanner.diff(desired: runnable, running: running)
+        var started = 0
         for change in changes {
             switch change {
             case .start(let spec):
@@ -346,8 +347,24 @@ public final class PresenceEngine: ObservableObject {
                 cardWorkers[spec.cardID] = worker
                 cardSpecs[spec.cardID] = spec
                 cardStatuses[spec.cardID] = .connecting
-                worker.start()
-                worker.push(spec.activity)
+                // Discord throttles a *burst* of handshakes: about four back-to-back ones are
+                // answered and the fifth times out. Starting several cards at once is therefore
+                // staggered by 400 ms — a handful of cards, and the engine's own retry/backoff
+                // covers the rest.
+                let delay = Double(started) * 0.4
+                started += 1
+                if delay > 0 {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                        // The card may have been turned off again while this was waiting.
+                        guard self.cardWorkers[spec.cardID] === worker else { return }
+                        worker.start()
+                        worker.push(spec.activity)
+                    }
+                } else {
+                    worker.start()
+                    worker.push(spec.activity)
+                }
             case .update(let spec):
                 if let worker = cardWorkers[spec.cardID] {
                     let previous = cardSpecs[spec.cardID]
