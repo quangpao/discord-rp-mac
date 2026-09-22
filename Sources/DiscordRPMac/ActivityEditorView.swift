@@ -48,8 +48,6 @@ struct ActivityEditorView: View {
     @ObservedObject var model: AppModel
     @State private var draft = Activity()
     @State private var presetName: String = ""
-    @State private var appIDField: String = ""
-    @State private var pipeIndex: Int = 0
     @State private var assets: [DiscordAsset] = []
     @State private var assetError: String?
     @State private var giphyStatus: String?
@@ -57,25 +55,21 @@ struct ActivityEditorView: View {
     @State private var giphyHidden = false
     /// Local history of Giphy uploads — an upload is done once and can be re-picked afterwards.
     @State private var uploads: [GiphyUpload] = []
-    /// BYOK: the user's own Giphy key. Held only while typing; never read back from the store.
-    @State private var keyDraft: String = ""
-    @State private var keyStatus: String?
+    /// BYOK state is read-only here; Settings owns the key itself.
     @State private var keySource: GiphyKeySource = .none
 
-    /// One grid for the whole window.
-    private let labelColumn: CGFloat = 140
-    private let columnGap: CGFloat = 10
-    private let cardPadding: CGFloat = 14
-    private let cardSpacing: CGFloat = 8
+    private var primaryApplicationID: String {
+        model.primaryCard?.applicationID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private var hasPrimaryCard: Bool { model.primaryCard != nil }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                connectionCard
                 presenceCard
                 timeCard
                 imageCard
-                giphyCard
                 buttonCard
             }
             .padding(.horizontal, 18)
@@ -88,40 +82,7 @@ struct ActivityEditorView: View {
         .onAppear(perform: load)
     }
 
-    // MARK: - grid primitives
-
-    /// The single row primitive: label in the fixed column, control in the control column.
-    ///
-    /// Alignment is `.top`, **not** `.firstTextBaseline`: a tall child without a text baseline
-    /// (the image preview box) gets its top edge dropped onto the label's baseline under baseline
-    /// alignment, which pushed the whole preview ~100 pt below its label and left a blank block
-    /// where the content should have been.
-    /// `help` is the row's explanation, shown on hover over the label *and* the control. A row that
-    /// explains itself this way costs no vertical space; only a warning, an error or a status still
-    /// gets a line of its own.
-    private func row<Content: View>(_ label: String, help: String? = nil,
-                                    @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .top, spacing: columnGap) {
-            Text(label)
-                .foregroundStyle(.secondary)
-                .frame(width: labelColumn, alignment: .trailing)
-                .padding(.top, 3)
-                .optionalHelp(help)
-            content()
-                .optionalHelp(help)
-            Spacer(minLength: 0)
-        }
-        .frame(minHeight: 24)
-    }
-
-    /// Helper text sits under its control, in the control column — one x for every hint.
-    private func hint(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.leading, labelColumn + columnGap)
-    }
+    // MARK: - grid fields
 
     private func field(_ label: String, text: Binding<String>) -> some View {
         TextField("", text: text)
@@ -131,98 +92,7 @@ struct ActivityEditorView: View {
             .accessibilityLabel(label)
     }
 
-    private func card<Content: View>(_ title: String, help: String? = nil,
-                                     @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .optionalHelp(help)
-            VStack(alignment: .leading, spacing: cardSpacing) {
-                content()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(cardPadding)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-            )
-        }
-    }
-
-    /// What the Application ID field currently means, in the user's terms: nothing sent, this
-    /// project's application, or their own.
-    private var applicationHint: String {
-        if appIDField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "Empty means nothing is sent to Discord. Use the default application, or paste your own id."
-        }
-        if DefaultApplication.isDefault(appIDField) {
-            return "Using this project's application — the card reads “Discord RP”. Paste your own id for your own name, icon and assets."
-        }
-        return "Your own application: the card shows its name and can use its uploaded art assets."
-    }
-
-    /// The tooltip of the Application ID field: what the value currently means, and where to get one.
-    private var applicationHelp: String {
-        applicationHint + " From the Discord Developer Portal — discord.com/developers/applications."
-    }
-
-    private var appIDIsEmpty: Bool {
-        appIDField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var statusRow: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .frame(width: 7, height: 7)
-                .foregroundStyle(model.multiStatus.isConnected ? Color.green
-                                 : model.multiStatus.needsAttention ? Color.red
-                                 : Color.orange)
-            Text(model.multiStatus.shortText)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-        }
-        // The dot alone carries meaning by colour; VoiceOver gets the words instead.
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Connection status: \(model.multiStatus.shortText)")
-        .padding(.leading, labelColumn + columnGap)
-    }
-
     // MARK: - cards
-
-    private var connectionCard: some View {
-        card("Connection") {
-            row("Application ID", help: applicationHelp) {
-                field("Application ID", text: $appIDField)
-                    .onSubmit { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
-            }
-            row("") {
-                Button("Use the default application") { appIDField = DefaultApplication.id }
-                    .disabled(DefaultApplication.isDefault(appIDField))
-            }
-            if appIDIsEmpty {
-                hint("Nothing is sent to Discord while this is empty — paste your own id, or press "
-                     + "“Use the default application”.")
-                    .foregroundStyle(.orange)
-            }
-            row("Pipe index", help: "0 = Discord · 1 = PTB · 2 = Canary") {
-                Picker("", selection: $pipeIndex) {
-                    ForEach(0...9, id: \.self) { index in Text("\(index)").tag(index) }
-                }
-                .labelsHidden()
-                    .accessibilityLabel("Pipe index")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            row("Connection", help: "Reconnect re-applies the connection and the active preset.") {
-                Button("Reconnect") { model.reconnect(appID: appIDField, pipeIndex: pipeIndex) }
-            }
-            statusRow
-        }
-    }
 
     private var presenceCard: some View {
         card("Presence") {
@@ -325,7 +195,9 @@ struct ActivityEditorView: View {
                 field("Large key or URL", text: $draft.largeKey)
             }
             row("Large preview") {
-                ImagePreview(key: draft.largeKey, appID: appIDField, assetID: assetID(for: draft.largeKey))
+                ImagePreview(key: hasPrimaryCard ? draft.largeKey : "",
+                             appID: primaryApplicationID,
+                             assetID: hasPrimaryCard ? assetID(for: draft.largeKey) : nil)
             }
             row("Large text") {
                 field("Large text (optional)", text: $draft.largeText)
@@ -349,7 +221,9 @@ struct ActivityEditorView: View {
                 field("Small key or URL", text: $draft.smallKey)
             }
             row("Small preview") {
-                ImagePreview(key: draft.smallKey, appID: appIDField, assetID: assetID(for: draft.smallKey),
+                ImagePreview(key: hasPrimaryCard ? draft.smallKey : "",
+                             appID: primaryApplicationID,
+                             assetID: hasPrimaryCard ? assetID(for: draft.smallKey) : nil,
                              side: 64,
                              note: "Discord draws this as a ~20 px circle in the corner of the large image.")
             }
@@ -372,7 +246,7 @@ struct ActivityEditorView: View {
                     .disabled(draft.smallKey.isEmpty)
             }
             if keySource == .none {
-                hint("Uploads are disabled until you add your own Giphy API key in the “Giphy — bring your own key” card below.")
+                hint("Uploads are disabled until you add your own Giphy API key in Settings.")
                     .foregroundStyle(.orange)
             }
             row("Giphy") {
@@ -398,7 +272,7 @@ struct ActivityEditorView: View {
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.leading, labelColumn + columnGap)
+                .padding(.leading, rowGridControlIndent)
             }
         }
     }
@@ -438,69 +312,6 @@ struct ActivityEditorView: View {
     private func copyKey(_ value: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
-    }
-
-    /// BYOK: the app ships no Giphy key. The user's own key is stored in the Keychain, and this card
-    /// is the only place it is ever entered. The key itself is never displayed or logged — only the
-    /// source it came from.
-    private var giphyCard: some View {
-        card("Giphy — bring your own key",
-             help: "Uploads use your own Giphy account. This app ships no key, and the key is sent only "
-                 + "to Giphy.") {
-            row("Key source") {
-                HStack(spacing: 6) {
-                    Circle()
-                        .frame(width: 7, height: 7)
-                        .foregroundStyle(keySource == .none ? Color.orange : Color.green)
-                    Text(keySource.description)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            row("API key", help: "Create one at developers.giphy.com — a dashboard key allows 10 "
-                + "uploads per day, and uploads are public unless “Private” is ticked in the Images card.") {
-                SecureField("paste your Giphy API key", text: $keyDraft)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: .infinity)
-                    .onSubmit(saveKey)
-            }
-            row("Key") {
-                Button("Save to Keychain") { saveKey() }
-                    .disabled(keyDraft.trimmingCharacters(in: .whitespaces).isEmpty)
-                Button("Remove saved key") { removeKey() }
-                Button("Get a key…") { openGiphyDashboard() }
-            }
-            if let keyStatus {
-                hint(keyStatus).foregroundStyle(keyStatus.hasPrefix("✓") ? Color.secondary : Color.red)
-            }
-        }
-    }
-
-    private func saveKey() {
-        do {
-            try GiphyKeyStore.save(keyDraft)
-            keyDraft = ""
-            keySource = GiphyKeyStore.source()
-            keyStatus = "✓ Key saved to the Keychain — uploads are enabled."
-        } catch let error as GiphyKeyError {
-            keyStatus = "✗ \(error.description)"
-        } catch {
-            keyStatus = "✗ \(error.localizedDescription)"
-        }
-    }
-
-    private func removeKey() {
-        GiphyKeyStore.clear()
-        keySource = GiphyKeyStore.source()
-        keyStatus = keySource == .none
-            ? "✓ Saved key removed."
-            : "Saved key removed — a key is still coming from \(keySource.description)."
-    }
-
-    private func openGiphyDashboard() {
-        if let url = URL(string: "https://developers.giphy.com/dashboard/?create=true") {
-            NSWorkspace.shared.open(url)
-        }
     }
 
     private var buttonCard: some View {
@@ -545,7 +356,10 @@ struct ActivityEditorView: View {
                 .buttonStyle(.borderless)
                 Button("Save") { saveCurrent() }
                     .keyboardShortcut("s", modifiers: .command)
-                Button("Apply") { model.engine.apply(draft) }
+                Button("Apply") {
+                    saveCurrent()
+                    model.applyCards()
+                }
                     .keyboardShortcut("r", modifiers: .command)
                     .buttonStyle(.borderedProminent)
             }
@@ -559,8 +373,6 @@ struct ActivityEditorView: View {
     // MARK: actions
 
     private func load() {
-        appIDField = model.settings.appID
-        pipeIndex = model.settings.pipeIndex
         uploads = GiphyLibrary.shared.load()
         keySource = GiphyKeyStore.source()
         if let preset = model.activePreset {
@@ -578,12 +390,16 @@ struct ActivityEditorView: View {
     }
 
     private func loadAssets() async {
-        guard !appIDField.isEmpty else {
-            assetError = "Set the Application ID first."
+        guard hasPrimaryCard else {
+            assetError = "Add a card in Settings first."
+            return
+        }
+        guard !primaryApplicationID.isEmpty else {
+            assetError = "Add a primary card Application ID in Settings first."
             return
         }
         do {
-            assets = try await AssetCatalog.assets(appID: appIDField)
+            assets = try await AssetCatalog.assets(appID: primaryApplicationID)
             assetError = assets.isEmpty ? "No art assets uploaded for this app yet." : nil
         } catch {
             assetError = "Could not load assets: \(error.localizedDescription)"
@@ -593,7 +409,7 @@ struct ActivityEditorView: View {
     /// Pick a file, push it to Giphy, and drop the CDN URL into the given image slot.
     private func uploadToGiphy(into slot: Binding<String>, slot slotName: String) {
         guard let key = GiphyUploader.apiKey() else {
-            giphyStatus = "✗ No Giphy API key. Add yours in the \"Giphy — bring your own key\" card below; it is saved in your macOS Keychain."
+            giphyStatus = "✗ No Giphy API key. Add yours in Settings; it is saved in your macOS Keychain."
             return
         }
 

@@ -21,6 +21,7 @@ final class AppModel: ObservableObject {
     let engine: PresenceEngine
     private let store: PresetStore
     private var editor: EditorWindowController?
+    private var settingsWindow: SettingsWindowController?
     /// Held for the app's lifetime: App Nap suspends a menu bar app's timers, which silently killed
     /// the RPC keepalive (measured: pings stopped ~2 minutes after launch, so Discord saw a dead
     /// connection and the activity disappeared). This token keeps the app out of App Nap while
@@ -315,6 +316,13 @@ final class AppModel: ObservableObject {
         // what looked like "the images rolled back to default".
         let controller = EditorWindowController(model: self)
         editor = controller
+        controller.show()
+    }
+
+    func openSettings() {
+        // Match the editor: always rebuild so file changes and card validation state are fresh.
+        let controller = SettingsWindowController(model: self)
+        settingsWindow = controller
         controller.show()
     }
 

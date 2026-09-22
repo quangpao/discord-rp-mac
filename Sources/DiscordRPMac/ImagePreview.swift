@@ -130,7 +130,7 @@ struct ImagePreview: View {
         let trimmed = key.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty { return "Empty — nothing to show." }
         if appID.trimmingCharacters(in: .whitespaces).isEmpty {
-            return "Needs the Application ID from the Connection card."
+            return "Needs a primary card Application ID from Settings."
         }
         return "Discord serves asset images by numeric id, not by name — press “Load from Discord” in the Asset names row to resolve it."
     }

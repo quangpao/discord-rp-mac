@@ -20,7 +20,7 @@ struct MenuContentView: View {
         // E1 — error state only
         if model.multiStatus.needsAttention {
             Button {
-                model.openEditor()
+                model.openSettings()
             } label: {
                 Label("Fix in Settings…", systemImage: "gearshape")
             }
@@ -74,10 +74,18 @@ struct MenuContentView: View {
         } label: {
             Label("Edit This Preset…", systemImage: "slider.horizontal.3")
         }
-        .keyboardShortcut(",", modifiers: .command)
+        .keyboardShortcut("e", modifiers: .command)
         .disabled(model.presets.isEmpty)
 
-        // 3 — re-send
+        // 3 — settings
+        Button {
+            model.openSettings()
+        } label: {
+            Label("Settings…", systemImage: "gearshape")
+        }
+        .keyboardShortcut(",", modifiers: .command)
+
+        // 4 — re-send
         Button {
             model.reapply()
         } label: {
@@ -86,7 +94,7 @@ struct MenuContentView: View {
         .keyboardShortcut("r", modifiers: .command)
         .disabled(!model.multiStatus.isConnected || !model.hasRunnableCard)
 
-        // 4 — clear
+        // 5 — clear
         Button {
             model.clearPresence()
         } label: {
@@ -97,53 +105,12 @@ struct MenuContentView: View {
 
         Divider()
 
-        // 5 — login item. The icon is NOT a checkmark: a menu `Toggle` draws that itself (a
-        // `checkmark` symbol here produced two ticks). But the label does need *an* icon, because
-        // every other row has one — without it this row's text slid into the icon gutter and sat
-        // ~19 pt left of everything else.
-        Toggle(isOn: Binding(
-            get: { model.launchAtLogin },
-            set: { model.setLaunchAtLogin($0) }
-        )) {
-            Label("Launch at Login", systemImage: "desktopcomputer")
-        }
-
         // 6 — only when Discord is not running
         if !model.multiStatus.isConnected {
             Button {
                 model.openDiscord()
             } label: {
                 Label("Open Discord", systemImage: "arrow.up.forward.app")
-            }
-        }
-
-        // 8 — update check. Manual on purpose: nothing polls on a timer, so the app only makes the
-        // network calls the user asks for (see SECURITY.md).
-        Button {
-            Task { await model.checkForUpdates() }
-        } label: {
-            Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
-        }
-        .disabled(model.updateStatus == .checking)
-
-        if case .checking = model.updateStatus {
-            Text("Checking for updates…")
-        }
-        if case .upToDate(let current) = model.updateStatus {
-            Text("Up to date (\(current))")
-        }
-        if case .available(let version, let url) = model.updateStatus {
-            Button {
-                model.openURL(url)
-            } label: {
-                Label("Download \(version)", systemImage: "arrow.down.circle")
-            }
-        }
-        if case .failed = model.updateStatus {
-            Button {
-                model.openURL(UpdateCheck.releasesPage)
-            } label: {
-                Label("Update check failed — open Releases", systemImage: "exclamationmark.triangle")
             }
         }
 

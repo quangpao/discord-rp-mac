@@ -105,6 +105,17 @@ enum SelfTest {
             let height = index + 3 < args.count ? Double(args[index + 3]) ?? 800 : 800
             return renderEditor(to: path, width: width, height: height)
         }
+        if let index = args.firstIndex(of: "--render-settings") {
+            let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
+                ? args[index + 1]
+                : "/tmp/discordrp-settings.png"
+            let sizeArgs = args.dropFirst(index + 2).prefix { !$0.hasPrefix("--") }.compactMap(Double.init)
+            let width = sizeArgs.first ?? 640
+            let height = sizeArgs.dropFirst().first ?? 520
+            let paneName = value(of: "--pane", in: args) ?? "cards"
+            let pane = SettingsPane.allCases.first { $0.rawValue.lowercased() == paneName.lowercased() } ?? .cards
+            return renderSettings(to: path, width: width, height: height, pane: pane)
+        }
         if let index = args.firstIndex(of: "--render-menu") {
             let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
                 ? args[index + 1]
@@ -268,20 +279,36 @@ enum SelfTest {
     /// permission and still yields real pixels to inspect the layout with.
     private static func renderEditor(to path: String, width: Double, height: Double) -> Int32 {
         let render: @MainActor () -> Void = {
-            // A render must never read the developer's real Keychain: the binary is ad-hoc signed, so
-            // every rebuild changes its identity, macOS raises an ACL prompt, and the render blocks in
-            // `mach_msg` until somebody answers a dialog it cannot show. Stub storage instead; with
-            // `--no-key` the stub is swapped for the empty one so the BYOK gating can be seen.
-            GiphyKeyStore.storage = CommandLine.arguments.contains("--no-key")
-                ? NoGiphyKeyStorage()
-                : StubGiphyKeyStorage()
-            setenv("GIPHY_API_KEY", "", 1)
-            GiphyKeyStore.legacyPathOverride = "/nonexistent/giphy/api_key"
+            installRenderGiphyStorage()
             let model = demoModel()
             capture(NSHostingView(rootView: ActivityEditorView(model: model)),
                     titled: true, to: path, width: width, height: height, settle: 3.0)
         }
         return runOnMain(render)
+    }
+
+    /// `--render-settings <out.png> [width height] [--pane cards|presets|general|network]
+    /// [--demo <dir>]` — draws the Settings window without touching the real Keychain.
+    private static func renderSettings(to path: String, width: Double, height: Double, pane: SettingsPane) -> Int32 {
+        let render: @MainActor () -> Void = {
+            installRenderGiphyStorage()
+            let model = demoModel()
+            capture(NSHostingView(rootView: SettingsView(model: model, initialPane: pane)),
+                    titled: true, to: path, width: width, height: height, settle: 1.5)
+        }
+        return runOnMain(render)
+    }
+
+    private static func installRenderGiphyStorage() {
+        // A render must never read the developer's real Keychain: the binary is ad-hoc signed, so
+        // every rebuild changes its identity, macOS raises an ACL prompt, and the render blocks in
+        // `mach_msg` until somebody answers a dialog it cannot show. Stub storage instead; with
+        // `--no-key` the stub is swapped for the empty one so the BYOK gating can be seen.
+        GiphyKeyStore.storage = CommandLine.arguments.contains("--no-key")
+            ? NoGiphyKeyStorage()
+            : StubGiphyKeyStorage()
+        setenv("GIPHY_API_KEY", "", 1)
+        GiphyKeyStore.legacyPathOverride = "/nonexistent/giphy/api_key"
     }
 
     /// `--render-menu <out.png> [width height]` — the same capture for the menu bar menu, so the
