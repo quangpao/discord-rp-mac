@@ -118,12 +118,11 @@ struct ImagePreview: View {
                     Text("No preview").font(.system(size: 11, weight: .semibold))
                     Text(noPreviewReason).font(.system(size: 11)).foregroundStyle(.secondary)
                 }
-                if let note {
-                    Text(note).font(.system(size: 11)).foregroundStyle(.secondary)
-                }
             }
             Spacer(minLength: 0)
         }
+        // The note explains how Discord renders this slot; a tooltip keeps it out of the layout.
+        .optionalHelp(note)
         .task(id: key + "|" + appID + "|" + (assetID ?? "")) { await load() }
     }
 

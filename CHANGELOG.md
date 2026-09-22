@@ -4,6 +4,12 @@ Notable changes per release. Dates are the release/tag dates.
 
 ## [Unreleased]
 
+### Changed
+
+- The editor explains itself with **hover tooltips** instead of a caption line under every control:
+  placeholders carry the essence, tooltips the detail, and a line of text is spent only on a warning,
+  an error or a status. The form is about 226 px shorter.
+
 ### Added
 
 - **Check for Updates…** in the menu bar menu: it compares the running version with the latest GitHub

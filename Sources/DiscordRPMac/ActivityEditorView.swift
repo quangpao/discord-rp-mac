@@ -96,13 +96,19 @@ struct ActivityEditorView: View {
     /// (the image preview box) gets its top edge dropped onto the label's baseline under baseline
     /// alignment, which pushed the whole preview ~100 pt below its label and left a blank block
     /// where the content should have been.
-    private func row<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+    /// `help` is the row's explanation, shown on hover over the label *and* the control. A row that
+    /// explains itself this way costs no vertical space; only a warning, an error or a status still
+    /// gets a line of its own.
+    private func row<Content: View>(_ label: String, help: String? = nil,
+                                    @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .top, spacing: columnGap) {
             Text(label)
                 .foregroundStyle(.secondary)
                 .frame(width: labelColumn, alignment: .trailing)
                 .padding(.top, 3)
+                .optionalHelp(help)
             content()
+                .optionalHelp(help)
             Spacer(minLength: 0)
         }
         .frame(minHeight: 24)
@@ -125,11 +131,13 @@ struct ActivityEditorView: View {
             .accessibilityLabel(label)
     }
 
-    private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func card<Content: View>(_ title: String, help: String? = nil,
+                                     @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
+                .optionalHelp(help)
             VStack(alignment: .leading, spacing: cardSpacing) {
                 content()
             }
@@ -158,6 +166,15 @@ struct ActivityEditorView: View {
         return "Your own application: the card shows its name and can use its uploaded art assets."
     }
 
+    /// The tooltip of the Application ID field: what the value currently means, and where to get one.
+    private var applicationHelp: String {
+        applicationHint + " From the Discord Developer Portal — discord.com/developers/applications."
+    }
+
+    private var appIDIsEmpty: Bool {
+        appIDField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private var statusRow: some View {
         HStack(spacing: 6) {
             Circle()
@@ -179,17 +196,20 @@ struct ActivityEditorView: View {
 
     private var connectionCard: some View {
         card("Connection") {
-            row("Application ID") {
+            row("Application ID", help: applicationHelp) {
                 field("Application ID", text: $appIDField)
                     .onSubmit { model.updateConnection(appID: appIDField, pipeIndex: pipeIndex) }
             }
-            hint("From the Discord Developer Portal — discord.com/developers/applications")
             row("") {
                 Button("Use the default application") { appIDField = DefaultApplication.id }
                     .disabled(DefaultApplication.isDefault(appIDField))
             }
-            hint(applicationHint)
-            row("Pipe index") {
+            if appIDIsEmpty {
+                hint("Nothing is sent to Discord while this is empty — paste your own id, or press "
+                     + "“Use the default application”.")
+                    .foregroundStyle(.orange)
+            }
+            row("Pipe index", help: "0 = Discord · 1 = PTB · 2 = Canary") {
                 Picker("", selection: $pipeIndex) {
                     ForEach(0...9, id: \.self) { index in Text("\(index)").tag(index) }
                 }
@@ -197,25 +217,21 @@ struct ActivityEditorView: View {
                     .accessibilityLabel("Pipe index")
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            hint("0 = Discord · 1 = PTB · 2 = Canary")
-            row("Connection") {
+            row("Connection", help: "Reconnect re-applies the connection and the active preset.") {
                 Button("Reconnect") { model.reconnect(appID: appIDField, pipeIndex: pipeIndex) }
             }
-            hint("Reconnect re-applies the connection and the active preset.")
             statusRow
         }
     }
 
     private var presenceCard: some View {
         card("Presence") {
-            row("Preset name") {
+            row("Preset name", help: "This app only — never sent to Discord.") {
                 field("Preset name (this app only)", text: $presetName)
             }
-            hint("This app only — never sent to Discord.")
-            row("Shown as") {
+            row("Shown as", help: "The app name Discord prints on your profile.") {
                 field("Shown as (Discord app name)", text: $draft.name)
             }
-            hint("The app name Discord prints on your profile.")
             row("Type") {
                 Picker("", selection: $draft.kind) {
                     ForEach(ActivityKind.selectable) { kind in Text(kind.label).tag(kind) }
@@ -245,7 +261,7 @@ struct ActivityEditorView: View {
                 field("State link (optional)", text: $draft.stateURL)
             }
             if draft.kind.allowsParty {
-                row("Party") {
+                row("Party", help: "Discord renders this as “3 of 5” on the card.") {
                     HStack(spacing: 8) {
                         TextField("", value: $draft.partySize, format: .number)
                             .textFieldStyle(.roundedBorder)
@@ -261,14 +277,15 @@ struct ActivityEditorView: View {
                         Text("current / max").font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                 }
-                hint("Discord renders this as “3 of 5” on the card.")
             }
         }
     }
 
     private var timeCard: some View {
         card("Time") {
-            row("Mode") {
+            row("Mode", help: draft.kind.allowsTimestamps
+                ? draft.timestampMode.explanation
+                : "The “Competing” type cannot show timestamps.") {
                 Picker("", selection: $draft.timestampMode) {
                     ForEach(TimestampMode.allCases) { mode in Text(mode.label).tag(mode) }
                 }
@@ -277,9 +294,6 @@ struct ActivityEditorView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .disabled(!draft.kind.allowsTimestamps)
             }
-            hint(draft.kind.allowsTimestamps
-                 ? draft.timestampMode.explanation
-                 : "The “Competing” type cannot show timestamps.")
             if draft.timestampMode == .custom {
                 row("Start") {
                     DatePicker("", selection: $draft.customStart,
@@ -305,8 +319,8 @@ struct ActivityEditorView: View {
     }
 
     private var imageCard: some View {
-        card("Images") {
-            hint("A key is either an asset name you uploaded to your Discord app, or an https URL. Animation only renders through an external URL.")
+        card("Images", help: "A key is either an asset name you uploaded to your Discord app, or an "
+             + "https URL. Animation only renders through an external URL.") {
             row("Large key") {
                 field("Large key or URL", text: $draft.largeKey)
             }
@@ -366,13 +380,12 @@ struct ActivityEditorView: View {
                     // Only meaningful for an upload, so it is disabled with the upload buttons.
                     .disabled(keySource == .none)
             }
-            row("Asset names") {
+            row("Asset names", help: assets.isEmpty ? nil
+                : "\(assets.count) assets available in the menus above.") {
                 Button("Load from Discord") { Task { await loadAssets() } }
             }
             if let assetError {
                 hint(assetError).foregroundStyle(.red)
-            } else if !assets.isEmpty {
-                hint("\(assets.count) assets available in the menus above.")
             }
             if let giphyStatus {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -431,8 +444,9 @@ struct ActivityEditorView: View {
     /// is the only place it is ever entered. The key itself is never displayed or logged — only the
     /// source it came from.
     private var giphyCard: some View {
-        card("Giphy — bring your own key") {
-            hint("Uploads use your own Giphy account. This app ships no key, and the key is sent only to Giphy.")
+        card("Giphy — bring your own key",
+             help: "Uploads use your own Giphy account. This app ships no key, and the key is sent only "
+                 + "to Giphy.") {
             row("Key source") {
                 HStack(spacing: 6) {
                     Circle()
@@ -443,7 +457,8 @@ struct ActivityEditorView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            row("API key") {
+            row("API key", help: "Create one at developers.giphy.com — a dashboard key allows 10 "
+                + "uploads per day, and uploads are public unless “Private” is ticked in the Images card.") {
                 SecureField("paste your Giphy API key", text: $keyDraft)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: .infinity)
@@ -458,7 +473,6 @@ struct ActivityEditorView: View {
             if let keyStatus {
                 hint(keyStatus).foregroundStyle(keyStatus.hasPrefix("✓") ? Color.secondary : Color.red)
             }
-            hint("Create one at developers.giphy.com — a dashboard key allows 10 uploads per day, and uploads are public unless “Private” is ticked in the Images card.")
         }
     }
 
@@ -503,13 +517,12 @@ struct ActivityEditorView: View {
                         .foregroundStyle(.red)
                 }
             }
-            row("Buttons") {
+            row("Buttons", help: draft.buttons.count >= ActivityRules.maxButtons
+                ? "2/2 — Discord shows at most two buttons."
+                : "Discord shows at most two buttons.") {
                 Button("Add button") { draft.buttons.append(Button()) }
                     .disabled(draft.buttons.count >= ActivityRules.maxButtons)
             }
-            hint(draft.buttons.count >= ActivityRules.maxButtons
-                 ? "2/2 — Discord shows at most two buttons"
-                 : "Discord shows at most two buttons.")
         }
     }
 
