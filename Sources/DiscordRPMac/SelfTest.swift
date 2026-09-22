@@ -114,7 +114,8 @@ enum SelfTest {
             let height = sizeArgs.dropFirst().first ?? 520
             let paneName = value(of: "--pane", in: args) ?? "cards"
             let pane = SettingsPane.allCases.first { $0.rawValue.lowercased() == paneName.lowercased() } ?? .cards
-            return renderSettings(to: path, width: width, height: height, pane: pane)
+            return renderSettings(to: path, width: width, height: height, pane: pane,
+                                  preset: value(of: "--preset", in: args))
         }
         if let index = args.firstIndex(of: "--render-menu") {
             let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
@@ -287,16 +288,30 @@ enum SelfTest {
         return runOnMain(render)
     }
 
-    /// `--render-settings <out.png> [width height] [--pane cards|presets|general|network]
-    /// [--demo <dir>]` — draws the Settings window without touching the real Keychain.
-    private static func renderSettings(to path: String, width: Double, height: Double, pane: SettingsPane) -> Int32 {
+    /// `--render-settings <out.png> [width height] [--pane cards|presets|general|giphy]
+    /// [--preset <index|id>] [--demo <dir>]` — draws Settings without touching the real Keychain.
+    private static func renderSettings(to path: String, width: Double, height: Double,
+                                       pane: SettingsPane, preset: String?) -> Int32 {
         let render: @MainActor () -> Void = {
             installRenderGiphyStorage()
             let model = demoModel()
-            capture(NSHostingView(rootView: SettingsView(model: model, initialPane: pane)),
+            let presetID = resolvePreset(preset, in: model.presets)
+            capture(NSHostingView(rootView: SettingsView(model: model, initialPane: pane,
+                                                         selectedPresetID: presetID)),
                     titled: true, to: path, width: width, height: height, settle: 1.5)
         }
         return runOnMain(render)
+    }
+
+    private static func resolvePreset(_ value: String?, in presets: [Preset]) -> UUID? {
+        guard let value, !value.isEmpty else { return nil }
+        if let id = UUID(uuidString: value), presets.contains(where: { $0.id == id }) {
+            return id
+        }
+        guard let index = Int(value) else { return nil }
+        let resolvedIndex = index == 0 ? 0 : index - 1
+        guard presets.indices.contains(resolvedIndex) else { return nil }
+        return presets[resolvedIndex].id
     }
 
     private static func installRenderGiphyStorage() {

@@ -3,34 +3,6 @@ import DiscordRP
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The editor lives in a plain AppKit window: an agent app with a `Window` scene can pop it
-/// open on launch, and this way the window is created only when asked for.
-@MainActor
-final class EditorWindowController: NSWindowController {
-    init(model: AppModel) {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 720, height: 800),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "Discord RP — Preset"
-        window.minSize = NSSize(width: 560, height: 600)
-        window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: ActivityEditorView(model: model))
-        window.center()
-        super.init(window: window)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("not supported") }
-
-    func show() {
-        NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
-    }
-}
-
 /// Layout contract — and why this is hand-built instead of a `Form`:
 ///
 /// SwiftUI's grouped `Form` does *row extraction*: a `TextField` placed in a row is pulled into the
@@ -46,6 +18,7 @@ final class EditorWindowController: NSWindowController {
 /// `controlBackgroundColor` + rounded corners, which is what the grouped form looked like anyway.
 struct ActivityEditorView: View {
     @ObservedObject var model: AppModel
+    var presetID: UUID?
     @State private var draft = Activity()
     @State private var presetName: String = ""
     @State private var assets: [DiscordAsset] = []
@@ -64,22 +37,32 @@ struct ActivityEditorView: View {
 
     private var hasPrimaryCard: Bool { model.primaryCard != nil }
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                presenceCard
-                timeCard
-                imageCard
-                buttonCard
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, 14)
-            .padding(.bottom, 18)
-            .frame(maxWidth: .infinity, alignment: .leading)
+    private var editedPreset: Preset? {
+        if let presetID {
+            return model.presets.first { $0.id == presetID }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { footer }
-        .frame(minWidth: 560, minHeight: 600)
+        return model.activePreset
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    presenceCard
+                    timeCard
+                    imageCard
+                    buttonCard
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 14)
+                .padding(.bottom, 18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            footer
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear(perform: load)
+        .onChange(of: presetID) { load() }
     }
 
     // MARK: - grid fields
@@ -351,7 +334,7 @@ struct ActivityEditorView: View {
                 Spacer(minLength: 0)
                 Button("Save as New") {
                     saveCurrent()
-                    model.addPreset(from: draft, name: presetName.isEmpty ? "Preset" : presetName)
+                    _ = model.addPreset(from: draft, name: presetName.isEmpty ? "Preset" : presetName)
                 }
                 .buttonStyle(.borderless)
                 Button("Save") { saveCurrent() }
@@ -375,18 +358,17 @@ struct ActivityEditorView: View {
     private func load() {
         uploads = GiphyLibrary.shared.load()
         keySource = GiphyKeyStore.source()
-        if let preset = model.activePreset {
+        if let preset = editedPreset {
             draft = preset.activity
             presetName = preset.name
         }
     }
 
     private func saveCurrent() {
-        guard var preset = model.activePreset else { return }
+        guard var preset = editedPreset else { return }
         preset.activity = draft
         if !presetName.isEmpty { preset.name = presetName }
         model.upsert(preset)
-        model.select(preset)
     }
 
     private func loadAssets() async {

@@ -5,17 +5,19 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
-    init(model: AppModel) {
+    init(model: AppModel, initialPane: SettingsPane = .cards, selectedPresetID: UUID? = nil) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 440),
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 540),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "Discord RP — Settings"
-        window.minSize = NSSize(width: 560, height: 420)
+        window.minSize = NSSize(width: 620, height: 420)
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: SettingsView(model: model))
+        window.contentView = NSHostingView(
+            rootView: SettingsView(model: model, initialPane: initialPane, selectedPresetID: selectedPresetID)
+        )
         window.center()
         super.init(window: window)
     }
@@ -88,9 +90,10 @@ struct SettingsView: View {
     @State private var keySource: GiphyKeySource = .none
     @State private var keyStatus: String?
 
-    init(model: AppModel, initialPane: SettingsPane = .cards) {
+    init(model: AppModel, initialPane: SettingsPane = .cards, selectedPresetID: UUID? = nil) {
         self.model = model
         _pane = State(initialValue: initialPane)
+        _selectedPresetID = State(initialValue: selectedPresetID)
     }
 
     var body: some View {
@@ -107,26 +110,33 @@ struct SettingsView: View {
 
             Divider()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    switch pane {
-                    case .cards: cardsPane
-                    case .presets: presetsPane
-                    case .general: generalPane
-                    case .giphy: giphyPane
+            Group {
+                if pane == .presets {
+                    presetsPane
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            switch pane {
+                            case .cards: cardsPane
+                            case .presets: EmptyView()
+                            case .general: generalPane
+                            case .giphy: giphyPane
+                            }
+                        }
+                        .padding(18)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(minWidth: 560, maxWidth: .infinity, minHeight: 420, maxHeight: .infinity)
+        .frame(minWidth: 620, maxWidth: .infinity, minHeight: 420, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear(perform: load)
+        .onChange(of: model.presets) { keepPresetSelectionValid() }
     }
 
     private func load() {
-        selectedPresetID = model.settings.activePresetID ?? model.presets.first?.id
+        keepPresetSelectionValid()
         renameDraft = selectedPreset?.name ?? ""
         keySource = GiphyKeyStore.source()
     }
@@ -271,45 +281,131 @@ struct SettingsView: View {
     }
 
     private var presetsPane: some View {
-        card("Presets") {
-            row("Preset") {
-                Picker("", selection: Binding(
-                    get: { selectedPresetID ?? model.presets.first?.id },
-                    set: {
-                        selectedPresetID = $0
-                        renameDraft = selectedPreset?.name ?? ""
-                    }
-                )) {
-                    ForEach(model.presets) { preset in Text(preset.name).tag(Optional(preset.id)) }
-                }
-                .labelsHidden()
-                .accessibilityLabel("Preset")
-                .frame(maxWidth: .infinity, alignment: .leading)
+        HStack(spacing: 0) {
+            VStack(spacing: 0) {
+                presetList
+                Divider()
+                presetActionBar
             }
-            row("Name") {
-                textField("Preset name", text: $renameDraft, placeholder: "preset name")
-                Button("Rename") { renameSelectedPreset() }
-                    .disabled(selectedPreset == nil || renameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            row("Actions") {
-                Button("+ Add") { model.duplicateActivePreset(); load() }
-                    .disabled(model.activePreset == nil)
-                Button("Delete", role: .destructive) {
-                    if let preset = selectedPreset {
-                        model.deletePreset(preset)
-                        load()
+            .frame(width: 210)
+            .background(Color(nsColor: .controlBackgroundColor))
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 0) {
+                if let selectedPreset {
+                    Text(usageSummary(for: selectedPreset.id))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 8)
+                    Divider()
+                    ActivityEditorView(model: model, presetID: selectedPreset.id)
+                        .id(selectedPreset.id)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("No presets yet")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("Add or import a preset to edit its activity.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
-                .foregroundStyle(.red)
-                .disabled(selectedPreset == nil)
-                Button("Import…") { importPresets() }
-                Button("Export…") { exportPreset() }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+
+    private var presetList: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 2) {
+                ForEach(model.presets) { preset in
+                    Button {
+                        selectedPresetID = preset.id
+                        renameDraft = preset.name
+                        presetStatus = nil
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(preset.name)
+                                .font(.system(size: 12, weight: selectedPresetID == preset.id ? .semibold : .regular))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            let usage = cardUsage(for: preset.id)
+                            if !usage.isEmpty {
+                                Text("Used by \(usage.joined(separator: ", "))")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(selectedPresetID == preset.id ? Color.accentColor.opacity(0.16) : Color.clear)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(presetAccessibilityLabel(for: preset))
+                }
+            }
+            .padding(8)
+        }
+    }
+
+    private var presetActionBar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Button { addPreset() } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("+ Add")
+                .help("+ Add")
+
+                Button { duplicateSelectedPreset() } label: {
+                    Image(systemName: "doc.on.doc")
+                }
                     .disabled(selectedPreset == nil)
+                .accessibilityLabel("Duplicate")
+                .help("Duplicate")
+
+                Button(role: .destructive) { deleteSelectedPreset() } label: {
+                    Image(systemName: "trash")
+                }
+                    .disabled(selectedPreset == nil)
+                    .accessibilityLabel("Delete")
+                    .help("Delete")
+
+                Button { importPresets() } label: {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .accessibilityLabel("Import…")
+                .help("Import…")
+
+                Button { exportPreset() } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                    .disabled(selectedPreset == nil)
+                    .accessibilityLabel("Export…")
+                    .help("Export…")
             }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+
             if let presetStatus {
-                hint(presetStatus, color: presetStatus.hasPrefix("✓") ? .secondary : .red)
+                Text(presetStatus)
+                    .font(.system(size: 10))
+                    .foregroundStyle(presetStatus.hasPrefix("✓") ? Color.secondary : Color.red)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(8)
     }
 
     private var selectedPreset: Preset? {
@@ -317,11 +413,53 @@ struct SettingsView: View {
         return model.presets.first { $0.id == selectedPresetID }
     }
 
-    private func renameSelectedPreset() {
-        guard var preset = selectedPreset else { return }
-        preset.name = renameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        model.upsert(preset)
-        presetStatus = "✓ Renamed."
+    private func keepPresetSelectionValid() {
+        if let selectedPresetID, model.presets.contains(where: { $0.id == selectedPresetID }) {
+            return
+        }
+        selectedPresetID = model.settings.activePresetID.flatMap { id in
+            model.presets.first { $0.id == id }?.id
+        } ?? model.presets.first?.id
+    }
+
+    private func cardUsage(for presetID: UUID) -> [String] {
+        model.settings.cards.enumerated().compactMap { index, card in
+            guard card.presetID == presetID else { return nil }
+            return cardTitle(for: card, index: index)
+        }
+    }
+
+    private func usageSummary(for presetID: UUID) -> String {
+        let usage = cardUsage(for: presetID)
+        return usage.isEmpty ? "Not used by any card" : "Used by \(usage.joined(separator: ", "))"
+    }
+
+    private func presetAccessibilityLabel(for preset: Preset) -> String {
+        let usage = cardUsage(for: preset.id)
+        return usage.isEmpty ? preset.name : "\(preset.name), used by \(usage.joined(separator: ", "))"
+    }
+
+    private func addPreset() {
+        let preset = model.addPreset(from: Activity.sample(), name: "New preset")
+        selectedPresetID = preset.id
+        renameDraft = preset.name
+        presetStatus = "✓ Added."
+    }
+
+    private func duplicateSelectedPreset() {
+        guard let selectedPreset else { return }
+        let preset = model.addPreset(from: selectedPreset.activity, name: selectedPreset.name + " copy")
+        selectedPresetID = preset.id
+        renameDraft = preset.name
+        presetStatus = "✓ Duplicated."
+    }
+
+    private func deleteSelectedPreset() {
+        guard let preset = selectedPreset else { return }
+        model.deletePreset(preset)
+        keepPresetSelectionValid()
+        renameDraft = selectedPreset?.name ?? ""
+        presetStatus = "✓ Deleted."
     }
 
     private func importPresets() {

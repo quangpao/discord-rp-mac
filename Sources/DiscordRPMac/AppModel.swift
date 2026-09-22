@@ -20,7 +20,6 @@ final class AppModel: ObservableObject {
 
     let engine: PresenceEngine
     private let store: PresetStore
-    private var editor: EditorWindowController?
     private var settingsWindow: SettingsWindowController?
     /// Held for the app's lifetime: App Nap suspends a menu bar app's timers, which silently killed
     /// the RPC keepalive (measured: pings stopped ~2 minutes after launch, so Discord saw a dead
@@ -147,12 +146,14 @@ final class AppModel: ObservableObject {
         persistPresets()
     }
 
-    func addPreset(from activity: Activity, name: String) {
+    @discardableResult
+    func addPreset(from activity: Activity, name: String) -> Preset {
         let preset = Preset(name: name, activity: activity)
         presets.append(preset)
         settings.activePresetID = preset.id
         persistPresets()
         persistSettings()
+        return preset
     }
 
     func deletePreset(_ preset: Preset) {
@@ -345,19 +346,9 @@ final class AppModel: ObservableObject {
         launchAtLogin = LaunchAtLogin.isEnabled
     }
 
-    func openEditor() {
-        // Always rebuild the window: a cached one keeps the draft it loaded when it was first
-        // opened, so after the presets file changed on disk the editor still showed the old values
-        // (empty image keys) — and pressing Save wrote that stale draft back over the file. That is
-        // what looked like "the images rolled back to default".
-        let controller = EditorWindowController(model: self)
-        editor = controller
-        controller.show()
-    }
-
-    func openSettings() {
+    func openSettings(pane: SettingsPane = .cards, presetID: UUID? = nil) {
         // Match the editor: always rebuild so file changes and card validation state are fresh.
-        let controller = SettingsWindowController(model: self)
+        let controller = SettingsWindowController(model: self, initialPane: pane, selectedPresetID: presetID)
         settingsWindow = controller
         controller.show()
     }

@@ -60,7 +60,7 @@ struct MenuContentView: View {
                 }
             }
             Button {
-                model.openEditor()
+                model.openSettings(pane: .presets, presetID: model.settings.activePresetID)
             } label: {
                 Label("Manage presets…", systemImage: "list.bullet.rectangle")
             }
@@ -70,7 +70,7 @@ struct MenuContentView: View {
 
         // 2 — editor
         Button {
-            model.openEditor()
+            model.openSettings(pane: .presets, presetID: model.settings.activePresetID)
         } label: {
             Label("Edit This Preset…", systemImage: "slider.horizontal.3")
         }
