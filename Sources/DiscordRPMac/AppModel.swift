@@ -8,6 +8,11 @@ import SwiftUI
 final class AppModel: ObservableObject {
     @Published var presets: [Preset] = []
     @Published var settings = AppSettings()
+    /// Per-card problems (a missing preset, an empty or duplicated application id…). The menu only
+    /// ever shows one status line, so these surface in Settings, not as extra rows.
+    @Published private(set) var cardIssues: [CardValidationIssue] = []
+    /// The reduced state of every live card — what the single menu status line reports.
+    @Published var multiStatus: MultiPresenceStatus = .idle
     @Published var status: PresenceStatus = .idle
     @Published var issues: [ActivityIssue] = []
     @Published var launchAtLogin: Bool = false
@@ -45,6 +50,17 @@ final class AppModel: ObservableObject {
             settings.activePresetID = presets.first?.id
         }
 
+        // A file written before cards existed (or a fresh install) gets exactly one card — the same
+        // single presence a pre-cards build would have pushed. `PresetStore` already migrates the
+        // stored case; this covers the empty one, and `wasLegacy` decides whether the file has to be
+        // rewritten once so what is on disk is the card model.
+        let wasLegacyFile = store.settingsFileIsLegacy()
+        if settings.cards.isEmpty, let preset = presets.first(where: { $0.id == settings.activePresetID }) ?? presets.first {
+            let cardAppID = settings.appID.trimmingCharacters(in: .whitespacesAndNewlines)
+            settings.cards = [PresenceCard(name: "Main", presetID: preset.id,
+                                           applicationID: cardAppID, isOn: !cardAppID.isEmpty)]
+        }
+
         let engine = PresenceEngine(appID: settings.appID, pipeIndex: settings.pipeIndex)
 
         self.store = store
@@ -55,12 +71,12 @@ final class AppModel: ObservableObject {
 
         engine.$status.assign(to: &$status)
         engine.$issues.assign(to: &$issues)
+        engine.$multiStatus.assign(to: &$multiStatus)
+        engine.$cardIssues.assign(to: &$cardIssues)
 
-        if startEngine, !settings.appID.isEmpty {
-            engine.start()
-        }
-        if startEngine, let active = activePreset {
-            engine.apply(active.activity)
+        if startEngine {
+            // One connection per enabled card; a card with no application id is reported, not sent.
+            _ = engine.apply(cards: settings.cards, presets: presets)
         }
 
         guard startEngine else { return }
@@ -83,6 +99,7 @@ final class AppModel: ObservableObject {
             launchAtLogin = LaunchAtLogin.isEnabled
         }
         persistSettings()
+        if wasLegacyFile { persistSettings() }
 
         // Keep the keepalive timer alive while the app sits idle in the menu bar.
         activityToken = ProcessInfo.processInfo.beginActivity(
@@ -112,8 +129,12 @@ final class AppModel: ObservableObject {
 
     func select(_ preset: Preset) {
         settings.activePresetID = preset.id
-        persistSettings()
-        engine.apply(preset.activity)
+        // With one card — the only case a user who never adds a second card sees — picking a preset
+        // from the menu must keep behaving exactly as it always has: that card now shows it.
+        if let index = settings.cards.firstIndex(where: { $0.id == primaryCard?.id }) {
+            settings.cards[index].presetID = preset.id
+        }
+        applyCards()
     }
 
     func upsert(_ preset: Preset) {
@@ -141,8 +162,16 @@ final class AppModel: ObservableObject {
         if settings.activePresetID == preset.id {
             settings.activePresetID = presets.first?.id
         }
+        // A card whose preset vanished is a configuration error the user must see, not a card that
+        // silently keeps pushing a deleted preset's activity.
+        if let fallback = settings.activePresetID {
+            for index in settings.cards.indices where settings.cards[index].presetID == preset.id {
+                settings.cards[index].presetID = fallback
+            }
+        }
         persistPresets()
         persistSettings()
+        applyCards()
     }
 
     func duplicateActivePreset() {
@@ -156,8 +185,77 @@ final class AppModel: ObservableObject {
     }
 
     func reapply() {
-        guard let active = activePreset else { return }
-        engine.apply(active.activity)
+        applyCards()
+    }
+
+    // MARK: cards
+
+    /// The card the menu and the editor mean when there is only one. A single-card user never has to
+    /// know the card model exists.
+    var primaryCard: PresenceCard? { settings.cards.first }
+
+    var enabledCards: [PresenceCard] { settings.cards.filter(\.isOn) }
+
+    /// True when at least one enabled card has an application id — the condition for anything being
+    /// sent at all.
+    var hasRunnableCard: Bool {
+        enabledCards.contains { !$0.applicationID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
+    /// Cancels what is being shown without changing the configuration: Reapply (or picking a preset)
+    /// brings every enabled card straight back.
+    func clearPresence() {
+        engine.clearAll()
+    }
+
+    /// Pushes every enabled card and persists. This replaces the old single-card `engine.apply(_:)`
+    /// call: with one card the result is identical, with several each card gets its own connection.
+    func applyCards() {
+        if settings.cards.isEmpty,
+           let preset = presets.first(where: { $0.id == settings.activePresetID }) ?? presets.first {
+            let cardAppID = settings.appID.trimmingCharacters(in: .whitespacesAndNewlines)
+            settings.cards = [PresenceCard(name: "Main", presetID: preset.id,
+                                           applicationID: cardAppID, isOn: !cardAppID.isEmpty)]
+        }
+        syncShadowSettings()
+        cardIssues = engine.apply(cards: settings.cards, presets: presets)
+        persistSettings()
+    }
+
+    /// The application id and active preset a pre-cards build reads must mirror the first card that
+    /// is on, so opening this settings file with an older build still pushes the right presence.
+    private func syncShadowSettings() {
+        let shadow = settings.cards.first(where: { $0.isOn })
+        settings.appID = shadow?.applicationID ?? ""
+        if let presetID = shadow?.presetID ?? settings.cards.first?.presetID {
+            settings.activePresetID = presetID
+        }
+    }
+
+    func setCard(_ card: PresenceCard) {
+        guard let index = settings.cards.firstIndex(where: { $0.id == card.id }) else { return }
+        settings.cards[index] = card
+        applyCards()
+    }
+
+    func addCard(presetID: UUID, applicationID: String) {
+        settings.cards.append(PresenceCard(name: "Card \(settings.cards.count + 1)",
+                                           presetID: presetID,
+                                           applicationID: applicationID,
+                                           isOn: false))
+        persistSettings()
+    }
+
+    func removeCard(id: UUID) {
+        engine.clear(cardID: id)
+        settings.cards.removeAll { $0.id == id }
+        applyCards()
+    }
+
+    func toggleCard(id: UUID, isOn: Bool) {
+        guard let index = settings.cards.firstIndex(where: { $0.id == id }) else { return }
+        settings.cards[index].isOn = isOn
+        applyCards()
     }
 
     // MARK: settings
@@ -176,9 +274,13 @@ final class AppModel: ObservableObject {
             persistSettings()
             engine.update(appID: next.appID, pipeIndex: next.pipeIndex)
         }
+        // The editor's Application ID field edits the primary card until the Cards screen owns it.
+        if let index = settings.cards.firstIndex(where: { $0.id == primaryCard?.id }) {
+            settings.cards[index].applicationID = settings.appID.trimmingCharacters(in: .whitespacesAndNewlines)
+            settings.cards[index].isOn = !settings.appID.isEmpty
+        }
         PresenceLog.note("reconnect requested (settingsChanged=\(plan.changesSettings))")
         engine.reassert()
-        if !settings.appID.isEmpty { engine.start() }
         reapply()
     }
 
@@ -188,9 +290,12 @@ final class AppModel: ObservableObject {
         settings.appID = trimmed
         settings.pipeIndex = pipeIndex
         persistSettings()
-        engine.update(appID: trimmed, pipeIndex: pipeIndex)
-        if !trimmed.isEmpty { engine.start() }
-        reapply()
+        // The editor's Application ID field edits the primary card until the Cards screen owns it.
+        if let index = settings.cards.firstIndex(where: { $0.id == primaryCard?.id }) {
+            settings.cards[index].applicationID = trimmed
+            settings.cards[index].isOn = !trimmed.isEmpty
+        }
+        applyCards()
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

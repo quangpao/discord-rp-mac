@@ -179,16 +179,16 @@ struct ActivityEditorView: View {
         HStack(spacing: 6) {
             Circle()
                 .frame(width: 7, height: 7)
-                .foregroundStyle(model.status.isConnected ? Color.green
-                                 : model.status.needsAttention ? Color.red
+                .foregroundStyle(model.multiStatus.isConnected ? Color.green
+                                 : model.multiStatus.needsAttention ? Color.red
                                  : Color.orange)
-            Text(model.status.shortText)
+            Text(model.multiStatus.shortText)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
         // The dot alone carries meaning by colour; VoiceOver gets the words instead.
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Connection status: \(model.status.shortText)")
+        .accessibilityLabel("Connection status: \(model.multiStatus.shortText)")
         .padding(.leading, labelColumn + columnGap)
     }
 

@@ -91,14 +91,46 @@ public enum MultiPresenceStatus: Equatable, Sendable {
     case discordNotRunning
     case failed(message: String, failing: Int)
 
+    /// The one line the menu shows. Phrased so a single-card user reads exactly what the app said
+    /// before cards existed.
     public var shortText: String {
         switch self {
-        case .idle: "Idle"
-        case .connecting(let active): "Connecting \(active) card\(active == 1 ? "" : "s")…"
-        case .live(let active): "Live on \(active) card\(active == 1 ? "" : "s")"
-        case .partial(let live, let failing): "\(live) live, \(failing) failing"
+        case .idle: "Starting…"
+        case .connecting(let active): active == 1 ? "Connecting to Discord…" : "Connecting \(active) cards…"
+        case .live(let active): active == 1 ? "Connected" : "Connected — \(active) cards"
+        case .partial(let live, let failing): "\(live) live, \(failing) needs attention"
         case .discordNotRunning: "Discord not running"
         case .failed(let message, _): message
+        }
+    }
+
+    /// True while at least one card is being pushed — a partly-failing setup is still connected.
+    public var isConnected: Bool {
+        switch self {
+        case .live, .partial: true
+        default: false
+        }
+    }
+
+    /// Drives the red badge on the menu bar item.
+    public var needsAttention: Bool {
+        switch self {
+        case .partial, .failed: true
+        default: false
+        }
+    }
+
+    public var symbolName: String {
+        isConnected ? "bolt.horizontal.circle.fill" : "bolt.horizontal.circle"
+    }
+
+    public var dotSymbolName: String {
+        switch self {
+        case .live: "circle.fill"
+        case .partial: "circle.lefthalf.filled"
+        case .connecting, .idle: "circle.dotted"
+        case .discordNotRunning: "circle"
+        case .failed: "exclamationmark.circle.fill"
         }
     }
 }

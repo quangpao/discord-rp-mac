@@ -21,7 +21,7 @@ struct DiscordRPMacApp: App {
         MenuBarExtra {
             MenuContentView(model: model)
         } label: {
-            MenuBarGlyph(status: model.status)
+            MenuBarGlyph(status: model.multiStatus)
         }
         .menuBarExtraStyle(.menu)
     }

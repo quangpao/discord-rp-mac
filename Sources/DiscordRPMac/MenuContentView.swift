@@ -11,14 +11,14 @@ import SwiftUI
 struct MenuContentView: View {
     @ObservedObject var model: AppModel
 
-    private var statusText: String { model.status.shortText }
+    private var statusText: String { model.multiStatus.shortText }
 
     var body: some View {
         // 0 — status line (not interactive)
-        Label(statusText, systemImage: model.status.dotSymbolName)
+        Label(statusText, systemImage: model.multiStatus.dotSymbolName)
 
         // E1 — error state only
-        if model.status.needsAttention {
+        if model.multiStatus.needsAttention {
             Button {
                 model.openEditor()
             } label: {
@@ -46,6 +46,19 @@ struct MenuContentView: View {
                 Label("Save current as new preset…", systemImage: "plus.circle")
             }
             .disabled(model.presets.isEmpty)
+            // Cards only appear once there is more than one: a single-card user's menu stays exactly
+            // as it has always been.
+            if model.settings.cards.count > 1 {
+                Divider()
+                ForEach(model.settings.cards) { card in
+                    Button {
+                        model.toggleCard(id: card.id, isOn: !card.isOn)
+                    } label: {
+                        Text((card.isOn ? "✓ " : "   ") + card.name
+                             + " — " + (model.presets.first { $0.id == card.presetID }?.name ?? "no preset"))
+                    }
+                }
+            }
             Button {
                 model.openEditor()
             } label: {
@@ -71,15 +84,16 @@ struct MenuContentView: View {
             Label("Reapply Now", systemImage: "arrow.clockwise")
         }
         .keyboardShortcut("r", modifiers: .command)
-        .disabled(!model.status.isConnected || model.settings.appID.isEmpty)
+        .disabled(!model.multiStatus.isConnected || !model.hasRunnableCard)
 
         // 4 — clear
         Button {
-            model.engine.clear()
+            model.clearPresence()
         } label: {
-            Label("Clear Presence", systemImage: "xmark.circle")
+            Label(model.enabledCards.count > 1 ? "Clear All Presences" : "Clear Presence",
+                  systemImage: "xmark.circle")
         }
-        .disabled(!model.status.isConnected)
+        .disabled(!model.multiStatus.isConnected)
 
         Divider()
 
@@ -95,7 +109,7 @@ struct MenuContentView: View {
         }
 
         // 6 — only when Discord is not running
-        if !model.status.isConnected {
+        if !model.multiStatus.isConnected {
             Button {
                 model.openDiscord()
             } label: {

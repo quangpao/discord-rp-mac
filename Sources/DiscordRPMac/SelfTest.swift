@@ -311,6 +311,7 @@ enum SelfTest {
         let store = PresetStore(directory: URL(fileURLWithPath: args[index + 1]))
         let model = AppModel(startEngine: false, store: store)
         model.status = .connected(user: "demo")
+        model.multiStatus = .live(active: max(1, model.enabledCards.count))
         return model
     }
 

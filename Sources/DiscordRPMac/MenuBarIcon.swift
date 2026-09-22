@@ -20,7 +20,7 @@ enum MenuBarIcon {
 }
 
 struct MenuBarGlyph: View {
-    let status: PresenceStatus
+    let status: MultiPresenceStatus
 
     var body: some View {
         ZStack {

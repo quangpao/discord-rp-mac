@@ -168,6 +168,14 @@ public final class PresetStore: @unchecked Sendable {
         }
     }
 
+    /// True when the settings file on disk predates the card model (no `cards` key). A missing file
+    /// is not legacy — it is a fresh install, and the migration already gives it one card.
+    public func settingsFileIsLegacy() -> Bool {
+        guard let data = try? Data(contentsOf: settingsURL),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return false }
+        return object["cards"] == nil
+    }
+
     public func loadSettings() -> AppSettings {
         guard let data = try? Data(contentsOf: settingsURL) else { return AppSettings() }
         if let settings = try? Self.decoder().decode(AppSettings.self, from: data) {
