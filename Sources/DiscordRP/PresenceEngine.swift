@@ -51,6 +51,193 @@ public enum PresenceStatus: Equatable, Sendable {
     }
 }
 
+public struct CardRunSpec: Equatable, Sendable, Identifiable {
+    public var id: UUID { cardID }
+    public var cardID: UUID
+    public var applicationID: String
+    public var activity: Activity
+
+    public init(cardID: UUID, applicationID: String, activity: Activity) {
+        self.cardID = cardID
+        self.applicationID = applicationID
+        self.activity = activity
+    }
+}
+
+public struct CardValidationIssue: Equatable, Sendable {
+    public enum Kind: Equatable, Sendable {
+        case missingPreset
+        case emptyApplicationID
+        case duplicateApplicationID
+        case invalidActivity
+    }
+
+    public var cardID: UUID
+    public var kind: Kind
+    public var message: String
+
+    public init(cardID: UUID, kind: Kind, message: String) {
+        self.cardID = cardID
+        self.kind = kind
+        self.message = message
+    }
+}
+
+public enum MultiPresenceStatus: Equatable, Sendable {
+    case idle
+    case connecting(active: Int)
+    case live(active: Int)
+    case partial(live: Int, failing: Int)
+    case discordNotRunning
+    case failed(message: String, failing: Int)
+
+    public var shortText: String {
+        switch self {
+        case .idle: "Idle"
+        case .connecting(let active): "Connecting \(active) card\(active == 1 ? "" : "s")…"
+        case .live(let active): "Live on \(active) card\(active == 1 ? "" : "s")"
+        case .partial(let live, let failing): "\(live) live, \(failing) failing"
+        case .discordNotRunning: "Discord not running"
+        case .failed(let message, _): message
+        }
+    }
+}
+
+public struct RunningCardSnapshot: Equatable, Sendable {
+    public var cardID: UUID
+    public var applicationID: String
+    public var activity: Activity?
+
+    public init(cardID: UUID, applicationID: String, activity: Activity?) {
+        self.cardID = cardID
+        self.applicationID = applicationID
+        self.activity = activity
+    }
+}
+
+public enum CardWorkerChange: Equatable, Sendable {
+    case start(CardRunSpec)
+    case update(CardRunSpec)
+    case clear(UUID)
+    case stop(UUID)
+}
+
+public enum PresenceCardPlanner {
+    /// The rules a card must pass before anything is sent. Messages stay generic and every issue
+    /// carries the card id — the UI shows the card's own name beside it, so the name is not baked
+    /// into the message (that is what made two copies of these rules drift apart).
+    public static func validate(specs: [CardRunSpec]) -> [CardValidationIssue] {
+        var seenApplications: Set<String> = []
+        var issues: [CardValidationIssue] = []
+
+        for spec in specs {
+            let applicationID = spec.applicationID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !applicationID.isEmpty else {
+                issues.append(CardValidationIssue(
+                    cardID: spec.cardID,
+                    kind: .emptyApplicationID,
+                    message: "Application ID is required."
+                ))
+                continue
+            }
+            guard !seenApplications.contains(applicationID) else {
+                issues.append(CardValidationIssue(
+                    cardID: spec.cardID,
+                    kind: .duplicateApplicationID,
+                    message: "Application ID \(applicationID) is already used by another active card."
+                ))
+                continue
+            }
+            seenApplications.insert(applicationID)
+
+            let activityIssues = ActivityRules.errors(in: ActivityRules.validate(spec.activity, appID: applicationID))
+            if !activityIssues.isEmpty {
+                issues.append(CardValidationIssue(
+                    cardID: spec.cardID,
+                    kind: .invalidActivity,
+                    message: activityIssues.map(\.message).joined(separator: " ")
+                ))
+            }
+        }
+        return issues
+    }
+
+    /// Resolves each enabled card's preset, then applies the shared spec-level rules. Returns the
+    /// specs that may run plus every issue found, so a caller can start the good cards and still
+    /// report the bad one.
+    public static func validate(cards: [PresenceCard],
+                                presets: [Preset]) -> ([CardRunSpec], [CardValidationIssue]) {
+        let presetsByID = Dictionary(uniqueKeysWithValues: presets.map { ($0.id, $0) })
+        var specs: [CardRunSpec] = []
+        var issues: [CardValidationIssue] = []
+
+        for card in cards where card.isOn {
+            guard let preset = presetsByID[card.presetID] else {
+                issues.append(CardValidationIssue(
+                    cardID: card.id,
+                    kind: .missingPreset,
+                    message: "Preset not found."
+                ))
+                continue
+            }
+            specs.append(CardRunSpec(cardID: card.id, applicationID: card.applicationID, activity: preset.activity))
+        }
+
+        issues.append(contentsOf: validate(specs: specs))
+        let unrunnable = Set(issues.map(\.cardID))
+        return (specs.filter { !unrunnable.contains($0.cardID) }, issues)
+    }
+
+    public static func diff(desired: [CardRunSpec], running: [RunningCardSnapshot]) -> [CardWorkerChange] {
+        let desiredByID = Dictionary(uniqueKeysWithValues: desired.map { ($0.cardID, $0) })
+        let runningByID = Dictionary(uniqueKeysWithValues: running.map { ($0.cardID, $0) })
+        var changes: [CardWorkerChange] = []
+
+        for spec in desired where runningByID[spec.cardID] == nil {
+            changes.append(.start(spec))
+        }
+
+        for spec in desired {
+            guard let current = runningByID[spec.cardID] else { continue }
+            if current.applicationID != spec.applicationID || current.activity != spec.activity {
+                changes.append(.update(spec))
+            }
+        }
+
+        for current in running where desiredByID[current.cardID] == nil {
+            if current.activity != nil { changes.append(.clear(current.cardID)) }
+            changes.append(.stop(current.cardID))
+        }
+
+        return changes
+    }
+
+    public static func reduce(statuses: [PresenceStatus]) -> MultiPresenceStatus {
+        guard !statuses.isEmpty else { return .idle }
+
+        let connected = statuses.filter(\.isConnected).count
+        let connecting = statuses.filter {
+            if case .connecting = $0 { return true }
+            if case .idle = $0 { return true }
+            return false
+        }.count
+        let discordMissing = statuses.filter { $0 == .discordNotRunning }.count
+        let failures = statuses.compactMap { status -> String? in
+            if case .failed(_, let message) = status { return message }
+            return nil
+        }
+
+        if connected == statuses.count { return .live(active: connected) }
+        if connected > 0 {
+            let failing = statuses.count - connected - connecting
+            return failing > 0 ? .partial(live: connected, failing: failing) : .connecting(active: statuses.count)
+        }
+        if connecting > 0 { return .connecting(active: statuses.count) }
+        if discordMissing == statuses.count { return .discordNotRunning }
+        return .failed(message: failures.first ?? "Presence failed", failing: max(1, failures.count))
+    }
+}
+
 /// Owns the Discord connection: connect, push, keepalive, reconnect, debounce.
 ///
 /// All IO happens on a private serial queue (the client is queue-confined); published state
@@ -58,9 +245,14 @@ public enum PresenceStatus: Equatable, Sendable {
 @MainActor
 public final class PresenceEngine: ObservableObject {
     @Published public private(set) var status: PresenceStatus = .idle
+    @Published public private(set) var multiStatus: MultiPresenceStatus = .idle
     @Published public private(set) var issues: [ActivityIssue] = []
+    @Published public private(set) var cardIssues: [CardValidationIssue] = []
 
     private let worker: Worker
+    private var cardWorkers: [UUID: Worker] = [:]
+    private var cardStatuses: [UUID: PresenceStatus] = [:]
+    private var cardSpecs: [UUID: CardRunSpec] = [:]
 
     public init(appID: String, pipeIndex: Int = 0, appStarted: Date = Date()) {
         let box = StatusBox()
@@ -94,13 +286,115 @@ public final class PresenceEngine: ObservableObject {
 
     public func clear() { worker.clear() }
 
+    @discardableResult
+    public func apply(_ specs: [CardRunSpec]) -> [CardValidationIssue] {
+        let specs = specs.map {
+            CardRunSpec(
+                cardID: $0.cardID,
+                applicationID: $0.applicationID.trimmingCharacters(in: .whitespacesAndNewlines),
+                activity: $0.activity
+            )
+        }
+        let issues = PresenceCardPlanner.validate(specs: specs)
+        cardIssues = issues
+        // A misconfigured card must not hold back the others: run every spec that validated and
+        // report the rest. A card that *became* invalid is no longer in `desired`, so the diff below
+        // clears and stops it.
+        let unrunnable = Set(issues.map(\.cardID))
+        let runnable = specs.filter { !unrunnable.contains($0.cardID) }
+
+        let running = cardSpecs.values.map {
+            RunningCardSnapshot(cardID: $0.cardID, applicationID: $0.applicationID, activity: $0.activity)
+        }
+        let changes = PresenceCardPlanner.diff(desired: runnable, running: running)
+        for change in changes {
+            switch change {
+            case .start(let spec):
+                let worker = makeCardWorker(for: spec)
+                cardWorkers[spec.cardID] = worker
+                cardSpecs[spec.cardID] = spec
+                cardStatuses[spec.cardID] = .connecting
+                worker.start()
+                worker.push(spec.activity)
+            case .update(let spec):
+                if let worker = cardWorkers[spec.cardID] {
+                    let previous = cardSpecs[spec.cardID]
+                    if previous?.applicationID != spec.applicationID {
+                        worker.update(appID: spec.applicationID, pipeIndex: worker.pipeIndex)
+                    }
+                    worker.push(spec.activity)
+                    cardSpecs[spec.cardID] = spec
+                }
+            case .clear(let cardID):
+                cardWorkers[cardID]?.clear()
+                cardSpecs[cardID] = nil
+            case .stop(let cardID):
+                cardWorkers[cardID]?.stop()
+                cardWorkers[cardID] = nil
+                cardStatuses[cardID] = nil
+                cardSpecs[cardID] = nil
+            }
+        }
+        reduceCardStatus()
+        return issues
+    }
+
+    @discardableResult
+    public func apply(cards: [PresenceCard], presets: [Preset]) -> [CardValidationIssue] {
+        let (specs, issues) = PresenceCardPlanner.validate(cards: cards, presets: presets)
+        _ = apply(specs)
+        cardIssues = issues
+        return issues
+    }
+
+    public func clear(cardID: UUID) {
+        cardWorkers[cardID]?.stop()
+        cardWorkers[cardID] = nil
+        cardStatuses[cardID] = nil
+        cardSpecs[cardID] = nil
+        reduceCardStatus()
+    }
+
+    public func clearAll() {
+        for worker in cardWorkers.values { worker.stop() }
+        cardWorkers.removeAll()
+        cardStatuses.removeAll()
+        cardSpecs.removeAll()
+        reduceCardStatus()
+    }
+
     /// Force an immediate keepalive ping and re-push the current activity. Used when the system
     /// wakes (or when the app was idle long enough that App Nap may have stalled the timers), so
     /// the presence is re-asserted instead of silently going stale.
-    public func reassert() { worker.reassert() }
+    public func reassert() {
+        worker.reassert()
+        for worker in cardWorkers.values { worker.reassert() }
+    }
 
     /// Clears the presence and closes the socket — used on quit.
-    public func stop() { worker.stop() }
+    public func stop() {
+        worker.stop()
+        for worker in cardWorkers.values { worker.stop() }
+        cardWorkers.removeAll()
+        cardStatuses.removeAll()
+        cardSpecs.removeAll()
+        reduceCardStatus()
+    }
+
+    private func makeCardWorker(for spec: CardRunSpec) -> Worker {
+        let worker = Worker(appID: spec.applicationID, pipeIndex: self.worker.pipeIndex, appStarted: Date())
+        worker.onStatus = { [weak self] status in
+            Task { @MainActor in
+                self?.cardStatuses[spec.cardID] = status
+                self?.reduceCardStatus()
+            }
+        }
+        return worker
+    }
+
+    private func reduceCardStatus() {
+        multiStatus = PresenceCardPlanner.reduce(statuses: Array(cardStatuses.values))
+    }
 }
 
 /// Indirection so the worker's status callback can reach the engine without a retain cycle.
@@ -117,7 +411,7 @@ private final class Worker: @unchecked Sendable {
     private var client: DiscordIPCClient?
 
     private(set) var appID: String
-    private var pipeIndex: Int
+    private(set) var pipeIndex: Int
     private let appStarted: Date
 
     private var currentActivity: Activity?

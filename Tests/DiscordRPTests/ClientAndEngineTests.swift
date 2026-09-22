@@ -190,4 +190,121 @@ final class PresenceEngineTests: XCTestCase {
         XCTAssertTrue(pushed)
         engine.stop()
     }
+
+    func testTwoCardsUseTwoConnectionsAndSendTwoActivities() async throws {
+        let engine = PresenceEngine(appID: "unused")
+        let firstID = UUID()
+        let secondID = UUID()
+
+        engine.apply([
+            CardRunSpec(cardID: firstID, applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
+            CardRunSpec(cardID: secondID, applicationID: "222222222222222222", activity: Activity(name: "B", details: "second")),
+        ])
+
+        let pushed = await waitUntil(timeout: 10) {
+            self.server.connectionActivities.values.filter { !$0.isEmpty }.count == 2
+        }
+        XCTAssertTrue(pushed, "expected one SET_ACTIVITY on each connection, got \(server.connectionActivities)")
+        XCTAssertEqual(server.connectionClientIDs.values.sorted(), ["111111111111111111", "222222222222222222"])
+
+        engine.stop()
+    }
+
+    /// One application means one card, so the duplicate is refused — but refusing it must not take
+    /// the *other* card down with it: the first card keeps running, exactly one connection exists.
+    func testDuplicateApplicationIDIsBlockedWithoutHoldingBackTheFirstCard() async throws {
+        let engine = PresenceEngine(appID: "unused")
+        let issues = engine.apply([
+            CardRunSpec(cardID: UUID(), applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
+            CardRunSpec(cardID: UUID(), applicationID: "111111111111111111", activity: Activity(name: "B", details: "second")),
+        ])
+
+        XCTAssertEqual(issues.map(\.kind), [.duplicateApplicationID], "the second card must be reported")
+
+        let pushed = await waitUntil(timeout: 10) {
+            self.server.connectionActivities.values.filter { !$0.isEmpty }.count == 1
+        }
+        XCTAssertTrue(pushed, "the first card must still run, got \(server.connectionActivities)")
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        XCTAssertEqual(Set(server.connectionClientIDs.values), ["111111111111111111"],
+                       "one application id must mean one connection")
+        engine.stop()
+    }
+
+    /// A card the user has not finished configuring (no application id yet) must not stop a card
+    /// that is ready — otherwise adding a second card breaks the first one.
+    func testUnconfiguredCardDoesNotHoldBackAConfiguredOne() async throws {
+        let engine = PresenceEngine(appID: "unused")
+        let issues = engine.apply([
+            CardRunSpec(cardID: UUID(), applicationID: "", activity: Activity(name: "A", details: "first")),
+            CardRunSpec(cardID: UUID(), applicationID: "111111111111111111", activity: Activity(name: "B", details: "second")),
+        ])
+
+        XCTAssertEqual(issues.map(\.kind), [.emptyApplicationID])
+
+        let pushed = await waitUntil(timeout: 10) {
+            self.server.connectionActivities.values.contains { activities in
+                activities.contains { !($0 is NSNull) }
+            }
+        }
+        XCTAssertTrue(pushed, "a half-configured card must not stop the configured one")
+        engine.stop()
+    }
+
+    func testClearingOneCardOnlyClearsThatConnection() async throws {
+        let engine = PresenceEngine(appID: "unused")
+        let firstID = UUID()
+        let secondID = UUID()
+        engine.apply([
+            CardRunSpec(cardID: firstID, applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
+            CardRunSpec(cardID: secondID, applicationID: "222222222222222222", activity: Activity(name: "B", details: "second")),
+        ])
+        let bothPushed = await waitUntil(timeout: 10) {
+            self.server.connectionActivities.values.filter { !$0.isEmpty }.count == 2
+        }
+        XCTAssertTrue(bothPushed)
+
+        engine.clear(cardID: firstID)
+
+        let cleared = await waitUntil(timeout: 5) {
+            guard let connectionID = self.server.connectionClientIDs.first(where: { $0.value == "111111111111111111" })?.key,
+                  let activities = self.server.connectionActivities[connectionID] else { return false }
+            return activities.contains { $0 is NSNull }
+        }
+        XCTAssertTrue(cleared, "first card never sent activity:null")
+
+        let secondConnection = try XCTUnwrap(server.connectionClientIDs.first { $0.value == "222222222222222222" }?.key)
+        XCTAssertFalse(server.connectionActivities[secondConnection, default: []].contains { $0 is NSNull },
+                       "clearing the first card must not clear the second socket")
+        engine.stop()
+    }
+
+    func testRejectedHandshakeOnOneCardLeavesTheOtherConnected() async throws {
+        server.rejectedClientIDs["222222222222222222"] = (4000, "Invalid Client ID")
+        let engine = PresenceEngine(appID: "unused")
+        engine.apply([
+            CardRunSpec(cardID: UUID(), applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
+            CardRunSpec(cardID: UUID(), applicationID: "222222222222222222", activity: Activity(name: "B", details: "second")),
+        ])
+
+        let firstPushed = await waitUntil(timeout: 10) {
+            guard let connectionID = self.server.connectionClientIDs.first(where: { $0.value == "111111111111111111" })?.key else {
+                return false
+            }
+            return self.server.connectionActivities[connectionID]?.isEmpty == false
+        }
+        XCTAssertTrue(firstPushed, "healthy card must still connect and send")
+
+        let failed = await waitUntil(timeout: 5) {
+            if case .partial(let live, let failing) = engine.multiStatus {
+                return live == 1 && failing == 1
+            }
+            if case .failed(_, let failing) = engine.multiStatus {
+                return failing == 1
+            }
+            return false
+        }
+        XCTAssertTrue(failed, "expected one-card failure to be summarized, got \(engine.multiStatus)")
+        engine.stop()
+    }
 }

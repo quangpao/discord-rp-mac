@@ -12,16 +12,99 @@ public struct Preset: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
+public struct PresenceCard: Codable, Equatable, Sendable, Identifiable {
+    public var id: UUID
+    public var name: String
+    public var presetID: UUID
+    public var applicationID: String
+    public var isOn: Bool
+
+    public init(
+        id: UUID = UUID(),
+        name: String,
+        presetID: UUID,
+        applicationID: String,
+        isOn: Bool
+    ) {
+        self.id = id
+        self.name = name
+        self.presetID = presetID
+        self.applicationID = applicationID
+        self.isOn = isOn
+    }
+}
+
 public struct AppSettings: Codable, Equatable, Sendable {
-    /// Defaults to the built-in application so a fresh install can push a presence immediately;
-    /// clearing it still means "send nothing". See `DefaultApplication`.
-    public var appID: String = DefaultApplication.id
+    public var schemaVersion: Int = 2
     public var pipeIndex: Int = 0
-    public var activePresetID: UUID?
+    public var cards: [PresenceCard] = []
     /// Mirror of the real login-item state (SMAppService / LaunchAgent), never optimistic.
     public var launchAtLogin: Bool = false
 
+    /// Legacy compatibility for the unchanged SwiftUI target. These are decoded from v1 files and
+    /// mirrored from the first card during migration, but custom encoding never writes them.
+    public var appID: String = DefaultApplication.id
+    public var activePresetID: UUID?
+
     public init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, pipeIndex, cards, launchAtLogin
+        case appID, activePresetID
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        pipeIndex = try container.decodeIfPresent(Int.self, forKey: .pipeIndex) ?? 0
+        cards = try container.decodeIfPresent([PresenceCard].self, forKey: .cards) ?? []
+        launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
+        appID = try container.decodeIfPresent(String.self, forKey: .appID) ?? DefaultApplication.id
+        activePresetID = try container.decodeIfPresent(UUID.self, forKey: .activePresetID)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(pipeIndex, forKey: .pipeIndex)
+        try container.encode(cards, forKey: .cards)
+        try container.encode(launchAtLogin, forKey: .launchAtLogin)
+    }
+
+    public static func migrated(_ decoded: AppSettings, presets: [Preset]) -> AppSettings {
+        guard decoded.cards.isEmpty else {
+            var settings = decoded
+            settings.schemaVersion = 2
+            // The shadow fields must mirror what a pre-cards build would have pushed: the first card
+            // that is actually ON. With every card off, an old build has to push nothing, which is
+            // what the empty application id means.
+            let shadow = settings.cards.first(where: { $0.isOn })
+            settings.appID = shadow?.applicationID ?? ""
+            settings.activePresetID = shadow?.presetID
+            return settings
+        }
+
+        var settings = decoded
+        settings.schemaVersion = 2
+
+        let presetID = decoded.activePresetID ?? presets.first?.id
+        guard let presetID else { return settings }
+
+        let finalApplicationID = decoded.appID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let presetExists = presets.contains { $0.id == presetID }
+        let isOn = presetExists && !finalApplicationID.isEmpty
+
+        let card = PresenceCard(
+            name: "Main",
+            presetID: presetID,
+            applicationID: finalApplicationID,
+            isOn: isOn
+        )
+        settings.cards = [card]
+        settings.appID = finalApplicationID
+        settings.activePresetID = presetID
+        return settings
+    }
 }
 
 /// JSON persistence in `~/Library/Application Support/DiscordRPMac/`.
@@ -88,7 +171,7 @@ public final class PresetStore: @unchecked Sendable {
     public func loadSettings() -> AppSettings {
         guard let data = try? Data(contentsOf: settingsURL) else { return AppSettings() }
         if let settings = try? Self.decoder().decode(AppSettings.self, from: data) {
-            return settings
+            return AppSettings.migrated(settings, presets: loadPresets())
         }
         quarantine(settingsURL)
         return AppSettings()

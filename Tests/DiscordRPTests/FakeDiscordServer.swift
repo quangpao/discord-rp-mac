@@ -4,25 +4,32 @@ import Foundation
 
 /// A local `AF_UNIX` server that speaks Discord's IPC protocol, so tests never need the real
 /// client (and can provoke states the real one will not: bad id, hangup, silence).
-final class FakeDiscordServer {
+final class FakeDiscordServer: @unchecked Sendable {
     let path: String
     private var listenFD: Int32 = -1
-    private let queue = DispatchQueue(label: "fake-discord-server")
+    private let queue = DispatchQueue(label: "fake-discord-server", attributes: .concurrent)
     private let lock = NSLock()
 
     private var _commands: [String] = []
     private var _activities: [Any] = []
     private var _handshake: [String: Any]?
+    private var _handshakes: [[String: Any]] = []
+    private var _connectionActivities: [Int: [Any]] = [:]
+    private var _connectionClientIDs: [Int: String] = [:]
+    private var nextConnectionID = 0
+    private var clientFDs: [Int32] = []
 
     /// When set, the handshake is answered with a CLOSE frame carrying this code/message —
     /// exactly what Discord does for an invalid Application ID.
     var reject: (code: Int, message: String)?
+    var rejectedClientIDs: [String: (code: Int, message: String)] = [:]
     /// Drop the connection right after a successful handshake.
     var closeAfterHandshake = false
     var username = "tester"
 
     init() {
-        path = NSTemporaryDirectory() + "fake-discord-\(UUID().uuidString.prefix(8)).sock"
+        path = NSTemporaryDirectory()
+            + "fake-discord-\(ProcessInfo.processInfo.processIdentifier)-\(UUID().uuidString.prefix(8)).sock"
     }
 
     var commands: [String] {
@@ -38,6 +45,21 @@ final class FakeDiscordServer {
     var handshake: [String: Any]? {
         lock.lock(); defer { lock.unlock() }
         return _handshake
+    }
+
+    var handshakes: [[String: Any]] {
+        lock.lock(); defer { lock.unlock() }
+        return _handshakes
+    }
+
+    var connectionActivities: [Int: [Any]] {
+        lock.lock(); defer { lock.unlock() }
+        return _connectionActivities
+    }
+
+    var connectionClientIDs: [Int: String] {
+        lock.lock(); defer { lock.unlock() }
+        return _connectionClientIDs
     }
 
     // MARK: lifecycle
@@ -62,7 +84,11 @@ final class FakeDiscordServer {
                 bind(fd, socketAddress, socklen_t(MemoryLayout<sockaddr_un>.size))
             }
         }
-        guard bound == 0 else { close(fd); throw POSIXError(.EADDRINUSE) }
+        guard bound == 0 else {
+            let code = POSIXErrorCode(rawValue: errno) ?? .EIO
+            close(fd)
+            throw POSIXError(code)
+        }
         guard listen(fd, 4) == 0 else { close(fd); throw POSIXError(.EINVAL) }
         listenFD = fd
 
@@ -71,6 +97,14 @@ final class FakeDiscordServer {
 
     func stop() {
         if listenFD >= 0 { close(listenFD); listenFD = -1 }
+        lock.lock()
+        let fds = clientFDs
+        clientFDs.removeAll()
+        lock.unlock()
+        for fd in fds {
+            shutdown(fd, SHUT_RDWR)
+            close(fd)
+        }
         unlink(path)
     }
 
@@ -78,21 +112,41 @@ final class FakeDiscordServer {
         while listenFD >= 0 {
             let client = accept(listenFD, nil, nil)
             if client < 0 { break }
-            serve(client)
-            close(client)
+            lock.lock()
+            let connectionID = nextConnectionID
+            nextConnectionID += 1
+            clientFDs.append(client)
+            lock.unlock()
+            queue.async { [weak self] in
+                self?.serve(client, connectionID: connectionID)
+                self?.removeClient(client)
+                close(client)
+            }
         }
     }
 
     // MARK: protocol
 
-    private func serve(_ fd: Int32) {
+    private func serve(_ fd: Int32, connectionID: Int) {
         while true {
             guard let (opcode, payload) = try? readFrame(fd) else { return }
             switch opcode {
             case .handshake:
-                lock.lock(); _handshake = payload; lock.unlock()
+                let clientID = payload["client_id"] as? String ?? ""
+                lock.lock()
+                _handshake = payload
+                _handshakes.append(payload)
+                _connectionClientIDs[connectionID] = clientID
+                lock.unlock()
                 if let reject {
                     try? sendFrame(fd, opcode: .close, payload: ["code": reject.code, "message": reject.message])
+                    return
+                }
+                if let rejection = rejectedClientIDs[clientID] {
+                    try? sendFrame(fd, opcode: .close, payload: [
+                        "code": rejection.code,
+                        "message": rejection.message,
+                    ])
                     return
                 }
                 try? sendFrame(fd, opcode: .frame, payload: [
@@ -105,7 +159,9 @@ final class FakeDiscordServer {
                 lock.lock()
                 _commands.append(command)
                 if command == "SET_ACTIVITY", let args = payload["args"] as? [String: Any] {
-                    _activities.append(args["activity"] ?? NSNull())
+                    let activity = args["activity"] ?? NSNull()
+                    _activities.append(activity)
+                    _connectionActivities[connectionID, default: []].append(activity)
                 }
                 lock.unlock()
                 try? sendFrame(fd, opcode: .frame, payload: [
@@ -119,6 +175,12 @@ final class FakeDiscordServer {
                 return
             }
         }
+    }
+
+    private func removeClient(_ fd: Int32) {
+        lock.lock()
+        clientFDs.removeAll { $0 == fd }
+        lock.unlock()
     }
 }
 

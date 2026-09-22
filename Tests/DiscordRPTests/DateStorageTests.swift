@@ -38,9 +38,14 @@ final class DateStorageTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let store = PresetStore(directory: directory)
+        let presetID = UUID()
         var settings = AppSettings()
-        settings.appID = "123456789012345678"
         settings.pipeIndex = 2
+        settings.cards = [
+            PresenceCard(name: "Main", presetID: presetID, applicationID: "123456789012345678", isOn: true),
+        ]
+        settings.appID = "123456789012345678"
+        settings.activePresetID = presetID
         try store.save(settings: settings)
 
         let loaded = store.loadSettings()
