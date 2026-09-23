@@ -20,18 +20,20 @@ jobs:
     name: Build .dmg and publish
     runs-on: macos-15
     timeout-minutes: 30
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Tag matches the app version
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${RELEASE_TAG#v}"
           VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
           echo "tag=$TAG version=$VERSION"
           if [ "$TAG" != "$VERSION" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match CFBundleShortVersionString ($VERSION) — bump it with ./scripts/bump-version.sh"
+            echo "::error::tag $RELEASE_TAG does not match CFBundleShortVersionString ($VERSION) — bump it with ./scripts/bump-version.sh"
             exit 1
           fi
 
@@ -50,6 +52,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" build/*.dmg build/sha256.txt \
-            --title "Discord RP $GITHUB_REF_NAME" \
+          gh release create "$RELEASE_TAG" build/*.dmg build/sha256.txt \
+            --title "Discord RP $RELEASE_TAG" \
             --notes-file .github/release-notes.md

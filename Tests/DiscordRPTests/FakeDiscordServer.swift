@@ -22,9 +22,11 @@ final class FakeDiscordServer: @unchecked Sendable {
     /// When set, the handshake is answered with a CLOSE frame carrying this code/message —
     /// exactly what Discord does for an invalid Application ID.
     var reject: (code: Int, message: String)?
+    var rejectNextHandshake: (code: Int, message: String)?
     var rejectedClientIDs: [String: (code: Int, message: String)] = [:]
     /// Drop the connection right after a successful handshake.
     var closeAfterHandshake = false
+    var commandReplyDelay: TimeInterval = 0
     var username = "tester"
 
     init() {
@@ -138,7 +140,14 @@ final class FakeDiscordServer: @unchecked Sendable {
                 _handshakes.append(payload)
                 _connectionClientIDs[connectionID] = clientID
                 lock.unlock()
-                if let reject {
+                let oneShotRejection: (code: Int, message: String)? = {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    let rejection = rejectNextHandshake
+                    rejectNextHandshake = nil
+                    return rejection
+                }()
+                if let reject = oneShotRejection ?? reject {
                     try? sendFrame(fd, opcode: .close, payload: ["code": reject.code, "message": reject.message])
                     return
                 }
@@ -164,6 +173,9 @@ final class FakeDiscordServer: @unchecked Sendable {
                     _connectionActivities[connectionID, default: []].append(activity)
                 }
                 lock.unlock()
+                if commandReplyDelay > 0 {
+                    Thread.sleep(forTimeInterval: commandReplyDelay)
+                }
                 try? sendFrame(fd, opcode: .frame, payload: [
                     "cmd": command,
                     "nonce": (payload["nonce"] as? String) ?? "",

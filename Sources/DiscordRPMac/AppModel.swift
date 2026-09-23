@@ -318,7 +318,7 @@ final class AppModel: ObservableObject {
             settings.cards[index].isOn = !settings.appID.isEmpty
         }
         PresenceLog.note("reconnect requested (settingsChanged=\(plan.changesSettings))")
-        engine.reassert()
+        engine.forceReconnect()
         reapply()
     }
 

@@ -206,6 +206,62 @@ final class PresenceEngineTests: XCTestCase {
         engine.stop()
     }
 
+    func testForceReconnectRecoversPausedWorkerWithoutChangingApplicationID() async throws {
+        server.rejectNextHandshake = (4000, "Invalid Client ID")
+        let engine = PresenceEngine(appID: "unused")
+        let cardID = UUID()
+        var activity = Activity(name: "Reconnect", details: "same app id")
+        activity.timestampMode = .off
+
+        engine.apply([
+            CardRunSpec(cardID: cardID, applicationID: "123", activity: activity),
+        ])
+
+        let failed = await waitUntil {
+            if case .failed(let message, let failing) = engine.multiStatus {
+                return message == "Invalid Client ID" && failing == 1
+            }
+            return false
+        }
+        XCTAssertTrue(failed, "first handshake should pause the card worker, status was \(engine.multiStatus)")
+
+        engine.forceReconnect()
+
+        let pushed = await waitUntil(timeout: 10) {
+            engine.multiStatus.isConnected && self.server.activities.contains { activity in
+                (activity as? [String: Any])?["details"] as? String == "same app id"
+            }
+        }
+        XCTAssertTrue(pushed, "forceReconnect() with the same app id never recovered; status was \(engine.multiStatus)")
+        let clientIDs = server.handshakes.compactMap { $0["client_id"] as? String }
+        XCTAssertFalse(clientIDs.contains("unused"), "forceReconnect() must not wake the idle primary worker")
+        XCTAssertEqual(clientIDs, ["123", "123"])
+        engine.stop()
+    }
+
+    func testStopReturnsBeforeSocketGoodbyeReply() async throws {
+        server.commandReplyDelay = 2
+        let engine = PresenceEngine(appID: "123")
+        engine.start()
+
+        var activity = Activity(name: "Stop", details: "slow goodbye")
+        activity.timestampMode = .off
+        engine.apply(activity)
+
+        let pushed = await waitUntil { !self.server.activities.isEmpty }
+        XCTAssertTrue(pushed, "engine never pushed an activity")
+
+        let started = Date()
+        engine.stop()
+        let elapsed = Date().timeIntervalSince(started)
+        XCTAssertLessThan(elapsed, 0.5, "stop() must not block the main actor on socket I/O")
+
+        let cleared = await waitUntil(timeout: 6) {
+            self.server.activities.contains { $0 is NSNull }
+        }
+        XCTAssertTrue(cleared, "stop() should still send activity:null before closing")
+    }
+
     /// A rejected *push* must not pause the engine: 4000 also means "bad payload" (e.g. an
     /// unsupported activity type), and pausing used to stop the timer for good.
     func testRejectedPushKeepsRetryingInsteadOfPausing() async throws {

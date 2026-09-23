@@ -327,6 +327,11 @@ public final class PresenceEngine: ObservableObject {
         worker.update(appID: appID, pipeIndex: pipeIndex)
     }
 
+    public func forceReconnect() {
+        worker.forceReconnect()
+        for worker in cardWorkers.values { worker.forceReconnect() }
+    }
+
     /// Validates locally first: invalid input never reaches Discord. Returns the issues so the
     /// editor can show them.
     @discardableResult
@@ -478,6 +483,7 @@ private final class StatusBox {
 
 private final class Worker: @unchecked Sendable {
     private let queue = DispatchQueue(label: "dev.quangpao.discordrp.ipc")
+    private let stateLock = NSLock()
     private var timer: DispatchSourceTimer?
     private var client: DiscordIPCClient?
 
@@ -496,6 +502,8 @@ private final class Worker: @unchecked Sendable {
     private var backoffIndex = 0
     /// Set when Discord rejects the Application ID (code 4000): retrying forever is pointless.
     private var paused = false
+    private var stopped = false
+    private var running = false
 
     var onStatus: (@Sendable (PresenceStatus) -> Void)?
     var onIssues: (@Sendable ([ActivityIssue]) -> Void)?
@@ -511,7 +519,10 @@ private final class Worker: @unchecked Sendable {
     // MARK: commands (called from the main actor)
 
     func start() {
+        setStopped(false)
+        setRunning(true)
         queue.async { [self] in
+            guard !isStopped else { return }
             guard timer == nil else { return }
             let source = DispatchSource.makeTimerSource(queue: queue)
             source.schedule(deadline: .now(), repeating: 0.5)
@@ -523,7 +534,9 @@ private final class Worker: @unchecked Sendable {
     }
 
     func update(appID: String, pipeIndex: Int) {
+        setStopped(false)
         queue.async { [self] in
+            guard !isStopped else { return }
             guard appID != self.appID || pipeIndex != self.pipeIndex else { return }
             self.appID = appID
             self.pipeIndex = pipeIndex
@@ -535,8 +548,17 @@ private final class Worker: @unchecked Sendable {
         }
     }
 
+    func forceReconnect() {
+        guard isRunning else { return }
+        queue.async { [self] in
+            guard !isStopped, timer != nil else { return }
+            forceReconnectOnQueue()
+        }
+    }
+
     func push(_ activity: Activity) {
         queue.async { [self] in
+            guard !isStopped else { return }
             currentActivity = activity
             needsPush = true
             // Discord rate-limits SET_ACTIVITY: coalesce rapid edits.
@@ -546,40 +568,60 @@ private final class Worker: @unchecked Sendable {
 
     func clear() {
         queue.async { [self] in
+            guard !isStopped else { return }
             currentActivity = nil
             needsPush = false
             pushAt = nil
             guard let client, client.isConnected else { return }
             do {
                 let reply = try client.setActivityWithReply(nil)
+                guard !isStopped else { return }
                 PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
             } catch {
+                guard !isStopped else { return }
                 PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
             }
         }
     }
 
     func stop() {
-        queue.sync { [self] in
-            if let client, client.isConnected {
-                do {
-                    let reply = try client.setActivityWithReply(nil)
-                    PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
-                } catch {
-                    PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
-                }
-            }
-            teardown()
+        setRunning(false)
+        setStopped(true)
+        PresenceLog.note("timer stopped")
+        queue.async { [self] in
+            let closingClient = client
+            client = nil
+            connectionStarted = nil
+            currentActivity = nil
+            needsPush = false
+            pushAt = nil
+            paused = false
+            backoffIndex = 0
+            nextRetryAt = .distantPast
             timer?.cancel()
             timer = nil
             emit(.idle)
-            PresenceLog.note("timer stopped")
+
+            if let closingClient, closingClient.isConnected {
+                do {
+                    let reply = try closingClient.setActivityWithReply(nil)
+                    PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
+                } catch {
+                    PresenceLog.record(payload: nil, appID: appID, reply: closingClient.lastReply, error: "\(error)")
+                }
+            }
+            closingClient?.close()
         }
     }
 
     /// Ping now and re-send the presence, without waiting for the next timer deadline.
     func reassert() {
         queue.async { [self] in
+            guard !isStopped else { return }
+            if paused {
+                forceReconnectOnQueue()
+                return
+            }
             lastPing = .distantPast
             if currentActivity != nil {
                 needsPush = true
@@ -592,6 +634,7 @@ private final class Worker: @unchecked Sendable {
     // MARK: state machine (queue-confined)
 
     private func tick() {
+        guard !isStopped else { return }
         guard !paused else { return }
         let now = Date()
 
@@ -623,10 +666,15 @@ private final class Worker: @unchecked Sendable {
     }
 
     private func connect() {
+        guard !isStopped else { return }
         emit(.connecting)
         let candidate = DiscordIPCClient(appID: appID)
         do {
             try candidate.connect(pipeIndex: pipeIndex)
+            guard !isStopped else {
+                candidate.close()
+                return
+            }
             client = candidate
             connectionStarted = Date()
             lastPing = Date()
@@ -642,6 +690,7 @@ private final class Worker: @unchecked Sendable {
             }
         } catch let error as IPCError {
             candidate.close()
+            guard !isStopped else { return }
             switch error {
             case .discordRejected(let code, let message):
                 if code == 4000 {
@@ -658,6 +707,7 @@ private final class Worker: @unchecked Sendable {
             scheduleRetry()
         } catch {
             candidate.close()
+            guard !isStopped else { return }
             emit(.discordNotRunning)
             scheduleRetry()
         }
@@ -667,8 +717,10 @@ private final class Worker: @unchecked Sendable {
         guard let activity = currentActivity else {
             do {
                 let reply = try client.setActivityWithReply(nil)
+                guard !isStopped else { return }
                 PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
             } catch {
+                guard !isStopped else { return }
                 PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
             }
             return
@@ -689,10 +741,12 @@ private final class Worker: @unchecked Sendable {
         do {
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
             let reply = try client.setActivityWithReply(data)
+            guard !isStopped else { return }
             presenceStarted = now
             PresenceLog.record(payload: data, appID: appID, reply: reply, error: nil)
             onIssues?([])
         } catch let error as IPCError {
+            guard !isStopped else { return }
             if case .discordRejected(let code, let message) = error {
                 // 4000 is Discord's generic "invalid payload" rejection, NOT necessarily a bad
                 // Application ID: sending type 1 (Streaming) produces exactly this code with
@@ -711,10 +765,21 @@ private final class Worker: @unchecked Sendable {
             }
             PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
         } catch {
+            guard !isStopped else { return }
             teardown()
             scheduleRetry()
             PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
         }
+    }
+
+    private func forceReconnectOnQueue() {
+        paused = false
+        teardown()
+        backoffIndex = 0
+        nextRetryAt = .distantPast
+        lastPing = .distantPast
+        emit(.connecting)
+        connect()
     }
 
     private func scheduleRetry() {
@@ -730,6 +795,29 @@ private final class Worker: @unchecked Sendable {
     }
 
     private func emit(_ status: PresenceStatus) {
+        guard !isStopped || status == .idle else { return }
         onStatus?(status)
+    }
+
+    private var isStopped: Bool {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return stopped
+    }
+
+    private var isRunning: Bool {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return running
+    }
+
+    private func setStopped(_ value: Bool) {
+        stateLock.lock()
+        stopped = value
+        stateLock.unlock()
+    }
+
+    private func setRunning(_ value: Bool) {
+        stateLock.lock()
+        running = value
+        stateLock.unlock()
     }
 }
