@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build the native binary, wrap it in a real .app bundle, sign it ad-hoc and (optionally)
-# install/run it. No Xcode project, no interpreter, no external runtime.
+# Build the native binary, wrap it in a real .app bundle, sign it and (optionally) install/run it.
+# No Xcode project, no interpreter, no external runtime.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -10,6 +10,19 @@ EXECUTABLE="DiscordRPMac"
 BUNDLE_ID="dev.quangpao.discordrp"
 BUILD_DIR="$ROOT/build"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
+DEFAULT_CODESIGN_IDENTITY="DiscordRP Dev"
+
+resolve_codesign_identity() {
+  if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+    printf '%s\n' "$CODESIGN_IDENTITY"
+    return
+  fi
+  if security find-identity -v -p codesigning 2>/dev/null | grep -Fq "\"$DEFAULT_CODESIGN_IDENTITY\""; then
+    printf '%s\n' "$DEFAULT_CODESIGN_IDENTITY"
+    return
+  fi
+  printf '%s\n' "-"
+}
 
 RUN=0
 INSTALL=0
@@ -53,12 +66,16 @@ if [ -f "$ROOT/Resources/AppIcon.icns" ]; then
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP_BUNDLE/Contents/Info.plist" >/dev/null
 fi
 
-echo "==> codesign (ad-hoc)"
-codesign --force --deep --sign - --identifier "$BUNDLE_ID" "$APP_BUNDLE" 2>&1 | sed 's/^/    /'
+SIGN_IDENTITY="$(resolve_codesign_identity)"
+echo "==> codesign identity: $SIGN_IDENTITY"
+if [ "$SIGN_IDENTITY" = "-" ]; then
+  echo "    ad-hoc signing fallback: Keychain will ask for permission again after each rebuild; see CONTRIBUTING.md#signing-your-build"
+fi
+codesign --force --deep --sign "$SIGN_IDENTITY" --identifier "$BUNDLE_ID" "$APP_BUNDLE" 2>&1 | sed 's/^/    /'
 codesign --verify --verbose=2 "$APP_BUNDLE" 2>&1 | sed 's/^/    /'
 
 echo "==> signature"
-codesign -dv --verbose=4 "$APP_BUNDLE" 2>&1 | grep -E "Identifier|Signature|TeamIdentifier" | sed 's/^/    /'
+codesign -dv --verbose=4 "$APP_BUNDLE" 2>&1 | grep -E "Identifier|Signature|Authority|TeamIdentifier" | sed 's/^/    /'
 
 # A .dmg for people who will not build from source. It is **not notarized**, so Gatekeeper will warn
 # on first open — the note inside the disk image says exactly what to do about it. `--dmg` is what the

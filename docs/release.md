@@ -17,6 +17,9 @@ The disk image is **ad-hoc signed, not notarized**, so Gatekeeper refuses the fi
 else's Mac (`spctl -a -vvv -t exec` says `rejected` — verified locally). The release notes and the
 `How to open.txt` inside the image both explain the two ways around it. Building from source is
 recommended in the notes as the friction-free path.
+Release builds remain ad-hoc/unsigned until Developer ID plus notarization exists; the local
+`DiscordRP Dev` identity is only a development convenience and must not be used for a published
+release.
 
 To check the packaging without publishing anything:
 

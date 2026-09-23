@@ -26,6 +26,18 @@ swift test                  # unit tests
 
 Requirements: macOS 14+, a Swift 6 toolchain (Xcode 16+ or Command Line Tools).
 
+## Signing your build
+
+`./scripts/build-app.sh` can use a local signing identity so macOS Keychain remembers that this app
+may read its saved Giphy key across rebuilds. Ad-hoc signing still works, but its code requirement
+changes with every rebuild, so Keychain's "Always Allow" grant does not survive the next build.
+
+To create the optional local identity, open Keychain Access and choose Certificate Assistant > Create
+a Certificate... Name it `DiscordRP Dev`, set Certificate Type to Code Signing, and create it as a
+self-signed certificate in your login keychain. The build script uses `DiscordRP Dev` when it is
+present; set `CODESIGN_IDENTITY` to another identity name, or to `-` for ad-hoc signing, to override
+that choice.
+
 ## Trying it without Discord
 
 The protocol layer is tested against a fake IPC server (`Tests/DiscordRPTests/ClientAndEngineTests`),
