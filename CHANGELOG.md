@@ -2,6 +2,16 @@
 
 Notable changes per release. Dates are the release/tag dates.
 
+## [1.2.2] - 2026-09-23
+
+### Fixed
+
+- The **Competing** activity type can carry timestamps again. The editor disabled its Time card and the
+  rules reported "cannot show timestamps", which was an assumption rather than a Discord limit: a live
+  check shows Discord keeps the `timestamps` object in its reply and its client renders the elapsed
+  timer on a "Competing in …" card. Nothing in the payload changed — the app simply stopped denying a
+  field Discord supports.
+
 ## [1.2.1] - 2026-09-23
 
 ### Fixed
