@@ -21,7 +21,7 @@ OLD_VARIANTS = [
 ]
 NEW = "translate(135.52 134.58) scale(17.2824)"
 NOTE = ("<!-- geometry nudge applied by scripts/centre-appicon.py: mark group shifted "
-        "+23.2/-26.5 units so the lockup bbox margins are equal (measured on the built .icns). -->")
+        "+23.2/-19.5 units so the lockup bbox margins are equal (measured on the built .icns). -->")
 
 text = SVG.read_text()
 if NEW in text:

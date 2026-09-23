@@ -18,12 +18,10 @@ xcuserdata/
 
 # local agent workspaces / indexes
 .hermes/
-.codebase-memory/
 
 # local env and secrets
 .env
 .env.*
-!.env.example
 *.pem
 *.p12
 *.mobileprovision

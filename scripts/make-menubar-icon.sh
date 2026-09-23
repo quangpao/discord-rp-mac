@@ -5,8 +5,8 @@
 #
 # Canonical mark (Kun's call): the ORIGINAL Activity Spark geometry (`c2-mark.svg`) — the same
 # silhouette that sits inside the app icon, so the menu bar and the Dock read as one logo.
-# `c2-mark-16.svg` is the optically fattened variant OD drew for 1x menu bars; pass it explicitly
-# if a non-retina display ever needs it.
+# Intentional fallback: `c2-mark-16.svg` is the optically fattened variant OD drew for 1x menu
+# bars; pass it explicitly if a non-retina display ever needs it.
 #
 # macOS wants a template image: pure alpha shapes, no colour, so it can recolour the glyph for a
 # light bar, a dark bar and the selected state. We ship a 22 px @1x and a 44 px @2x PNG and let

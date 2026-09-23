@@ -352,10 +352,10 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
   <div class="masthead" data-od-id="masthead">
     <div class="eyebrow">macOS menu bar utility · spec v1.0</div>
     <h1>A custom Discord Rich Presence, told through the menu bar.</h1>
-    <p>Two surfaces carry the product: the status-item dropdown and the compact editor window. This page is a redline spec — every metric below is the literal value the build must ship, and every panel is a 1:1 mock rendered with those values.</p>
+    <p>Two surfaces carry the product: the status-item dropdown and Settings, including its Presets editor. This page is a redline spec — every metric below is the literal value the build must ship, and every panel is a 1:1 mock rendered with those values.</p>
     <div class="specmeta">
       <span>Panel radius <b>6 px</b></span><span>Row height <b>22 px</b></span><span>Font <b>SF Pro Text 13 px</b></span>
-      <span>Icon column <b>16 px + 6 px</b></span><span>Main rows <b>7</b></span><span>Submenus <b>1</b></span>
+      <span>Icon column <b>16 px + 6 px</b></span><span>Main rows <b>5–6</b></span><span>Submenus <b>0</b></span>
     </div>
   </div>
 
@@ -783,12 +783,12 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
       <li><b>Timestamps</b> are clamped to <code>1970-01-01T00:00:01Z</code> … <code>5138-11-16T09:46:39Z</code>; values outside the range are rejected, not silently truncated.</li>
       <li><b>Image key</b> is either an uploaded asset name or an absolute <code>https</code> URL; the resulting <code>mp:external</code> form must be ≤ 256 characters.</li>
       <li><b>Party</b> (size / max / current) is only valid for the <b>Playing</b> activity type.</li>
-      <li><b>Competing</b> activity accepts <b>no timestamps</b>; the Time section is hidden and its values cleared when Competing is selected.</li>
+      <li><b>Competing</b> activity accepts timestamps; the Time section stays available for every shipped activity type.</li>
       <li>Maximum <b>two buttons</b>; the “+ Add button” affordance disables at 2 and reports “2/2 — maximum reached”.</li>
     </ul>
 
     <h3 class="sub">Deliberately cut for compactness</h3>
-    <p class="note" style="margin-top:0">Max-row accounting: the normal menu is five rows plus one divider; the error state injects “Fix in Settings…” for six rows plus one divider. That stays under the ≤ 11 rows / exactly one status line / at most one submenu contract. The current shipped menu uses zero submenus. These items stay out of the menu because they duplicate Settings or are too rare to earn a permanent row.</p>
+    <p class="note" style="margin-top:0">Max-row accounting: the normal menu is five rows plus one divider; the error state injects “Fix in Settings…” for six rows plus one divider. That stays within the current contract: exactly one status line and zero submenus. These items stay out of the menu because they duplicate Settings or are too rare to earn a permanent row.</p>
     <ul class="rules cut">
       <li><b>About Discord RP / version</b> — moved to the standard About panel in Settings.</li>
       <li><b>Launch at Login</b> — lives in Settings ▸ General with the other startup and connection preferences.</li>
@@ -810,7 +810,7 @@ footer.deliver{margin-top:70px;padding-top:24px;border-top:1px solid var(--borde
   </section>
 
   <footer class="deliver" data-od-id="footer">
-    <span>Discord RP — menu bar &amp; editor spec · v1.0</span>
+    <span>Discord RP — menu bar &amp; Settings spec · v1.0</span>
     <span>Single self-contained file · no external assets · light + dark</span>
   </footer>
 

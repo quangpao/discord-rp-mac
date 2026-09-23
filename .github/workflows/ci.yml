@@ -32,6 +32,7 @@ jobs:
           swift build -c release
           BIN="$(swift build -c release --show-bin-path)/DiscordRPMac"
           "$BIN" --version
+          "$BIN" --self-test
           "$BIN" --presets          # deterministic, offline: prints the payload per stored preset
 
   secret-scan:

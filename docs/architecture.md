@@ -36,13 +36,14 @@ Tests/
 | --- | --- |
 | `DiscordRPMacApp.swift` | `MenuBarExtra` entry point, `LSUIElement` (no Dock icon). |
 | `AppModel.swift` | Observable state: settings, presets, active preset, issues, reconnect, persistence. |
-| `MenuContentView.swift` | The menu: status, preset list, quick actions. |
-| `ActivityEditorView.swift` | The editor window. Hand-built `label | control` grid — see the comment at the top of the file for why a SwiftUI `Form` was abandoned. |
+| `SettingsWindowController.swift` | AppKit window wrapper for Settings (Cards · Presets · General · Giphy), including the embedded preset editor. |
+| `MenuContentView.swift` | The menu: one status line, Settings, Reapply, Clear Presence, Quit. |
+| `ActivityEditorView.swift` | The preset editor embedded in Settings → Presets. Hand-built `label | control` grid — see the comment at the top of the file for why a SwiftUI `Form` was abandoned. |
 | `ImagePreview.swift` | `NSImageView`-backed preview so GIFs actually animate (SwiftUI shows frame one). |
 | `AssetCatalog.swift` | Lists the user's Discord art assets as `[DiscordAsset]` (name + **numeric id**, the only id the CDN accepts). |
 | `LaunchAtLogin.swift`, `SingleInstance.swift` | `SMAppService` registration with a LaunchAgent fallback; single-instance guard. |
 | `MenuBarIcon.swift` | Template image loading for the status item. |
-| `SelfTest.swift` | Headless CLI: `--self-test`, `--presets`, `--live`, `--giphy-key`, `--giphy-upload`, `--login-item`, `--render-editor`, `--render-menu`. |
+| `SelfTest.swift` | Headless CLI: `--self-test`, `--presets`, `--live`, `--giphy-key`, `--giphy-upload`, `--login-item`, `--render-editor`, `--render-settings`, `--pane`, `--preset`, `--render-menu`, `--demo`. |
 
 ## Design rules that came out of debugging
 
@@ -56,8 +57,9 @@ maintains this app):
   and gets pushed below its label.
 - **Preview images are pinned** (`.frame` + `.clipped()`, low hugging/compression resistance) — an
   `NSImageView` otherwise reports the image's natural size as its fitting size.
-- **Verify UI as pixels**: `--render-editor out.png [w h]` renders the real view off-screen, so layout
-  can be measured without Screen Recording permission.
+- **Verify UI as pixels**: `--render-settings out.png [w h] [--pane cards|presets|general|giphy]`
+  and `--render-menu out.png [width]` render real views off-screen, so layout can be measured
+  without Screen Recording permission.
 - **Discord accepts activity types 0, 2, 3, 5 only.** Type 1 (Streaming) is rejected with a generic
   `code 4000`, so the picker does not offer it.
 

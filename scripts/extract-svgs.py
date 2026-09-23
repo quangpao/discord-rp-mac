@@ -4,7 +4,7 @@
 The artifact keeps the copy-source in `<pre data-code="#id" data-file="name.svg">` (empty, filled
 by JS) while the real markup is the rendered `<svg id="id">` element. So: map id → file name from
 the `<pre>` attributes, then lift the matching SVG element and write it out prefixed with the
-concept number (c1-mark.svg, c2-mark-template.svg, …).
+concept number (c1-mark.svg, c2-mark.svg, …).
 
 Usage: python3 scripts/extract-svgs.py <artifact.html> [output-dir]
 """

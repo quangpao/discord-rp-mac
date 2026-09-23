@@ -19,8 +19,16 @@ Regenerate from the SVGs:
 
 ```bash
 ./scripts/make-icns.sh && ./scripts/make-menubar-icon.sh
-python3 scripts/svg-to-png.sh Resources/logo/c2-mark.svg dist/discord/2-asset-logo-1024.png 1024
+./scripts/svg-to-png.sh Resources/logo/c2-appicon-hig.svg dist/discord/0-app-icon-square-1024.png 1024
+./scripts/svg-to-png.sh Resources/logo/c2-mark.svg dist/discord/2-asset-logo-1024.png 1024
+./scripts/svg-to-png.sh Resources/logo/c2-mark.svg dist/discord/3-asset-small-512.png 512
+python3 scripts/make-animated-logo.py
+swift scripts/frames-to-gif.swift build/anim dist/discord/discord-rp-animated-logo.gif
 ```
+
+`scripts/make-menubar-icon.sh` rebuilds `Resources/MenuBarIcon.png` and `Resources/MenuBarIcon@2x.png`.
+The animated GIF is a two-step pipeline: `scripts/make-animated-logo.py` renders the frame directory,
+then `scripts/frames-to-gif.swift` packs those frames into `discord-rp-animated-logo.gif`.
 
 If you fork this and want a different look, replace these files rather than deleting the directory —
 [wiki: Setup](https://github.com/quangpao/discord-rp-mac/wiki/Setup) refers to them by name.

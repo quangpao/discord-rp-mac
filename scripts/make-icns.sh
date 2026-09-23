@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render Resources/AppIcon.icns from an SF Symbol (no external assets, no design tools).
+# Render Resources/AppIcon.icns from the designed SVG, with an SF Symbol fallback.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -14,10 +14,11 @@ elif [ -f Resources/logo/c2-appicon-hig.svg ]; then
   echo "==> using Resources/logo/c2-appicon-hig.svg"
   ./scripts/svg-to-png.sh Resources/logo/c2-appicon-hig.svg "$MASTER" 1024
 elif [ -f Resources/logo/c2-appicon.svg ]; then
+  # Intentional fallback: keep the non-HIG app icon so older logo sheets can still build.
   echo "==> using Resources/logo/c2-appicon.svg"
   ./scripts/svg-to-png.sh Resources/logo/c2-appicon.svg "$MASTER" 1024
 else
-  # No designed logo yet: fall back to the SF Symbol renderer.
+  # Intentional fallback: no designed logo yet, so use the SF Symbol renderer.
   swift scripts/render-icon.swift "$MASTER"
 fi
 

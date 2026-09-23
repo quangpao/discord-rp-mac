@@ -8,7 +8,7 @@
 
 A native macOS menu bar app that sets a **custom Discord Rich Presence**: your activity, images, an
 elapsed timer and up to two link buttons, kept alive while you work. Written from scratch in Swift
-(SwiftUI + AppKit) — a ~2 MB app bundle, no Electron, no runtime to install.
+(SwiftUI + AppKit) — a 2.9 MB app bundle, no Electron, no runtime to install.
 
 ## Features
 
@@ -16,13 +16,13 @@ elapsed timer and up to two link buttons, kept alive while you work. Written fro
   timestamp modes, large/small images with text and link, up to two buttons.
 - **One or several cards at once** — each card is its own Discord application, so you can show a
   second activity next to the first; enable any number of them in Settings → Cards.
-- **Named presets**, switched from the menu bar; image keys are listed from your own Discord
+- **Named presets**, edited in Settings → Presets; image keys are listed from your own Discord
   application.
 - **Keeps the presence alive** — 15 s keepalive, backoff 2/5/10/30 s, reconnects after sleep, clears
   the presence when you quit.
 - **Menu bar only** (`LSUIElement`, no Dock icon), single instance, optional launch at login.
 - **Discord's own limits enforced up front**, with readable reasons instead of silent failures.
-- **A Settings window** (Cards · Presets · General · Network) keeps the menu bar menu to daily actions.
+- **A Settings window** (Cards · Presets · General · Giphy) keeps the menu bar menu to daily actions.
 - **Manual update check** — Settings compares your version with the latest GitHub release when you ask
   it to; nothing polls on a timer.
 - **No telemetry, no account, no bundled keys** — presence travels over the local Discord IPC socket.
@@ -49,9 +49,9 @@ cd discord-rp-mac
 
 ## Configure
 
-The app works immediately: a fresh install uses this project's application, so pressing **Apply** in
-**Edit This Preset… → Connection** is all it takes to push the activity to Discord (it also recovers a
-connection Discord dropped).
+The app works immediately: a fresh install uses this project's application, so **Reapply Now** in the
+menu is all it takes to push the default activity to Discord (it also recovers a connection Discord
+dropped). Edit the activity in **Settings → Presets** and the card connection in **Settings → Cards**.
 
 For your own name, icon and art assets, create an application in the
 [Discord Developer Portal](https://discord.com/developers/applications) and paste its **Application

@@ -54,7 +54,8 @@ BIN="/Applications/Discord RP.app/Contents/MacOS/DiscordRPMac"
 "$BIN" --giphy-key status|set|clear|migrate    # `set` reads the key from stdin, never argv
 "$BIN" --giphy-upload <file> [--hidden]
 "$BIN" --render-editor <out.png> [w h] [--demo <dir>] [--no-key]
-"$BIN" --render-menu  <out.png> [w h] [--demo <dir>]
+"$BIN" --render-settings <out.png> [w h] [--pane cards|presets|general|giphy] [--preset <index|id>] [--demo <dir>] [--no-key]
+"$BIN" --render-menu  <out.png> [width] [--demo <dir>]
 "$BIN" --live --app-id <ID>        # push a sample activity to the running client
 ```
 
@@ -70,13 +71,8 @@ DISCORD_APP_ID=123456789012345678 \
 DEMO_IMAGE_URL="https://picsum.photos/seed/discordrp/400" \
 DEMO_SMALL_KEY="https://picsum.photos/seed/discordrp-small/200" \
 python3 scripts/seed-demo-presets.py /tmp/discordrp-demo --force
-python3 - <<'EOF'
-import json, pathlib
-p = pathlib.Path('/tmp/discordrp-demo/settings.json'); s = json.loads(p.read_text())
-s['appID'] = '123456789012345678'; p.write_text(json.dumps(s, indent=2, sort_keys=True) + '\n')
-EOF
-DiscordRPMac --render-editor docs/screenshots/editor.png 720 1500 --demo /tmp/discordrp-demo
-DiscordRPMac --render-menu  docs/screenshots/menu.png  320  430 --demo /tmp/discordrp-demo
+DiscordRPMac --render-settings /tmp/discordrp-settings.png 720 1500 --pane presets --demo /tmp/discordrp-demo
+DiscordRPMac --render-menu docs/screenshots/menu.png 320 --demo /tmp/discordrp-demo
 ```
 
-The same `--render-editor` mode is how UI changes get verified as pixels instead of assumptions.
+The same render modes are how UI changes get verified as pixels instead of assumptions.

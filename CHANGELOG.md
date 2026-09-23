@@ -50,13 +50,13 @@ Notable changes per release. Dates are the release/tag dates.
 
 - **Preset editing moved into Settings → Presets**: a preset list on the left (each row saying which
   card uses it) and the full editor form on the right, so editing no longer means opening a separate
-  window. The editor window is gone; the menu's `Edit This Preset…` (`⌘E`) opens Settings on the active
-  card's preset.
+  window. The editor window is gone, and the menu no longer exposes preset-editing rows.
 
-- Configuration moved into a **Settings** window (Cards · Presets · General · Network): the application
+- Configuration moved into a **Settings** window (Cards · Presets · General · Giphy): the application
   id, pipe index, Reconnect, Launch at Login, the Giphy key and the update check left the menu, and the
-  editor now edits one preset's content only. The menu bar menu keeps its daily actions — one status
-  line that reports every card, one submenu, ≤ 11 rows — and `⌘,` is Settings while the editor is `⌘E`.
+  preset editor now lives in Settings → Presets. The menu bar menu keeps its daily actions — one status
+  line that reports every card, `Settings…` (`⌘,`), `Reapply Now` (`⌘R`), `Clear Presence`, and `Quit`
+  (`⌘Q`) — with zero submenus.
 - The editor explains itself with **hover tooltips** instead of a caption line under every control:
   placeholders carry the essence, tooltips the detail, and a line of text is spent only on a warning,
   an error or a status. The form is about 226 px shorter.
@@ -72,6 +72,8 @@ Notable changes per release. Dates are the release/tag dates.
 - **Check for Updates…** in Settings: it compares the running version with the latest GitHub
   release and offers the download page when one is newer. Manual on purpose — nothing polls on a timer,
   so the app still only makes the network calls you trigger (`SECURITY.md` lists the new endpoint).
+- Code review triage for this release is linked in
+  [docs/reviews/2026-09-23-code-review-triage.md](docs/reviews/2026-09-23-code-review-triage.md).
 
 ## [1.1.0] — 2026-09-22
 
@@ -106,5 +108,8 @@ First release.
 - Tests no longer print key material and no longer write to the real log or data directory.
 - `customrp.log` was renamed to `discord-rp.log`, keeping the existing history.
 
+[1.2.2]: https://github.com/quangpao/discord-rp-mac/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/quangpao/discord-rp-mac/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/quangpao/discord-rp-mac/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/quangpao/discord-rp-mac/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/quangpao/discord-rp-mac/releases/tag/v1.0.0

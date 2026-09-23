@@ -5,8 +5,8 @@ import SwiftUI
 /// The menu bar dropdown.
 ///
 /// Structure is taken from the Open Design spec (`docs/ui/discord-rp-menu-spec.html`,
-/// section 5 “Handoff”): one status line, no preset management rows, at most one submenu,
-/// maximum 11 rows. Row order, labels, SF Symbols and shortcuts match the handoff table.
+/// section 5 “Handoff”): one status line, no preset management rows, zero submenus, and
+/// 5–6 rows. Row order, labels, SF Symbols and shortcuts match the handoff table.
 struct MenuContentView: View {
     @ObservedObject var model: AppModel
 

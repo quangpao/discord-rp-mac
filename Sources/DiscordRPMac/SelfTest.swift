@@ -113,7 +113,10 @@ enum SelfTest {
             let width = sizeArgs.first ?? 640
             let height = sizeArgs.dropFirst().first ?? 520
             let paneName = value(of: "--pane", in: args) ?? "cards"
-            let pane = SettingsPane.allCases.first { $0.rawValue.lowercased() == paneName.lowercased() } ?? .cards
+            guard let pane = SettingsPane.allCases.first(where: { $0.rawValue.lowercased() == paneName.lowercased() }) else {
+                print("unknown pane '\(paneName)'; expected one of: \(paneNames())")
+                return 1
+            }
             return renderSettings(to: path, width: width, height: height, pane: pane,
                                   preset: value(of: "--preset", in: args))
         }
@@ -121,9 +124,12 @@ enum SelfTest {
             let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
                 ? args[index + 1]
                 : "/tmp/discord-rp-menu.png"
-            let width = index + 2 < args.count ? Double(args[index + 2]) ?? 300 : 300
-            let height = index + 3 < args.count ? Double(args[index + 3]) ?? 420 : 420
-            return renderMenu(to: path, width: width, height: height)
+            let sizeArgs = args.dropFirst(index + 2).prefix { !$0.hasPrefix("--") }.compactMap(Double.init)
+            guard sizeArgs.count <= 1 else {
+                print("usage: --render-menu <out.png> [width] [--demo <dir>]")
+                return 1
+            }
+            return renderMenu(to: path, width: sizeArgs.first ?? 300)
         }
         if let index = args.firstIndex(of: "--giphy-upload") {
             let file = index + 1 < args.count && !args[index + 1].hasPrefix("--")
@@ -149,6 +155,10 @@ enum SelfTest {
     private static func value(of flag: String, in args: [String]) -> String? {
         guard let index = args.firstIndex(of: flag), index + 1 < args.count else { return nil }
         return args[index + 1]
+    }
+
+    private static func paneNames() -> String {
+        SettingsPane.allCases.map { $0.rawValue.lowercased() }.joined(separator: ", ")
     }
 
     private static func expect(_ condition: Bool, _ label: String, detail: String = "") {
@@ -196,7 +206,7 @@ enum SelfTest {
         print("  NSTemporaryDirectory: \(NSTemporaryDirectory())")
         expect(real.first?.contains("discord-ipc-") == true, "default candidates built")
         let live = SocketLocator.firstAvailable()
-        expect(live != nil, "Discord socket found on this machine", detail: live ?? "none")
+        print("  live socket: \(live ?? "none")")
     }
 
     private static func checkRules() {
@@ -267,8 +277,14 @@ enum SelfTest {
         expect(store.loadPresets() == [preset], "round trip")
         var settings = AppSettings()
         settings.appID = "42"
+        settings.pipeIndex = 2
+        settings.launchAtLogin = true
         try? store.save(settings: settings)
-        expect(store.loadSettings().appID == "42", "settings round trip")
+        let reloaded = store.loadSettings()
+        expect(reloaded.appID == DefaultApplication.id, "settings reload omits legacy appID",
+               detail: reloaded.appID)
+        expect(reloaded.pipeIndex == 2 && reloaded.launchAtLogin, "settings round trip")
+        expect(reloaded.cards.first?.applicationID == DefaultApplication.id, "settings migration rebuilds card")
         try? "not json".write(to: directory.appendingPathComponent("presets.json"), atomically: true, encoding: .utf8)
         expect(store.loadPresets().isEmpty, "corrupt file yields empty list")
         expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("presets.json.bak").path),
@@ -282,7 +298,7 @@ enum SelfTest {
     private static func renderEditor(to path: String, width: Double, height: Double) -> Int32 {
         let render: @MainActor () -> Void = {
             installRenderGiphyStorage()
-            let model = demoModel()
+            let model = renderModel()
             capture(NSHostingView(rootView: ActivityEditorView(model: model)),
                     titled: true, to: path, width: width, height: height, settle: 3.0)
         }
@@ -295,7 +311,7 @@ enum SelfTest {
                                        pane: SettingsPane, preset: String?) -> Int32 {
         let render: @MainActor () -> Void = {
             installRenderGiphyStorage()
-            let model = demoModel()
+            let model = renderModel()
             let presetID = resolvePreset(preset, in: model.presets)
             capture(NSHostingView(rootView: SettingsView(model: model, initialPane: pane,
                                                          selectedPresetID: presetID)),
@@ -327,17 +343,20 @@ enum SelfTest {
         GiphyKeyStore.legacyPathOverride = "/nonexistent/giphy/api_key"
     }
 
-    /// `--render-menu <out.png> [width height]` — the same capture for the menu bar menu, so the
+    /// `--render-menu <out.png> [width]` — the same capture for the menu bar menu, so the
     /// README screenshot is a real render of the real view rather than a mock.
-    private static func renderMenu(to path: String, width: Double, height: Double) -> Int32 {
+    private static func renderMenu(to path: String, width: Double) -> Int32 {
         let render: @MainActor () -> Void = {
-            let model = demoModel()
+            let model = renderModel()
             let root = MenuContentView(model: model)
                 .padding(10)
                 .background(Color(nsColor: .windowBackgroundColor))
                 .frame(width: width)
-            capture(NSHostingView(rootView: root), titled: false, to: path,
-                    width: width, height: height, settle: 1.5)
+            let hosting = NSHostingView(rootView: root)
+            hosting.frame = NSRect(x: 0, y: 0, width: width, height: 1)
+            hosting.layoutSubtreeIfNeeded()
+            let fittedHeight = max(1, hosting.fittingSize.height)
+            capture(hosting, titled: false, to: path, width: width, height: fittedHeight, settle: 1.5)
         }
         return runOnMain(render)
     }
@@ -346,10 +365,12 @@ enum SelfTest {
     /// (no personal data) and shows a neutral connected status, because a screenshot of an app that
     /// is still mid-start reads as broken. The README states the screenshots come from the demo set.
     @MainActor
-    private static func demoModel() -> AppModel {
+    private static func renderModel() -> AppModel {
         let args = CommandLine.arguments
         guard let index = args.firstIndex(of: "--demo"), index + 1 < args.count else {
-            return AppModel(startEngine: false)
+            let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("discordrp-render-\(UUID().uuidString)")
+            return AppModel(startEngine: false, store: PresetStore(directory: directory))
         }
         let store = PresetStore(directory: URL(fileURLWithPath: args[index + 1]))
         let model = AppModel(startEngine: false, store: store)
