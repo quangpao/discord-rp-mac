@@ -606,6 +606,8 @@ private final class Worker: @unchecked Sendable {
                 do {
                     let reply = try closingClient.setActivityWithReply(nil)
                     PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
+                } catch IPCError.discordClosed {
+                    // The peer can disappear during async teardown; closing below is enough.
                 } catch {
                     PresenceLog.record(payload: nil, appID: appID, reply: closingClient.lastReply, error: "\(error)")
                 }

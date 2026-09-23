@@ -40,8 +40,12 @@ public final class DiscordIPCClient: @unchecked Sendable {
     private var fd: Int32 = -1
     private let appID: String
     private let readTimeout: TimeInterval
+    private static let ignoreSIGPIPEOnce: Void = {
+        _ = signal(SIGPIPE, SIG_IGN)
+    }()
 
     public init(appID: String, readTimeout: TimeInterval = 3) {
+        Self.ignoreSIGPIPEOnce
         self.appID = appID
         self.readTimeout = readTimeout
     }
@@ -245,8 +249,8 @@ public final class DiscordIPCClient: @unchecked Sendable {
                     continue
                 }
                 if written < 0, errno == EINTR { continue }
-                let message = errnoText()
                 let code = errno
+                let message = String(cString: strerror(code))
                 close()
                 if code == EPIPE || code == ECONNRESET || code == ENOTCONN || code == EBADF {
                     throw IPCError.discordClosed

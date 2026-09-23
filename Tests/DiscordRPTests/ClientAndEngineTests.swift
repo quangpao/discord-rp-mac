@@ -84,6 +84,22 @@ final class DiscordIPCClientTests: XCTestCase {
         XCTAssertFalse(client.isConnected)
     }
 
+    func testWriteAfterPeerCloseReportsClosedConnection() throws {
+        let client = DiscordIPCClient(appID: "123", readTimeout: 2)
+        try client.connect()
+
+        server.closeConnectedClients()
+
+        XCTAssertThrowsError(try client.setActivity(nil)) { error in
+            guard case IPCError.discordClosed = error else {
+                return XCTFail("expected discordClosed, got \(error)")
+            }
+        }
+        XCTAssertFalse(client.isConnected)
+        XCTAssertTrue(server.commands.isEmpty, "a frame written after peer close must not be handled as live")
+        XCTAssertTrue(server.activities.isEmpty, "a frame written after peer close must not be attributed to a connection")
+    }
+
     func testCommandsWithoutConnectionThrow() {
         let client = DiscordIPCClient(appID: "123", readTimeout: 1)
         XCTAssertThrowsError(try client.setActivity(nil))

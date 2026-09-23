@@ -110,6 +110,17 @@ final class FakeDiscordServer: @unchecked Sendable {
         unlink(path)
     }
 
+    func closeConnectedClients() {
+        lock.lock()
+        let fds = clientFDs
+        clientFDs.removeAll()
+        lock.unlock()
+        for fd in fds {
+            shutdown(fd, SHUT_RDWR)
+            close(fd)
+        }
+    }
+
     private func acceptLoop() {
         while listenFD >= 0 {
             let client = accept(listenFD, nil, nil)
