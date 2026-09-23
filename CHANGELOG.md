@@ -2,6 +2,35 @@
 
 Notable changes per release. Dates are the release/tag dates.
 
+## [1.2.3] - 2026-09-23
+
+### Fixed
+
+- Clicking **Settings** no longer stacks a new window every time. One settings window is reused: later
+  calls bring it to the front and switch it to the requested pane, closing it and opening it again still
+  works, and no window is leaked.
+- `--self-test` passes again on a clean build. It asserted a settings round trip of a legacy field the
+  encoder deliberately stopped writing, so the diagnostic that bug reports are asked to include failed.
+  Continuous integration now runs it, so it cannot rot again.
+- An unknown `--pane` value is reported instead of silently rendering the Cards pane.
+- A render without `--demo` no longer reads the presets in the real application-support directory, so a
+  screenshot cannot leak the developer's own data.
+
+### Changed
+
+- Local builds are signed with a stable identity when one is present (see *Signing your build* in
+  CONTRIBUTING.md), so macOS stops asking for Keychain access after every rebuild. Ad-hoc signing stays
+  the fallback, and published builds remain unsigned until Developer ID plus notarization exists.
+- Documentation and assets no longer describe the product as it was before 1.2.0: the README, changelog,
+  architecture notes and the menu specification were corrected, the screenshot of the deleted editor
+  window was removed, and the menu screenshot was regenerated.
+- `--render-settings`, `--pane`, `--preset` and `--demo` are documented, and the `dist` regeneration
+  recipe names the commands that actually build each shipped asset.
+
+### Added
+
+- VS Code launch configurations for debugging the app (`.vscode/launch.json`).
+
 ## [1.2.2] - 2026-09-23
 
 ### Fixed

@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:discord-rp-mac}",
+            "name": "Debug DiscordRPMac",
+            "target": "DiscordRPMac",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug DiscordRPMac"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:discord-rp-mac}",
+            "name": "Release DiscordRPMac",
+            "target": "DiscordRPMac",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release DiscordRPMac"
+        }
+    ]
+}
