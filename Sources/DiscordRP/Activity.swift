@@ -26,9 +26,9 @@ public enum ActivityKind: Int, Codable, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /// Discord's rule: only Playing supports a party, and Competing cannot carry timestamps.
+    /// Discord's rule: only Playing supports a party. Timestamps are accepted for every activity type.
     public var allowsParty: Bool { self == .playing }
-    public var allowsTimestamps: Bool { self != .competing }
+    public var allowsTimestamps: Bool { true }
 }
 
 /// `status_display_type` — which field Discord shows under the app name.

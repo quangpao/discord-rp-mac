@@ -136,16 +136,13 @@ struct ActivityEditorView: View {
 
     private var timeCard: some View {
         card("Time") {
-            row("Mode", help: draft.kind.allowsTimestamps
-                ? draft.timestampMode.explanation
-                : "The “Competing” type cannot show timestamps.") {
+            row("Mode", help: draft.timestampMode.explanation) {
                 Picker("", selection: $draft.timestampMode) {
                     ForEach(TimestampMode.allCases) { mode in Text(mode.label).tag(mode) }
                 }
                 .labelsHidden()
                     .accessibilityLabel("Timestamp mode")
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .disabled(!draft.kind.allowsTimestamps)
             }
             if draft.timestampMode == .custom {
                 row("Start") {

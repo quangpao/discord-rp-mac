@@ -19,8 +19,8 @@ public struct ActivityIssue: Equatable, Sendable {
 
 /// Discord's own rules, verified against the live client so we do not re-derive them:
 /// min 2 chars, 32-**byte** button labels, the timestamp window, the `mp:external` 256-char
-/// budget, party only for Playing, no timestamps for Competing, and a zero-width-space guard
-/// for a leading NBSP.
+/// budget, party only for Playing, timestamps accepted for every activity type, and a
+/// zero-width-space guard for a leading NBSP.
 public enum ActivityRules {
     public static let minTextLength = 2
     public static let maxTextLength = 128
@@ -171,14 +171,6 @@ public enum ActivityRules {
             }
         }
 
-        if activity.timestampMode != .off && !activity.kind.allowsTimestamps {
-            issues.append(ActivityIssue(
-                field: .timestamp,
-                message: "The “Competing” type cannot show timestamps.",
-                isError: false
-            ))
-        }
-
         if activity.timestampMode == .custom {
             if activity.customStart < earliestTimestamp || activity.customStart > latestTimestamp {
                 issues.append(ActivityIssue(
@@ -257,9 +249,9 @@ public enum ActivityRules {
             if let url = normalizedURL(activity.stateURL) { out["state_url"] = url }
         }
 
-        if activity.kind.allowsTimestamps, let timestamps = timestamps(activity, now: now, appStarted: appStarted,
-                                                                      connectionStarted: connectionStarted,
-                                                                      presenceStarted: presenceStarted) {
+        if let timestamps = timestamps(activity, now: now, appStarted: appStarted,
+                                       connectionStarted: connectionStarted,
+                                       presenceStarted: presenceStarted) {
             out["timestamps"] = timestamps
         }
 

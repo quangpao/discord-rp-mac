@@ -107,11 +107,15 @@ final class ActivityRulesTests: XCTestCase {
         XCTAssertEqual(ActivityRules.clampedTimestamp(Date(timeIntervalSince1970: 1e12)), ActivityRules.latestTimestamp)
     }
 
-    func testCompetingHasNoTimestampsAndPartyOnlyForPlaying() {
+    func testCompetingCarriesTimestampsAndPartyOnlyForPlaying() {
         var activity = Activity(name: "T", details: "ok")
         activity.kind = .competing
         activity.timestampMode = .sinceConnection
-        XCTAssertNil(payload(activity)?["timestamps"])
+        XCTAssertTrue(ActivityRules.validate(activity, appID: appID).isEmpty)
+        XCTAssertTrue(activity.kind.allowsTimestamps)
+        XCTAssertEqual(payload(activity)?["type"] as? Int, 5)
+        let timestamps = payload(activity)?["timestamps"] as? [String: Int]
+        XCTAssertEqual(timestamps?["start"], Int(started.timeIntervalSince1970 * 1000))
 
         activity.kind = .listening
         activity.partySize = 2

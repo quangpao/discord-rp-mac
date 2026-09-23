@@ -231,7 +231,8 @@ enum SelfTest {
         activity.timestampMode = .sinceConnection
         let competing = ActivityRules.payload(activity, appID: "123", appStarted: Date(),
                                               connectionStarted: Date(), presenceStarted: Date())
-        expect(competing?["timestamps"] == nil, "competing strips timestamps")
+        expect(competing?["type"] as? Int == ActivityKind.competing.rawValue, "competing encodes type 5")
+        expect(competing?["timestamps"] != nil, "competing carries timestamps")
         activity.kind = .playing
 
         let now = Date()
