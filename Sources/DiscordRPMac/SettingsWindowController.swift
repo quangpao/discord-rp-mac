@@ -4,8 +4,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 @MainActor
-final class SettingsWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+    private let model: AppModel
+    var onClose: (@MainActor () -> Void)?
+
     init(model: AppModel, initialPane: SettingsPane = .cards, selectedPresetID: UUID? = nil) {
+        self.model = model
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 780, height: 540),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -15,19 +19,36 @@ final class SettingsWindowController: NSWindowController {
         window.title = "Discord RP — Settings"
         window.minSize = NSSize(width: 620, height: 420)
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(
-            rootView: SettingsView(model: model, initialPane: initialPane, selectedPresetID: selectedPresetID)
-        )
+        window.contentView = Self.contentView(model: model, initialPane: initialPane,
+                                              selectedPresetID: selectedPresetID)
         window.center()
         super.init(window: window)
+        window.delegate = self
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not supported") }
 
+    private static func contentView(model: AppModel, initialPane: SettingsPane,
+                                    selectedPresetID: UUID?) -> NSView {
+        NSHostingView(rootView: SettingsView(model: model, initialPane: initialPane,
+                                             selectedPresetID: selectedPresetID))
+    }
+
+    func show(pane: SettingsPane, selectedPresetID: UUID?) {
+        window?.contentView = Self.contentView(model: model, initialPane: pane,
+                                               selectedPresetID: selectedPresetID)
+        show()
+    }
+
     func show() {
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        onClose?()
+        onClose = nil
     }
 }
 

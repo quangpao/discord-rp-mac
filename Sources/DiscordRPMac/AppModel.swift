@@ -347,8 +347,16 @@ final class AppModel: ObservableObject {
     }
 
     func openSettings(pane: SettingsPane = .cards, presetID: UUID? = nil) {
-        // Match the editor: always rebuild so file changes and card validation state are fresh.
+        if let controller = settingsWindow {
+            controller.show(pane: pane, selectedPresetID: presetID)
+            return
+        }
+
         let controller = SettingsWindowController(model: self, initialPane: pane, selectedPresetID: presetID)
+        controller.onClose = { [weak self, weak controller] in
+            guard let self, let controller, self.settingsWindow === controller else { return }
+            self.settingsWindow = nil
+        }
         settingsWindow = controller
         controller.show()
     }

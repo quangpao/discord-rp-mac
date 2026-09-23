@@ -120,6 +120,9 @@ enum SelfTest {
             return renderSettings(to: path, width: width, height: height, pane: pane,
                                   preset: value(of: "--preset", in: args))
         }
+        if args.contains("--check-settings-singleton") {
+            return checkSettingsSingleton()
+        }
         if let index = args.firstIndex(of: "--render-menu") {
             let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
                 ? args[index + 1]
@@ -329,6 +332,30 @@ enum SelfTest {
         let resolvedIndex = index == 0 ? 0 : index - 1
         guard presets.indices.contains(resolvedIndex) else { return nil }
         return presets[resolvedIndex].id
+    }
+
+    /// `--check-settings-singleton` — opens Settings through the real app model path twice and
+    /// checks that AppKit has exactly one visible Settings window.
+    private static func checkSettingsSingleton() -> Int32 {
+        var result: Int32 = 1
+        let check: @MainActor () -> Void = {
+            installRenderGiphyStorage()
+            let model = renderModel()
+            model.openSettings(pane: .cards)
+            model.openSettings(pane: .presets, presetID: model.presets.first?.id)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+            let count = NSApp.windows.filter { window in
+                window.title == "Discord RP — Settings" && window.isVisible
+            }.count
+            print("settings windows: \(count)")
+            result = count == 1 ? 0 : 1
+        }
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { check() }
+        } else {
+            DispatchQueue.main.sync { MainActor.assumeIsolated { check() } }
+        }
+        return result
     }
 
     private static func installRenderGiphyStorage() {
