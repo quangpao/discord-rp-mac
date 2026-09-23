@@ -61,7 +61,31 @@ final class ActivityRulesTests: XCTestCase {
         XCTAssertEqual(ActivityRules.normalizedURL("  example.com  "), "https://example.com")
         XCTAssertNil(ActivityRules.normalizedURL("ftp://example.com"))
         XCTAssertNil(ActivityRules.normalizedURL(""))
-        XCTAssertEqual(ActivityRules.normalizedURL(String(repeating: "a", count: 900))?.count, ActivityRules.maxURLLength)
+        XCTAssertEqual(
+            ActivityRules.normalizedURL("https://example.com/" + String(repeating: "a", count: 492))?.count,
+            ActivityRules.maxURLLength
+        )
+        XCTAssertNil(ActivityRules.normalizedURL("https://example.com/" + String(repeating: "a", count: 493)))
+    }
+
+    func testOverLengthURLReportsIssueAndIsNotSent() {
+        var activity = Activity(name: "T", details: "ok")
+        activity.buttons = [
+            Button(label: "Docs", url: "https://example.com/" + String(repeating: "a", count: 493)),
+        ]
+
+        let issues = ActivityRules.errors(in: ActivityRules.validate(activity, appID: appID))
+        XCTAssertTrue(issues.contains { issue in
+            issue.field == .buttonURL && issue.message == "Button 1 URL is limited to 512 characters."
+        }, "expected a button URL length issue, got \(issues)")
+        XCTAssertNil(payload(activity), "an over-length URL must block the payload instead of being truncated")
+
+        activity.buttons = [
+            Button(label: "Docs", url: "https://example.com/" + String(repeating: "a", count: 492)),
+        ]
+        XCTAssertTrue(ActivityRules.errors(in: ActivityRules.validate(activity, appID: appID)).isEmpty)
+        let buttons = payload(activity)?["buttons"] as? [[String: String]]
+        XCTAssertEqual(buttons?.first?["url"]?.count, ActivityRules.maxURLLength)
     }
 
     func testZeroWidthGuardForLeadingNBSP() {

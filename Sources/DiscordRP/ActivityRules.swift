@@ -38,15 +38,37 @@ public enum ActivityRules {
         text.utf8.count
     }
 
-    /// `MainForm.cs:908-927`: trim, add `https://` when the scheme is missing, cap the length.
+    /// `MainForm.cs:908-927`: trim, add `https://` when the scheme is missing, reject over-length URLs.
     public static func normalizedURL(_ raw: String, maxLength: Int = ActivityRules.maxURLLength) -> String? {
+        guard let url = parsedURLString(raw, maxLength: maxLength) else { return nil }
+        return url
+    }
+
+    private static func parsedURLString(_ raw: String, maxLength: Int) -> String? {
         var url = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return nil }
         if !url.contains("://") { url = "https://" + url }
         guard let parsed = URL(string: url), let scheme = parsed.scheme?.lowercased(),
               scheme == "http" || scheme == "https", parsed.host?.isEmpty == false
         else { return nil }
-        return String(url.prefix(maxLength))
+        guard url.count <= maxLength else { return nil }
+        return url
+    }
+
+    private static func urlIssue(raw: String, field: IssueField, label: String) -> ActivityIssue? {
+        var url = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return nil }
+        if !url.contains("://") { url = "https://" + url }
+        if url.count > maxURLLength {
+            return ActivityIssue(
+                field: field,
+                message: "\(label) is limited to \(maxURLLength) characters."
+            )
+        }
+        guard parsedURLString(raw, maxLength: maxURLLength) != nil else {
+            return ActivityIssue(field: field, message: "\(label) is not a valid http(s) URL.")
+        }
+        return nil
     }
 
     /// Discord rejects details/state that *start* with a non-breaking space unless a
@@ -142,8 +164,8 @@ public enum ActivityRules {
                     message: "Button \(position) label is \(bytes) bytes; Discord allows \(maxButtonLabelBytes)."
                 ))
             }
-            if hasURL, normalizedURL(button.url) == nil {
-                issues.append(ActivityIssue(field: .buttonURL, message: "Button \(position) URL is not a valid http(s) URL."))
+            if hasURL, let issue = urlIssue(raw: button.url, field: .buttonURL, label: "Button \(position) URL") {
+                issues.append(issue)
             }
         }
 
@@ -207,8 +229,8 @@ public enum ActivityRules {
                                     (activity.smallURL, .imageURL, "Small image"),
                                     (activity.detailsURL, .imageURL, "Details"),
                                     (activity.stateURL, .imageURL, "State")] {
-            if !raw.trimmingCharacters(in: .whitespaces).isEmpty, normalizedURL(raw) == nil {
-                issues.append(ActivityIssue(field: field, message: "\(label) link is not a valid http(s) URL."))
+            if let issue = urlIssue(raw: raw, field: field, label: "\(label) link") {
+                issues.append(issue)
             }
         }
 

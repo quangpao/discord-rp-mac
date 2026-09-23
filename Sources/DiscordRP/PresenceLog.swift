@@ -33,6 +33,7 @@ public enum PresenceLog {
     private static var logURL: URL { migratedLogURL(in: directory) }
 
     private static let maxLogBytes = 1 << 20
+    private static let appendQueue = DispatchQueue(label: "discord-rp.presence-log.append")
 
     public static func record(payload: Data?, appID: String? = nil, reply: DiscordIPCClient.Reply? = nil, error: String?) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -59,17 +60,19 @@ public enum PresenceLog {
     }
 
     private static func append(_ line: String) {
-        guard let data = line.data(using: .utf8) else { return }
-        if let size = try? FileManager.default.attributesOfItem(atPath: logURL.path)[.size] as? Int,
-           size > maxLogBytes {
-            try? FileManager.default.removeItem(at: logURL)
-        }
-        if let handle = try? FileHandle(forWritingTo: logURL) {
-            defer { try? handle.close() }
-            _ = try? handle.seekToEnd()
-            try? handle.write(contentsOf: data)
-        } else {
-            try? data.write(to: logURL, options: .atomic)
+        appendQueue.sync {
+            guard let data = line.data(using: .utf8) else { return }
+            if let size = try? FileManager.default.attributesOfItem(atPath: logURL.path)[.size] as? Int,
+               size > maxLogBytes {
+                try? FileManager.default.removeItem(at: logURL)
+            }
+            if let handle = try? FileHandle(forWritingTo: logURL) {
+                defer { try? handle.close() }
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: data)
+            } else {
+                try? data.write(to: logURL, options: .atomic)
+            }
         }
     }
 }

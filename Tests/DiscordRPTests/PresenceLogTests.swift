@@ -67,4 +67,37 @@ final class PresenceLogTests: XCTestCase {
         XCTAssertTrue(try String(contentsOf: current, encoding: .utf8).contains("hello"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("customrp.log").path))
     }
+
+    func testConcurrentNotesAreSerialized() throws {
+        PresenceLog.directoryOverride = directory
+        defer { PresenceLog.directoryOverride = nil }
+
+        let writerCount = 8
+        let lineCount = 25
+        let group = DispatchGroup()
+        let queue = DispatchQueue(label: "presence-log-test-writers", attributes: .concurrent)
+
+        for writer in 0..<writerCount {
+            queue.async(group: group) {
+                for line in 0..<lineCount {
+                    PresenceLog.note("writer-\(writer)-line-\(line)")
+                }
+            }
+        }
+        XCTAssertEqual(group.wait(timeout: .now() + 5), .success)
+
+        let current = directory.appendingPathComponent("discord-rp.log")
+        let contents = try String(contentsOf: current, encoding: .utf8)
+        let lines = contents.split(separator: "\n").map(String.init)
+        XCTAssertEqual(lines.count, writerCount * lineCount)
+
+        for writer in 0..<writerCount {
+            for line in 0..<lineCount {
+                let token = "writer-\(writer)-line-\(line)"
+                XCTAssertEqual(lines.filter { $0.hasSuffix(" note \(token)") }.count, 1, "\(token) must appear exactly once")
+            }
+        }
+        XCTAssertTrue(lines.allSatisfy { $0.components(separatedBy: " note ").count == 2 },
+                      "each append must remain one complete log line")
+    }
 }

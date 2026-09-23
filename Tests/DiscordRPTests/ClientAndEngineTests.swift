@@ -55,6 +55,32 @@ final class DiscordIPCClientTests: XCTestCase {
         XCTAssertEqual(server.activities.first as? NSNull, NSNull())
     }
 
+    func testCommandReplyRejectsMatchingCommandWithStaleNonce() throws {
+        server.commandReplyNonceOverride = "stale-nonce"
+        let client = DiscordIPCClient(appID: "123", readTimeout: 1)
+        try client.connect()
+        defer { client.close() }
+
+        XCTAssertThrowsError(try client.setActivity(nil)) { error in
+            guard case IPCError.timeout = error else {
+                return XCTFail("expected timeout, got \(error)")
+            }
+        }
+        XCTAssertNil(client.lastReply, "a stale nonce must not be accepted as this command's reply")
+    }
+
+    func testCommandReplyAcceptsMatchingCommandWhenNonceIsAbsent() throws {
+        server.omitCommandReplyNonce = true
+        let client = DiscordIPCClient(appID: "123", readTimeout: 5)
+        try client.connect()
+        defer { client.close() }
+
+        try client.setActivity(nil)
+
+        XCTAssertEqual(client.lastReply?.opcode, .frame)
+        XCTAssertEqual(server.activities.first as? NSNull, NSNull())
+    }
+
     func testPingIsAnswered() throws {
         let client = DiscordIPCClient(appID: "123", readTimeout: 5)
         try client.connect()

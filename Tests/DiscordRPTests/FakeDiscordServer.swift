@@ -27,6 +27,8 @@ final class FakeDiscordServer: @unchecked Sendable {
     /// Drop the connection right after a successful handshake.
     var closeAfterHandshake = false
     var commandReplyDelay: TimeInterval = 0
+    var commandReplyNonceOverride: String?
+    var omitCommandReplyNonce = false
     var username = "tester"
 
     init() {
@@ -187,11 +189,14 @@ final class FakeDiscordServer: @unchecked Sendable {
                 if commandReplyDelay > 0 {
                     Thread.sleep(forTimeInterval: commandReplyDelay)
                 }
-                try? sendFrame(fd, opcode: .frame, payload: [
+                var reply: [String: Any] = [
                     "cmd": command,
-                    "nonce": (payload["nonce"] as? String) ?? "",
                     "data": NSNull(),
-                ])
+                ]
+                if !omitCommandReplyNonce {
+                    reply["nonce"] = commandReplyNonceOverride ?? (payload["nonce"] as? String) ?? ""
+                }
+                try? sendFrame(fd, opcode: .frame, payload: reply)
             case .ping:
                 try? sendFrame(fd, opcode: .pong, payload: [:])
             case .pong, .close:

@@ -197,7 +197,8 @@ public final class DiscordIPCClient: @unchecked Sendable {
                 close()
                 throw rejection(fromClose: frame)
             case .frame:
-                if frame["nonce"] as? String == nonce || frame["cmd"] as? String == name {
+                let frameNonce = frame["nonce"] as? String
+                if frameNonce == nonce || (frameNonce == nil && frame["cmd"] as? String == name) {
                     let reply = Reply(opcode: op, frame: frame)
                     lastReply = reply
                     if frame["evt"] as? String == "ERROR" {
