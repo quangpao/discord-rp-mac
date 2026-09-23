@@ -12,11 +12,12 @@ final class PresenceLogTests: XCTestCase {
         directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("discordrp-presencelog-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        PresenceLog.directoryOverride = directory
     }
 
     override func tearDownWithError() throws {
-        PresenceLog.directoryOverride = nil
+        if PresenceLog.directoryOverride == directory {
+            PresenceLog.directoryOverride = nil
+        }
         try? FileManager.default.removeItem(at: directory)
     }
 
@@ -56,6 +57,9 @@ final class PresenceLogTests: XCTestCase {
     }
 
     func testNoteWritesUnderTheNewName() throws {
+        PresenceLog.directoryOverride = directory
+        defer { PresenceLog.directoryOverride = nil }
+
         PresenceLog.note("hello")
 
         let current = directory.appendingPathComponent("discord-rp.log")

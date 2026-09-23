@@ -529,12 +529,11 @@ private final class Worker: @unchecked Sendable {
             source.setEventHandler { [weak self] in self?.tick() }
             timer = source
             source.resume()
-            PresenceLog.note("timer started (tick 0.5s, ping 15s)")
+            logNote("timer started (tick 0.5s, ping 15s)")
         }
     }
 
     func update(appID: String, pipeIndex: Int) {
-        setStopped(false)
         queue.async { [self] in
             guard !isStopped else { return }
             guard appID != self.appID || pipeIndex != self.pipeIndex else { return }
@@ -576,10 +575,10 @@ private final class Worker: @unchecked Sendable {
             do {
                 let reply = try client.setActivityWithReply(nil)
                 guard !isStopped else { return }
-                PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
+                logRecord(payload: nil, appID: appID, reply: reply, error: nil)
             } catch {
                 guard !isStopped else { return }
-                PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
+                logRecord(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
             }
         }
     }
@@ -587,7 +586,7 @@ private final class Worker: @unchecked Sendable {
     func stop() {
         setRunning(false)
         setStopped(true)
-        PresenceLog.note("timer stopped")
+        logNote("timer stopped")
         queue.async { [self] in
             let closingClient = client
             client = nil
@@ -605,11 +604,11 @@ private final class Worker: @unchecked Sendable {
             if let closingClient, closingClient.isConnected {
                 do {
                     let reply = try closingClient.setActivityWithReply(nil)
-                    PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
+                    logRecord(payload: nil, appID: appID, reply: reply, error: nil)
                 } catch IPCError.discordClosed {
                     // The peer can disappear during async teardown; closing below is enough.
                 } catch {
-                    PresenceLog.record(payload: nil, appID: appID, reply: closingClient.lastReply, error: "\(error)")
+                    logRecord(payload: nil, appID: appID, reply: closingClient.lastReply, error: "\(error)")
                 }
             }
             closingClient?.close()
@@ -657,10 +656,10 @@ private final class Worker: @unchecked Sendable {
             pingCount += 1
             // One line a minute: enough to prove the keepalive is alive without flooding the log.
             if pingCount % 4 == 0 {
-                PresenceLog.note("alive pings=\(pingCount) connected=\(client.isConnected)")
+                logNote("alive pings=\(pingCount) connected=\(client.isConnected)")
             }
             if !client.ping() {
-                PresenceLog.note("ping failed — reconnecting")
+                logNote("ping failed — reconnecting")
                 teardown()
                 scheduleRetry()
             }
@@ -699,7 +698,7 @@ private final class Worker: @unchecked Sendable {
                     // During the handshake 4000 does mean the client id was refused, so retrying
                     // forever would be pointless — Reconnect clears this once the id is fixed.
                     paused = true
-                    PresenceLog.note("handshake rejected (4000): \(message)")
+                    logNote("handshake rejected (4000): \(message)")
                 }
                 emit(.failed(code: code, message: message))
                 onIssues?([ActivityIssue(field: .appID, message: message)])
@@ -720,10 +719,10 @@ private final class Worker: @unchecked Sendable {
             do {
                 let reply = try client.setActivityWithReply(nil)
                 guard !isStopped else { return }
-                PresenceLog.record(payload: nil, appID: appID, reply: reply, error: nil)
+                logRecord(payload: nil, appID: appID, reply: reply, error: nil)
             } catch {
                 guard !isStopped else { return }
-                PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
+                logRecord(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
             }
             return
         }
@@ -745,7 +744,7 @@ private final class Worker: @unchecked Sendable {
             let reply = try client.setActivityWithReply(data)
             guard !isStopped else { return }
             presenceStarted = now
-            PresenceLog.record(payload: data, appID: appID, reply: reply, error: nil)
+            logRecord(payload: data, appID: appID, reply: reply, error: nil)
             onIssues?([])
         } catch let error as IPCError {
             guard !isStopped else { return }
@@ -754,7 +753,7 @@ private final class Worker: @unchecked Sendable {
                 // Application ID: sending type 1 (Streaming) produces exactly this code with
                 // `"type" must be one of [0, 2, 3, 5]`. Never pause on it — pause used to stop the
                 // timer for good and report "Invalid Application ID", which hid the real cause.
-                PresenceLog.note("push rejected (code \(code)): \(message)")
+                logNote("push rejected (code \(code)): \(message)")
                 onIssues?([ActivityIssue(field: .kind, message: message)])
                 needsPush = true
                 pushAt = Date().addingTimeInterval(10)
@@ -765,12 +764,12 @@ private final class Worker: @unchecked Sendable {
                 teardown()
                 scheduleRetry()
             }
-            PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
+            logRecord(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
         } catch {
             guard !isStopped else { return }
             teardown()
             scheduleRetry()
-            PresenceLog.record(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
+            logRecord(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
         }
     }
 
@@ -799,6 +798,23 @@ private final class Worker: @unchecked Sendable {
     private func emit(_ status: PresenceStatus) {
         guard !isStopped || status == .idle else { return }
         onStatus?(status)
+    }
+
+    private func logRecord(payload: Data?,
+                           appID: String? = nil,
+                           reply: DiscordIPCClient.Reply? = nil,
+                           error: String?) {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard !stopped else { return }
+        PresenceLog.record(payload: payload, appID: appID, reply: reply, error: error)
+    }
+
+    private func logNote(_ message: String) {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard !stopped else { return }
+        PresenceLog.note(message)
     }
 
     private var isStopped: Bool {
