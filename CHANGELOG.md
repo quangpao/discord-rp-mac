@@ -2,6 +2,23 @@
 
 Notable changes per release. Dates are the release/tag dates.
 
+## [1.2.1] - 2026-09-23
+
+### Fixed
+
+- Reconnect now recovers a card whose application id Discord rejected with code `4000`. The worker had
+  kept its paused state, so the card stayed failed until the id changed or the app restarted, even though
+  Reconnect is exactly the button for that situation.
+- Stopping a worker no longer blocks the main thread. Clearing, disabling or removing a card used to wait
+  for socket I/O (up to a few seconds per card, one after another); the goodbye is now sent in the
+  background, so the interface stays responsive.
+- A peer that closes the socket no longer kills the app with `SIGPIPE`; the write path reports the
+  connection as closed and cleans up instead.
+- The manual release workflow (`workflow_dispatch`) used the dispatch ref instead of the tag it was given,
+  so it could never publish. One resolved tag now drives the checkout, the version check and the release.
+- `forceReconnect()` no longer wakes an idle worker, which could have opened a connection with a stale
+  application id.
+
 ## [1.2.0] - 2026-09-23
 
 ### Fixed
