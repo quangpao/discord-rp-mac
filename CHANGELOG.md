@@ -2,6 +2,18 @@
 
 Notable changes per release. Dates are the release/tag dates.
 
+## [1.2.4] - 2026-09-23
+
+### Fixed
+
+- A reply is no longer accepted just because its command name matches: when a frame carries a nonce it
+  must be the nonce of the call being waited on, so a late reply from an earlier, timed-out request can
+  no longer be attributed to a newer one. Replies that carry no nonce still fall back to the command name.
+- An image URL longer than 512 characters is reported as an issue instead of being silently shortened,
+  so a card can no longer be saved with a URL that was quietly cut.
+- Log appends go through one serial queue, so several cards writing at once cannot interleave or lose
+  diagnostic lines.
+
 ## [1.2.3] - 2026-09-23
 
 ### Fixed
