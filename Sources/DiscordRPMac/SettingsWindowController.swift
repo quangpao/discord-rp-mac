@@ -214,7 +214,7 @@ struct SettingsView: View {
                 .frame(width: cardControlWidth, alignment: .leading)
             }
             row("Source",
-                help: "Preset uses the saved activity exactly as edited. Browser keeps the preset name, type, small assets and buttons, but replaces details with the focused tab's domain.") {
+                help: "Preset uses the saved activity exactly as edited. Browser keeps the preset name, type, small assets and buttons, but publishes the page title over the focused tab domain when available.") {
                 Picker("", selection: binding.source) {
                     Text("Preset").tag(PresenceCard.Source.preset)
                     Text("Browser").tag(PresenceCard.Source.browser)
@@ -594,7 +594,7 @@ struct SettingsView: View {
                     .frame(width: 260, alignment: .leading)
                     .accessibilityLabel("Published browser activity")
             }
-            row("Page title", help: "On by default. The focused tab title becomes the activity state; page titles can include sensitive text. The URL path and query are still never published.") {
+            row("Page title", help: "On by default. The focused tab title becomes the prominent activity line with the domain underneath; page titles can include sensitive text. The URL path and query are still never published.") {
                 Toggle("", isOn: Binding(
                     get: { model.settings.browser.showsPageTitle },
                     set: { model.setBrowserShowsPageTitle($0) }
@@ -634,7 +634,7 @@ struct SettingsView: View {
     private var browserPublishedText: String {
         guard let value = model.publishedBrowserValue else { return "Nothing yet" }
         if model.settings.browser.showsPageTitle, let title = value.title, !title.isEmpty {
-            return "\(value.domain) · \(title)"
+            return "\(title) · \(value.domain)"
         }
         return value.domain
     }

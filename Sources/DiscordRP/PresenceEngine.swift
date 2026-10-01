@@ -285,8 +285,13 @@ public enum PresenceCardPlanner {
                         ))
                     } else {
                         var activity = preset.activity
-                        activity.details = value.domain
-                        activity.state = browserSettings.showsPageTitle ? (value.title ?? "") : ""
+                        if browserSettings.showsPageTitle, let title = value.title, !title.isEmpty {
+                            activity.details = title
+                            activity.state = value.domain
+                        } else {
+                            activity.details = value.domain
+                            activity.state = ""
+                        }
                         if browserSettings.usesSiteIcon {
                             activity.largeKey = browserSiteIconURL(forDomain: value.domain)
                             activity.largeText = value.title?.isEmpty == false ? value.title! : value.domain

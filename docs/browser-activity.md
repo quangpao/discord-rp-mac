@@ -1,9 +1,10 @@
 # Browser Activity
 
 Browser activity is local-only until you enable it on a card in Settings > Cards. A browser-sourced
-card still uses its preset for the Discord activity name, type, small image and buttons. The browser
-supplies `details` as the focused tab domain, `state` as the page title when enabled, and the large
-image as the site's icon when enabled.
+card still uses its preset for the Discord activity name, type, small image and buttons. When page
+title publishing is enabled and a title was read, the browser supplies `details` as the page title
+and `state` as the focused tab domain. When title publishing is off, or no title was read,
+`details` is the domain and `state` is empty. The large image is the site's icon when enabled.
 
 What is read:
 
@@ -18,7 +19,8 @@ What is published:
 
 - By default, the lowercased domain is sent to Discord, with a leading `www.` removed.
 - Page title publishing is on by default and can be turned off. Page titles can include sensitive
-  text from the focused tab.
+  text from the focused tab. When a title is published it is the prominent activity line, with the
+  domain underneath.
 - Site icon publishing is on by default and can be turned off. The app puts
   `https://www.google.com/s2/favicons?domain=<domain>&sz=128` in the Discord payload, built from the
   domain only. The app does not fetch that icon, but Discord may request it, sending the domain to
