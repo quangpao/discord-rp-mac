@@ -375,9 +375,7 @@ final class PresenceEngineTests: XCTestCase {
         )
 
         engine.clear(cardID: cardID)
-        // Generous: the goodbye is sent asynchronously on purpose, so a loaded CI machine can take
-        // several seconds to see the clear frame. A wrong implementation still fails this.
-        let cleared = await waitUntil(timeout: 20) {
+        let cleared = await waitUntil(timeout: 5) {
             self.server.connectionActivities.values.contains { activities in
                 activities.contains { $0 is NSNull }
             }
