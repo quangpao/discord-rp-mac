@@ -256,7 +256,7 @@ public enum PresenceCardPlanner {
                     issues.append(CardValidationIssue(
                         cardID: card.id,
                         kind: .browserUnavailable,
-                        message: BrowserActivityFailure.unsupportedFrontmostApplication.userMessage
+                        message: BrowserActivityFailure.browserNotFrontmost.userMessage
                     ))
                     continue
                 }

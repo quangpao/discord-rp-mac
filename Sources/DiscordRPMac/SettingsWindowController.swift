@@ -585,6 +585,15 @@ struct SettingsView: View {
                 ))
                 .accessibilityLabel("Pause browser activity")
             }
+            row("Published", help: browserPublishedHelp) {
+                Text(browserPublishedText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(model.publishedBrowserValue == nil ? .secondary : .primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(width: 260, alignment: .leading)
+                    .accessibilityLabel("Published browser activity")
+            }
             row("Page title", help: "Off by default. When enabled, the focused tab title becomes the activity state; the URL path and query are still never published.") {
                 Toggle("", isOn: Binding(
                     get: { model.settings.browser.showsPageTitle },
@@ -612,6 +621,19 @@ struct SettingsView: View {
                 .accessibilityLabel("Browser blocklist")
             }
         }
+    }
+
+    private var browserPublishedText: String {
+        guard let value = model.publishedBrowserValue else { return "Nothing yet" }
+        if model.settings.browser.showsPageTitle, let title = value.title, !title.isEmpty {
+            return "\(value.domain) · \(title)"
+        }
+        return value.domain
+    }
+
+    private var browserPublishedHelp: String? {
+        guard case .failure(let failure) = model.browserReadResult else { return nil }
+        return "Latest read failed: \(failure.userMessage)"
     }
 
     private var giphyPane: some View {

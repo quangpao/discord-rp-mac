@@ -7,6 +7,7 @@ import SwiftUI
 /// plus a live probe against the real Discord client.
 ///
 /// `DiscordRPMac --self-test` · `DiscordRPMac --version` · `DiscordRPMac --live --app-id <ID>`
+/// Development-only live probe: `DiscordRPMac --check-browser-source [--browser <bundle-id>]`.
 enum SelfTest {
     private static var failures = 0
 
@@ -124,7 +125,7 @@ enum SelfTest {
             return checkSettingsSingleton()
         }
         if args.contains("--check-browser-source") {
-            return checkBrowserSource()
+            return checkBrowserSource(browserBundleIdentifierOverride: value(of: "--browser", in: args))
         }
         if let index = args.firstIndex(of: "--render-menu") {
             let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
@@ -549,14 +550,23 @@ enum SelfTest {
         return 0
     }
 
-    private static func checkBrowserSource() -> Int32 {
+    private static func checkBrowserSource(browserBundleIdentifierOverride: String?) -> Int32 {
         let semaphore = DispatchSemaphore(value: 0)
         let box = BrowserResultBox()
-        BrowserActivitySource().read(includeTitle: false, timeout: 0.5) {
+        print("browser source diagnostic:")
+        print("  browser override: \(browserBundleIdentifierOverride ?? "none")")
+        BrowserActivitySource().diagnosticRead(
+            includeTitle: false,
+            timeout: 12.0,
+            browserBundleIdentifierOverride: browserBundleIdentifierOverride,
+            diagnostics: { line in
+                print(line.split(separator: "\n", omittingEmptySubsequences: false).map { "  \($0)" }.joined(separator: "\n"))
+            }
+        ) {
             box.result = $0
             semaphore.signal()
         }
-        _ = semaphore.wait(timeout: .now() + 1)
+        _ = semaphore.wait(timeout: .now() + 13)
         switch box.result {
         case .value(let value):
             print("\(value.browserName): \(value.domain)")

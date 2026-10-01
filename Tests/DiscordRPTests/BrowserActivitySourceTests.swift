@@ -49,11 +49,212 @@ final class BrowserActivitySourceTests: XCTestCase {
         let (specs, issues) = PresenceCardPlanner.validate(
             cards: [card],
             presets: [preset],
-            browserResult: .failure(.unsupportedFrontmostApplication)
+            browserResult: .failure(.browserNotFrontmost)
         )
 
         XCTAssertTrue(specs.isEmpty)
         XCTAssertEqual(issues.map(\.kind), [.browserUnavailable])
+    }
+
+    func testBrowserOverrideSkipsFrontmostGate() throws {
+        let noFrontmostBrowser = StubFrontmostApplicationProvider(bundleIdentifier: nil)
+
+        let defaultSelection = BrowserActivitySource.browserForRead(
+            browserBundleIdentifierOverride: nil,
+            using: noFrontmostBrowser
+        )
+        XCTAssertEqual(defaultSelection, .failure(.browserNotFrontmost))
+
+        let overrideSelection = BrowserActivitySource.browserForRead(
+            browserBundleIdentifierOverride: "com.google.Chrome",
+            using: noFrontmostBrowser
+        )
+        let browser = try XCTUnwrap(try? overrideSelection.get())
+        XCTAssertEqual(browser.bundleIdentifier, "com.google.Chrome")
+
+        let unsupportedOverrideSelection = BrowserActivitySource.browserForRead(
+            browserBundleIdentifierOverride: "com.example.Unsupported",
+            using: StubFrontmostApplicationProvider(bundleIdentifier: "com.google.Chrome")
+        )
+        XCTAssertEqual(unsupportedOverrideSelection, .failure(.browserNotRunning))
+    }
+
+    func testDecodedWebURLMapsToDomainOnly() {
+        let result = BrowserActivitySource.result(
+            fromDecodedURL: "https://www.github.com/openai/codex?tab=readme",
+            title: "  Pull request  ",
+            mode: "normal",
+            includeTitle: true,
+            browser: SupportedBrowser(bundleIdentifier: "com.google.Chrome", applicationName: "Google Chrome", displayName: "Google Chrome")
+        )
+
+        XCTAssertEqual(result, .value(BrowserActivityValue(
+            domain: "github.com",
+            title: "Pull request",
+            browserName: "Google Chrome",
+            isIncognito: false
+        )))
+    }
+
+    func testDecodedBrowserInternalURLsAreNotWebPages() {
+        let browser = SupportedBrowser(bundleIdentifier: "com.google.Chrome", applicationName: "Google Chrome", displayName: "Google Chrome")
+
+        XCTAssertEqual(
+            BrowserActivitySource.result(fromDecodedURL: "chrome://settings", title: nil, mode: "normal", includeTitle: false, browser: browser),
+            .failure(.unsupportedURL)
+        )
+        XCTAssertEqual(
+            BrowserActivitySource.result(fromDecodedURL: "about:blank", title: nil, mode: "normal", includeTitle: false, browser: browser),
+            .failure(.unsupportedURL)
+        )
+    }
+
+    func testMissingDecodedURLIsAReadFailure() {
+        let browser = SupportedBrowser(bundleIdentifier: "com.google.Chrome", applicationName: "Google Chrome", displayName: "Google Chrome")
+
+        XCTAssertEqual(
+            BrowserActivitySource.result(fromDecodedURL: nil, title: nil, mode: "normal", includeTitle: false, browser: browser),
+            .failure(.couldNotReadURL("Browser reply did not include a URL."))
+        )
+    }
+
+    func testAppleEventTimeoutKeepsTimeoutFailure() {
+        let error: NSDictionary = [
+            NSAppleScript.errorNumber: NSNumber(value: -1712),
+            NSAppleScript.errorMessage: "Apple event timed out."
+        ]
+
+        XCTAssertEqual(BrowserActivitySource.failure(from: error), .timeout)
+    }
+
+    func testBrowserWindowModeMapsKnownTextDescriptors() {
+        XCTAssertEqual(BrowserWindowMode.from(descriptor: NSAppleEventDescriptor(string: "normal")), .normal)
+        XCTAssertEqual(BrowserWindowMode.from(descriptor: NSAppleEventDescriptor(string: "incognito")), .incognito)
+        XCTAssertNil(BrowserWindowMode.from(descriptor: NSAppleEventDescriptor(string: "guest")))
+    }
+
+    func testBrowserWindowModeMapsKnownEnumCodes() {
+        XCTAssertEqual(
+            BrowserWindowMode.from(descriptor: NSAppleEventDescriptor(typeCode: BrowserWindowMode.fourCharacterCode("norm"))),
+            .normal
+        )
+        XCTAssertEqual(
+            BrowserWindowMode.from(descriptor: NSAppleEventDescriptor(typeCode: BrowserWindowMode.fourCharacterCode("incg"))),
+            .incognito
+        )
+        XCTAssertNil(
+            BrowserWindowMode.from(descriptor: NSAppleEventDescriptor(typeCode: BrowserWindowMode.fourCharacterCode("????")))
+        )
+    }
+
+    func testUnknownModeFailsClosedBeforePublishingDomain() {
+        let browser = SupportedBrowser(bundleIdentifier: "com.google.Chrome", applicationName: "Google Chrome", displayName: "Google Chrome")
+
+        XCTAssertEqual(
+            BrowserActivitySource.result(fromDecodedURL: "https://example.com/private", title: nil, mode: Optional<String>.none, includeTitle: false, browser: browser),
+            .failure(.incognitoUnknown)
+        )
+        XCTAssertEqual(
+            BrowserActivitySource.result(fromDecodedURL: "https://example.com/private", title: nil, mode: "unknown", includeTitle: false, browser: browser),
+            .failure(.incognitoUnknown)
+        )
+    }
+
+    func testUnknownModeReadResultPublishesNothingWithoutStickyValue() {
+        let browser = SupportedBrowser(bundleIdentifier: "com.google.Chrome", applicationName: "Google Chrome", displayName: "Google Chrome")
+        var state = BrowserActivityPublicationState()
+
+        state.record(BrowserActivitySource.result(
+            fromDecodedURL: "https://example.com/private",
+            title: nil,
+            mode: BrowserWindowMode.from(descriptor: NSAppleEventDescriptor(typeCode: BrowserWindowMode.fourCharacterCode("????"))),
+            includeTitle: false,
+            browser: browser
+        ))
+
+        XCTAssertEqual(state.latestReadResult, .failure(.incognitoUnknown))
+        XCTAssertNil(state.publishedReadResult)
+    }
+
+    func testIncognitoModeFailsClosedBeforePublishingDomain() {
+        let browser = SupportedBrowser(bundleIdentifier: "com.google.Chrome", applicationName: "Google Chrome", displayName: "Google Chrome")
+
+        XCTAssertEqual(
+            BrowserActivitySource.result(fromDecodedURL: "https://example.com/private", title: nil, mode: "incognito", includeTitle: false, browser: browser),
+            .failure(.incognito)
+        )
+    }
+
+    func testStickyBrowserPublicationKeepsLastValueAcrossReadFailures() {
+        let value = BrowserActivityValue(domain: "example.com", title: "Example", browserName: "Chrome", isIncognito: false)
+        let failures: [BrowserActivityFailure] = [
+            .browserNotFrontmost,
+            .browserNotRunning,
+            .automationPermissionDenied,
+            .scriptCompileFailed("compile"),
+            .timeout,
+            .noFrontWindow,
+            .unsupportedURL,
+            .couldNotReadURL("missing"),
+            .incognito,
+            .incognitoUnknown,
+            .blocked("example.com"),
+            .scriptFailed("failed"),
+        ]
+
+        for failure in failures {
+            var state = BrowserActivityPublicationState()
+            state.record(.value(value))
+            state.record(.failure(failure))
+
+            XCTAssertEqual(state.latestReadResult, .failure(failure))
+            XCTAssertEqual(state.publishedReadResult, .value(value), "failure \(failure) should keep last published value")
+        }
+    }
+
+    func testExplicitBrowserPublicationClearRemovesStickyValue() {
+        var state = BrowserActivityPublicationState()
+        let value = BrowserActivityValue(domain: "example.com", browserName: "Chrome", isIncognito: false)
+
+        state.record(.value(value))
+        state.clear()
+
+        XCTAssertNil(state.latestReadResult)
+        XCTAssertNil(state.publishedReadResult)
+    }
+
+    func testIncognitoUnknownWithoutLastValuePublishesNothing() {
+        var state = BrowserActivityPublicationState()
+
+        state.record(.failure(.incognitoUnknown))
+
+        XCTAssertEqual(state.latestReadResult, .failure(.incognitoUnknown))
+        XCTAssertNil(state.publishedReadResult)
+    }
+
+    func testAppleScriptWorkerRunsBlocksOnThreadWithRunLoop() {
+        let expectation = expectation(description: "worker reports run loop")
+
+        AppleScriptRunLoopWorker.shared.runLoopThreadCheck { hasRunLoopMode in
+            XCTAssertTrue(hasRunLoopMode)
+            expectation.fulfill()
+        }
+
+        wait(for: [expectation], timeout: 2)
+    }
+
+    func testAppleScriptTargetsBundleIdentifier() {
+        let browser = SupportedBrowser(
+            bundleIdentifier: "com.google.Chrome",
+            applicationName: "Google Chrome",
+            displayName: "Google Chrome"
+        )
+
+        let source = BrowserActivitySource.scriptSource(for: browser, includeTitle: false)
+
+        XCTAssertTrue(source.contains("tell application id \"com.google.Chrome\""))
+        XCTAssertTrue(source.contains("active tab of front window"))
+        XCTAssertFalse(source.contains("name of frontTab"))
     }
 
     func testPermissionDeniedIsReportedAsOwnCase() {
@@ -159,5 +360,13 @@ final class BrowserActivitySourceTests: XCTestCase {
         XCTAssertEqual(settings.cards.first?.source, .preset)
         XCTAssertEqual(settings.pipeIndex, 3)
         XCTAssertTrue(settings.launchAtLogin)
+    }
+}
+
+private struct StubFrontmostApplicationProvider: FrontmostApplicationProviding {
+    var bundleIdentifier: String?
+
+    func frontmostBundleIdentifier() -> String? {
+        bundleIdentifier
     }
 }

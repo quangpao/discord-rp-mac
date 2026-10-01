@@ -18,6 +18,7 @@ final class AppModel: ObservableObject {
     @Published var launchAtLogin: Bool = false
     @Published var updateStatus: UpdateStatus = .idle
     @Published private(set) var browserReadResult: BrowserActivityReadResult?
+    @Published private(set) var publishedBrowserValue: BrowserActivityValue?
 
     let engine: PresenceEngine
     private let store: PresetStore
@@ -31,6 +32,7 @@ final class AppModel: ObservableObject {
     private var wakeObserver: NSObjectProtocol?
     private var browserActivationObserver: NSObjectProtocol?
     private var browserPollTimer: Timer?
+    private var browserPublication = BrowserActivityPublicationState()
 
     /// `store` is injectable so the screenshot renderer can draw the built-in demo preset set from
     /// a throwaway directory instead of the developer's own presets.
@@ -244,10 +246,11 @@ final class AppModel: ObservableObject {
                                            applicationID: cardAppID, isOn: !cardAppID.isEmpty)]
         }
         syncShadowSettings()
+        clearBrowserPublicationIfUserDisabledBrowser()
         cardIssues = engine.apply(
             cards: settings.cards,
             presets: presets,
-            browserResult: browserReadResult,
+            browserResult: browserPublication.publishedReadResult,
             browserSettings: settings.browser
         )
         persistSettings()
@@ -293,7 +296,7 @@ final class AppModel: ObservableObject {
     func setBrowserPaused(_ paused: Bool) {
         guard settings.browser.isPaused != paused else { return }
         settings.browser.isPaused = paused
-        if paused { browserReadResult = .failure(.unsupportedFrontmostApplication) }
+        if paused { clearBrowserPublication() }
         applyCards()
         updateBrowserPolling(readImmediately: !paused)
     }
@@ -449,6 +452,7 @@ final class AppModel: ObservableObject {
 
     func shutdown() {
         browserPollTimer?.invalidate()
+        clearBrowserPublication()
         engine.stop()
         persistSettings()
         persistPresets()
@@ -459,7 +463,7 @@ final class AppModel: ObservableObject {
             browserPollTimer?.invalidate()
             browserPollTimer = nil
             if hasEnabledBrowserCard {
-                browserReadResult = .failure(.unsupportedFrontmostApplication)
+                recordBrowserRead(.failure(.browserNotFrontmost))
                 applyCards()
             }
             return
@@ -484,20 +488,40 @@ final class AppModel: ObservableObject {
     private func refreshBrowserActivity() {
         guard hasEnabledBrowserCard, !settings.browser.isPaused else { return }
         guard BrowserActivitySource.frontmostSupportedBrowser() != nil else {
-            browserReadResult = .failure(.unsupportedFrontmostApplication)
+            recordBrowserRead(.failure(.browserNotFrontmost))
             applyCards()
             return
         }
-        browserSource.read(includeTitle: settings.browser.showsPageTitle, timeout: 0.35) { [weak self] result in
+        browserSource.read(includeTitle: settings.browser.showsPageTitle, timeout: 3.0) { [weak self] result in
             Task { @MainActor in
                 guard let self else { return }
                 if case .value(let value) = result {
                     PresenceLog.note("browser source \(value.browserName) domain=\(value.domain)")
                 }
-                guard self.browserReadResult != result else { return }
-                self.browserReadResult = result
+                let previousRead = self.browserReadResult
+                let previousPublished = self.browserPublication.publishedReadResult
+                self.recordBrowserRead(result)
+                guard previousRead != result || previousPublished != self.browserPublication.publishedReadResult else { return }
                 self.applyCards()
             }
+        }
+    }
+
+    private func recordBrowserRead(_ result: BrowserActivityReadResult) {
+        browserReadResult = result
+        browserPublication.record(result)
+        publishedBrowserValue = browserPublication.publishedValue
+    }
+
+    private func clearBrowserPublication() {
+        browserPublication.clear()
+        browserReadResult = nil
+        publishedBrowserValue = nil
+    }
+
+    private func clearBrowserPublicationIfUserDisabledBrowser() {
+        if settings.browser.isPaused || !hasEnabledBrowserCard {
+            clearBrowserPublication()
         }
     }
 }
