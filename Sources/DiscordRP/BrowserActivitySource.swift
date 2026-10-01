@@ -15,6 +15,10 @@ public struct BrowserActivityValue: Equatable, Sendable {
     }
 }
 
+public func browserSiteIconURL(forDomain domain: String) -> String {
+    "https://icons.duckduckgo.com/ip3/\(domain).ico"
+}
+
 public enum BrowserActivityFailure: Equatable, Error, Sendable {
     case browserNotFrontmost
     case browserNotRunning

@@ -287,6 +287,10 @@ public enum PresenceCardPlanner {
                         var activity = preset.activity
                         activity.details = value.domain
                         activity.state = browserSettings.showsPageTitle ? (value.title ?? "") : ""
+                        if browserSettings.usesSiteIcon {
+                            activity.largeKey = browserSiteIconURL(forDomain: value.domain)
+                            activity.largeText = value.title?.isEmpty == false ? value.title! : value.domain
+                        }
                         specs.append(CardRunSpec(cardID: card.id, applicationID: card.applicationID, activity: activity))
                     }
                 }

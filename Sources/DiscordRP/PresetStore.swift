@@ -62,15 +62,30 @@ public struct BrowserPrivacySettings: Codable, Equatable, Sendable {
     public static let defaultBlocklist = ["localhost", "127.0.0.1", "mail.google.com", "*.icloud.com"]
 
     public var isPaused: Bool = false
-    public var showsPageTitle: Bool = false
+    public var showsPageTitle: Bool = true
+    public var usesSiteIcon: Bool = true
     public var blocklist: [String] = Self.defaultBlocklist
 
     public init(isPaused: Bool = false,
-                showsPageTitle: Bool = false,
+                showsPageTitle: Bool = true,
+                usesSiteIcon: Bool = true,
                 blocklist: [String] = Self.defaultBlocklist) {
         self.isPaused = isPaused
         self.showsPageTitle = showsPageTitle
+        self.usesSiteIcon = usesSiteIcon
         self.blocklist = blocklist
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case isPaused, showsPageTitle, usesSiteIcon, blocklist
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        isPaused = try container.decodeIfPresent(Bool.self, forKey: .isPaused) ?? false
+        showsPageTitle = try container.decodeIfPresent(Bool.self, forKey: .showsPageTitle) ?? true
+        usesSiteIcon = try container.decodeIfPresent(Bool.self, forKey: .usesSiteIcon) ?? true
+        blocklist = try container.decodeIfPresent([String].self, forKey: .blocklist) ?? Self.defaultBlocklist
     }
 }
 

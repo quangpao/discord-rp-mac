@@ -214,7 +214,7 @@ struct SettingsView: View {
                 .frame(width: cardControlWidth, alignment: .leading)
             }
             row("Source",
-                help: "Preset uses the saved activity exactly as edited. Browser keeps the preset name, type, assets and buttons, but replaces details with the focused tab's domain.") {
+                help: "Preset uses the saved activity exactly as edited. Browser keeps the preset name, type, small assets and buttons, but replaces details with the focused tab's domain.") {
                 Picker("", selection: binding.source) {
                     Text("Preset").tag(PresenceCard.Source.preset)
                     Text("Browser").tag(PresenceCard.Source.browser)
@@ -594,13 +594,21 @@ struct SettingsView: View {
                     .frame(width: 260, alignment: .leading)
                     .accessibilityLabel("Published browser activity")
             }
-            row("Page title", help: "Off by default. When enabled, the focused tab title becomes the activity state; the URL path and query are still never published.") {
+            row("Page title", help: "On by default. The focused tab title becomes the activity state; page titles can include sensitive text. The URL path and query are still never published.") {
                 Toggle("", isOn: Binding(
                     get: { model.settings.browser.showsPageTitle },
                     set: { model.setBrowserShowsPageTitle($0) }
                 ))
                 .labelsHidden()
                 .accessibilityLabel("Show browser page title")
+            }
+            row("Site icon", help: "On by default. Discord receives a DuckDuckGo icon URL built from the domain only; the app does not fetch it, but Discord may request it and DuckDuckGo can learn the domain.") {
+                Toggle("", isOn: Binding(
+                    get: { model.settings.browser.usesSiteIcon },
+                    set: { model.setBrowserUsesSiteIcon($0) }
+                ))
+                .labelsHidden()
+                .accessibilityLabel("Use site icon")
             }
             row("Blocklist", help: "One domain per line. Use a leading wildcard such as *.icloud.com to block subdomains.") {
                 TextEditor(text: Binding(

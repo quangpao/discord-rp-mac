@@ -308,6 +308,12 @@ final class AppModel: ObservableObject {
         refreshBrowserActivity()
     }
 
+    func setBrowserUsesSiteIcon(_ usesSiteIcon: Bool) {
+        guard settings.browser.usesSiteIcon != usesSiteIcon else { return }
+        settings.browser.usesSiteIcon = usesSiteIcon
+        applyCards()
+    }
+
     func setBrowserBlocklist(_ blocklist: [String]) {
         settings.browser.blocklist = blocklist
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

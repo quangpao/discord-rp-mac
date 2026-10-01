@@ -94,6 +94,10 @@ final class BrowserActivitySourceTests: XCTestCase {
             browserName: "Google Chrome",
             isIncognito: false
         )))
+
+        if case .value(let value) = result {
+            XCTAssertEqual(browserSiteIconURL(forDomain: value.domain), "https://icons.duckduckgo.com/ip3/github.com.ico")
+        }
     }
 
     func testDecodedBrowserInternalURLsAreNotWebPages() {
@@ -274,6 +278,11 @@ final class BrowserActivitySourceTests: XCTestCase {
     func testBrowserCardUsesPresetShellAndBrowserFields() {
         var activity = Activity(name: "Work", details: "preset", state: "old")
         activity.kind = .watching
+        activity.largeKey = "preset_logo"
+        activity.largeText = "Preset Logo"
+        activity.smallKey = "small_logo"
+        activity.smallText = "Small Logo"
+        activity.buttons = [Button(label: "Docs", url: "https://example.com/docs")]
         let preset = Preset(name: "Web", activity: activity)
         let card = PresenceCard(name: "Browser", presetID: preset.id, applicationID: "123", isOn: true, source: .browser)
         let value = BrowserActivityValue(domain: "github.com", title: "Pull request", browserName: "Chrome", isIncognito: false)
@@ -281,8 +290,7 @@ final class BrowserActivitySourceTests: XCTestCase {
         let (specs, issues) = PresenceCardPlanner.validate(
             cards: [card],
             presets: [preset],
-            browserResult: .value(value),
-            browserSettings: BrowserPrivacySettings(showsPageTitle: true, blocklist: [])
+            browserResult: .value(value)
         )
 
         XCTAssertTrue(issues.isEmpty)
@@ -290,24 +298,34 @@ final class BrowserActivitySourceTests: XCTestCase {
         XCTAssertEqual(specs.first?.activity.kind, .watching)
         XCTAssertEqual(specs.first?.activity.details, "github.com")
         XCTAssertEqual(specs.first?.activity.state, "Pull request")
+        XCTAssertEqual(specs.first?.activity.largeKey, "https://icons.duckduckgo.com/ip3/github.com.ico")
+        XCTAssertEqual(specs.first?.activity.largeText, "Pull request")
+        XCTAssertEqual(specs.first?.activity.smallKey, "small_logo")
+        XCTAssertEqual(specs.first?.activity.smallText, "Small Logo")
+        XCTAssertEqual(specs.first?.activity.buttons, [Button(label: "Docs", url: "https://example.com/docs")])
     }
 
     func testBrowserCardPublishesOnlyWhenValueChanges() {
-        let preset = Preset(name: "Web", activity: Activity(name: "Browsing", details: "preset"))
+        var activity = Activity(name: "Browsing", details: "preset", state: "old")
+        activity.largeKey = "preset_logo"
+        activity.largeText = "Preset Logo"
+        let preset = Preset(name: "Web", activity: activity)
         let card = PresenceCard(name: "Browser", presetID: preset.id, applicationID: "123", isOn: true, source: .browser)
         let value = BrowserActivityValue(domain: "github.com", browserName: "Chrome", isIncognito: false)
 
         let (firstSpecs, firstIssues) = PresenceCardPlanner.validate(
             cards: [card],
             presets: [preset],
-            browserResult: .value(value)
+            browserResult: .value(value),
+            browserSettings: BrowserPrivacySettings(usesSiteIcon: false)
         )
         let firstDiff = PresenceCardPlanner.diff(desired: firstSpecs, running: [])
 
         let (secondSpecs, secondIssues) = PresenceCardPlanner.validate(
             cards: [card],
             presets: [preset],
-            browserResult: .value(value)
+            browserResult: .value(value),
+            browserSettings: BrowserPrivacySettings(usesSiteIcon: false)
         )
         let running = firstSpecs.map {
             RunningCardSnapshot(cardID: $0.cardID, applicationID: $0.applicationID, activity: $0.activity)
@@ -316,6 +334,9 @@ final class BrowserActivitySourceTests: XCTestCase {
 
         XCTAssertTrue(firstIssues.isEmpty)
         XCTAssertEqual(firstDiff.count, 1)
+        XCTAssertEqual(firstSpecs.first?.activity.state, "")
+        XCTAssertEqual(firstSpecs.first?.activity.largeKey, "preset_logo")
+        XCTAssertEqual(firstSpecs.first?.activity.largeText, "Preset Logo")
         XCTAssertTrue(secondIssues.isEmpty)
         XCTAssertTrue(secondDiff.isEmpty)
     }
@@ -327,7 +348,11 @@ final class BrowserActivitySourceTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
         let presetID = UUID()
-        let preset = Preset(id: presetID, name: "Kept", activity: Activity(name: "Activity", details: "Details"))
+        var activity = Activity(name: "Activity", details: "Details")
+        activity.largeKey = "large_key"
+        activity.smallKey = "small_key"
+        activity.buttons = [Button(label: "Open", url: "https://example.com")]
+        let preset = Preset(id: presetID, name: "Kept", activity: activity)
         let store = PresetStore(directory: directory)
         try store.save(presets: [preset])
 
@@ -353,6 +378,9 @@ final class BrowserActivitySourceTests: XCTestCase {
 
         XCTAssertEqual(presets.count, 1)
         XCTAssertEqual(presets.first?.id, presetID)
+        XCTAssertEqual(presets.first?.activity.largeKey, "large_key")
+        XCTAssertEqual(presets.first?.activity.smallKey, "small_key")
+        XCTAssertEqual(presets.first?.activity.buttons, [Button(label: "Open", url: "https://example.com")])
         XCTAssertEqual(settings.cards.count, 1)
         XCTAssertEqual(settings.cards.first?.id, cardID)
         XCTAssertEqual(settings.cards.first?.presetID, presetID)
@@ -360,6 +388,8 @@ final class BrowserActivitySourceTests: XCTestCase {
         XCTAssertEqual(settings.cards.first?.source, .preset)
         XCTAssertEqual(settings.pipeIndex, 3)
         XCTAssertTrue(settings.launchAtLogin)
+        XCTAssertTrue(settings.browser.showsPageTitle)
+        XCTAssertTrue(settings.browser.usesSiteIcon)
     }
 }
 

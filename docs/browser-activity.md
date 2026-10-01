@@ -1,8 +1,9 @@
 # Browser Activity
 
 Browser activity is local-only until you enable it on a card in Settings > Cards. A browser-sourced
-card still uses its preset for the Discord activity name, type, images and buttons. The browser only
-supplies `details` as the focused tab domain, and optionally `state` as the page title.
+card still uses its preset for the Discord activity name, type, small image and buttons. The browser
+supplies `details` as the focused tab domain, `state` as the page title when enabled, and the large
+image as the site's icon when enabled.
 
 What is read:
 
@@ -15,9 +16,13 @@ What is read:
 
 What is published:
 
-- By default, only the lowercased domain is sent to Discord, with a leading `www.` removed.
+- By default, the lowercased domain is sent to Discord, with a leading `www.` removed.
+- Page title publishing is on by default and can be turned off. Page titles can include sensitive
+  text from the focused tab.
+- Site icon publishing is on by default and can be turned off. The app puts
+  `https://icons.duckduckgo.com/ip3/<domain>.ico` in the Discord payload, built from the domain only.
+  The app does not fetch that icon, but Discord may request it and DuckDuckGo can learn the domain.
 - URL paths and queries are never sent to Discord and are never written to the log.
-- Page title publishing is opt-in and off by default.
 - Incognito windows are never published.
 
 Blocklist:
