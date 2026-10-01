@@ -6,8 +6,12 @@ public struct BrowserActivityValue: Equatable, Sendable {
     public var title: String?
     public var browserName: String
     public var isIncognito: Bool
+    /// Which browser produced this value, so the card can show that browser's own icon. Optional so
+    /// existing callers and fixtures keep compiling.
+    public var browserBundleIdentifier: String?
 
-    public init(domain: String, title: String? = nil, browserName: String, isIncognito: Bool) {
+    public init(domain: String, title: String? = nil, browserName: String, isIncognito: Bool,
+                browserBundleIdentifier: String? = nil) {
         self.domain = domain
         self.title = title
         self.browserName = browserName
@@ -184,6 +188,27 @@ public final class BrowserActivitySource: BrowserActivityReading, @unchecked Sen
         SupportedBrowser(bundleIdentifier: "com.vivaldi.Vivaldi", applicationName: "Vivaldi", displayName: "Vivaldi"),
         SupportedBrowser(bundleIdentifier: "org.chromium.Chromium", applicationName: "Chromium", displayName: "Chromium"),
     ]
+
+    /// The browser's own icon, used as the small image on a browser-sourced card. Two sources, both
+    /// verified to serve a PNG that Discord's asset proxy can fetch: Wikimedia's PNG thumbnails for the
+    /// browsers whose logos live there, and the vendor's own domain through the favicon service for the
+    /// rest. Neither source learns which page the user is reading — only which browser is in front.
+    public static func browserIconURL(forBundleIdentifier bundleIdentifier: String?) -> String? {
+        switch bundleIdentifier {
+        case "com.google.Chrome":
+            return "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Google_Chrome_icon_%28February_2022%29.svg/120px-Google_Chrome_icon_%28February_2022%29.svg.png"
+        case "com.microsoft.edgemac":
+            return "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Microsoft_Edge_logo_%282019%29.svg/120px-Microsoft_Edge_logo_%282019%29.svg.png"
+        case "com.brave.Browser":
+            return "https://www.google.com/s2/favicons?domain=brave.com&sz=64"
+        case "com.vivaldi.Vivaldi":
+            return "https://www.google.com/s2/favicons?domain=vivaldi.com&sz=64"
+        case "org.chromium.Chromium":
+            return "https://www.google.com/s2/favicons?domain=chromium.org&sz=64"
+        default:
+            return nil
+        }
+    }
 
     private let frontmostProvider: FrontmostApplicationProviding
     private let scriptWorker: AppleScriptRunLoopWorker
@@ -468,8 +493,9 @@ public final class BrowserActivitySource: BrowserActivityReading, @unchecked Sen
             domain: value.domain,
             title: title,
             browserName: value.browserName,
-            isIncognito: value.isIncognito
-        )))
+            isIncognito: value.isIncognito,
+            browserBundleIdentifier: value.browserBundleIdentifier
+            )))
     }
 
     private func reportDiagnosticPartTimings(for browser: SupportedBrowser,
@@ -539,7 +565,8 @@ public final class BrowserActivitySource: BrowserActivityReading, @unchecked Sen
             domain: domain,
             title: includeTitle ? title?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty : nil,
             browserName: browser.displayName,
-            isIncognito: false
+            isIncognito: false,
+            browserBundleIdentifier: browser.bundleIdentifier
         ))
     }
 

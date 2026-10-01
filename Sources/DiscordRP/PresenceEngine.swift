@@ -294,7 +294,15 @@ public enum PresenceCardPlanner {
                         }
                         if browserSettings.usesSiteIcon {
                             activity.largeKey = browserSiteIconURL(forDomain: value.domain)
-                            activity.largeText = value.browserName
+                            // No large hover text: the browser name belongs on the small image, and
+                            // repeating the page title there made Discord render it twice.
+                            activity.largeText = ""
+                            if let browserIcon = BrowserActivitySource.browserIconURL(
+                                forBundleIdentifier: value.browserBundleIdentifier
+                            ) {
+                                activity.smallKey = browserIcon
+                                activity.smallText = value.browserName
+                            }
                         }
                         specs.append(CardRunSpec(cardID: card.id, applicationID: card.applicationID, activity: activity))
                     }

@@ -299,7 +299,7 @@ final class BrowserActivitySourceTests: XCTestCase {
         XCTAssertEqual(specs.first?.activity.details, "Pull request")
         XCTAssertEqual(specs.first?.activity.state, "github.com")
         XCTAssertEqual(specs.first?.activity.largeKey, "https://www.google.com/s2/favicons?domain=github.com&sz=128")
-        XCTAssertEqual(specs.first?.activity.largeText, "Chrome")
+        XCTAssertEqual(specs.first?.activity.largeText, "")
         XCTAssertEqual(specs.first?.activity.smallKey, "small_logo")
         XCTAssertEqual(specs.first?.activity.smallText, "Small Logo")
         XCTAssertEqual(specs.first?.activity.buttons, [Button(label: "Docs", url: "https://example.com/docs")])
@@ -323,7 +323,7 @@ final class BrowserActivitySourceTests: XCTestCase {
         XCTAssertTrue(issues.isEmpty)
         XCTAssertEqual(specs.first?.activity.details, title)
         XCTAssertEqual(specs.first?.activity.state, "youtube.com")
-        XCTAssertEqual(specs.first?.activity.largeText, "Google Chrome")
+        XCTAssertEqual(specs.first?.activity.largeText, "")
         XCTAssertNotEqual(specs.first?.activity.largeText, title)
     }
 
