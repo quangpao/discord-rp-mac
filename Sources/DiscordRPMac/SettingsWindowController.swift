@@ -110,6 +110,7 @@ struct SettingsView: View {
     @State private var keyDraft = ""
     @State private var keySource: GiphyKeySource = .none
     @State private var keyStatus: String?
+    @State private var browserBlocklistDraft = ""
 
     init(model: AppModel, initialPane: SettingsPane = .cards, selectedPresetID: UUID? = nil) {
         self.model = model
@@ -160,6 +161,7 @@ struct SettingsView: View {
         keepPresetSelectionValid()
         renameDraft = selectedPreset?.name ?? ""
         keySource = GiphyKeyStore.source()
+        browserBlocklistDraft = model.settings.browser.blocklist.joined(separator: "\n")
     }
 
     private func textField(_ label: String, text: Binding<String>, placeholder: String = "") -> some View {
@@ -210,6 +212,17 @@ struct SettingsView: View {
                 .labelsHidden()
                 .accessibilityLabel("Preset")
                 .frame(width: cardControlWidth, alignment: .leading)
+            }
+            row("Source",
+                help: "Preset uses the saved activity exactly as edited. Browser keeps the preset name, type, assets and buttons, but replaces details with the focused tab's domain.") {
+                Picker("", selection: binding.source) {
+                    Text("Preset").tag(PresenceCard.Source.preset)
+                    Text("Browser").tag(PresenceCard.Source.browser)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityLabel("Source")
+                .frame(width: 170)
             }
             row("App ID",
                 help: "Discord shows one card per application id, so a second card needs a second Discord application, with that card's assets uploaded there.") {
@@ -553,11 +566,51 @@ struct SettingsView: View {
             }
             hint(model.multiStatus.shortText)
             Divider().padding(.vertical, 4)
+            browserSettingsBlock
+            Divider().padding(.vertical, 4)
             row("Updates") {
                 Button("Check for Updates…") { Task { await model.checkForUpdates() } }
                     .disabled(model.updateStatus == .checking)
             }
             updateStatusLine
+        }
+    }
+
+    private var browserSettingsBlock: some View {
+        Group {
+            row("Browser") {
+                Toggle("Pause", isOn: Binding(
+                    get: { model.settings.browser.isPaused },
+                    set: { model.setBrowserPaused($0) }
+                ))
+                .accessibilityLabel("Pause browser activity")
+            }
+            row("Page title", help: "Off by default. When enabled, the focused tab title becomes the activity state; the URL path and query are still never published.") {
+                Toggle("", isOn: Binding(
+                    get: { model.settings.browser.showsPageTitle },
+                    set: { model.setBrowserShowsPageTitle($0) }
+                ))
+                .labelsHidden()
+                .accessibilityLabel("Show browser page title")
+            }
+            row("Blocklist", help: "One domain per line. Use a leading wildcard such as *.icloud.com to block subdomains.") {
+                TextEditor(text: Binding(
+                    get: { browserBlocklistDraft },
+                    set: { value in
+                        browserBlocklistDraft = value
+                        model.setBrowserBlocklist(value.components(separatedBy: .newlines))
+                    }
+                ))
+                .font(.system(size: 12, design: .monospaced))
+                .scrollContentBackground(.hidden)
+                .background(Color(nsColor: .textBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                )
+                .frame(width: 260, height: 74)
+                .accessibilityLabel("Browser blocklist")
+            }
         }
     }
 

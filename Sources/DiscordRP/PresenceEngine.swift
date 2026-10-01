@@ -70,6 +70,10 @@ public struct CardValidationIssue: Equatable, Sendable {
         case emptyApplicationID
         case duplicateApplicationID
         case invalidActivity
+        case browserUnavailable
+        case browserPermissionDenied
+        case browserPaused
+        case browserBlocked
     }
 
     public var cardID: UUID
@@ -220,7 +224,9 @@ public enum PresenceCardPlanner {
     /// specs that may run plus every issue found, so a caller can start the good cards and still
     /// report the bad one.
     public static func validate(cards: [PresenceCard],
-                                presets: [Preset]) -> ([CardRunSpec], [CardValidationIssue]) {
+                                presets: [Preset],
+                                browserResult: BrowserActivityReadResult? = nil,
+                                browserSettings: BrowserPrivacySettings = BrowserPrivacySettings()) -> ([CardRunSpec], [CardValidationIssue]) {
         let presetsByID = Dictionary(uniqueKeysWithValues: presets.map { ($0.id, $0) })
         var specs: [CardRunSpec] = []
         var issues: [CardValidationIssue] = []
@@ -234,7 +240,57 @@ public enum PresenceCardPlanner {
                 ))
                 continue
             }
-            specs.append(CardRunSpec(cardID: card.id, applicationID: card.applicationID, activity: preset.activity))
+            switch card.source {
+            case .preset:
+                specs.append(CardRunSpec(cardID: card.id, applicationID: card.applicationID, activity: preset.activity))
+            case .browser:
+                guard !browserSettings.isPaused else {
+                    issues.append(CardValidationIssue(
+                        cardID: card.id,
+                        kind: .browserPaused,
+                        message: "Browser activity is paused."
+                    ))
+                    continue
+                }
+                guard let browserResult else {
+                    issues.append(CardValidationIssue(
+                        cardID: card.id,
+                        kind: .browserUnavailable,
+                        message: BrowserActivityFailure.unsupportedFrontmostApplication.userMessage
+                    ))
+                    continue
+                }
+                switch browserResult {
+                case .failure(let failure):
+                    let kind: CardValidationIssue.Kind = {
+                        switch failure {
+                        case .automationPermissionDenied: return .browserPermissionDenied
+                        case .blocked: return .browserBlocked
+                        default: return .browserUnavailable
+                        }
+                    }()
+                    issues.append(CardValidationIssue(cardID: card.id, kind: kind, message: failure.userMessage))
+                case .value(let value):
+                    if value.isIncognito {
+                        issues.append(CardValidationIssue(
+                            cardID: card.id,
+                            kind: .browserUnavailable,
+                            message: BrowserActivityFailure.incognito.userMessage
+                        ))
+                    } else if BrowserActivitySource.isBlocked(domain: value.domain, by: browserSettings.blocklist) {
+                        issues.append(CardValidationIssue(
+                            cardID: card.id,
+                            kind: .browserBlocked,
+                            message: BrowserActivityFailure.blocked(value.domain).userMessage
+                        ))
+                    } else {
+                        var activity = preset.activity
+                        activity.details = value.domain
+                        activity.state = browserSettings.showsPageTitle ? (value.title ?? "") : ""
+                        specs.append(CardRunSpec(cardID: card.id, applicationID: card.applicationID, activity: activity))
+                    }
+                }
+            }
         }
 
         issues.append(contentsOf: validate(specs: specs))
@@ -416,8 +472,16 @@ public final class PresenceEngine: ObservableObject {
     }
 
     @discardableResult
-    public func apply(cards: [PresenceCard], presets: [Preset]) -> [CardValidationIssue] {
-        let (specs, issues) = PresenceCardPlanner.validate(cards: cards, presets: presets)
+    public func apply(cards: [PresenceCard],
+                      presets: [Preset],
+                      browserResult: BrowserActivityReadResult? = nil,
+                      browserSettings: BrowserPrivacySettings = BrowserPrivacySettings()) -> [CardValidationIssue] {
+        let (specs, issues) = PresenceCardPlanner.validate(
+            cards: cards,
+            presets: presets,
+            browserResult: browserResult,
+            browserSettings: browserSettings
+        )
         _ = apply(specs)
         cardIssues = issues
         return issues

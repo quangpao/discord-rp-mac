@@ -16,6 +16,8 @@ elapsed timer and up to two link buttons, kept alive while you work. Written fro
   timestamp modes, large/small images with text and link, up to two buttons.
 - **One or several cards at once** — each card is its own Discord application, so you can show a
   second activity next to the first; enable any number of them in Settings → Cards.
+- **Optional browser activity** — a card can follow the focused tab of a supported Chromium browser
+  and publish the domain only by default, with a user-editable blocklist and pause switch.
 - **Named presets**, edited in Settings → Presets; image keys are listed from your own Discord
   application.
 - **Keeps the presence alive** — 15 s keepalive, backoff 2/5/10/30 s, reconnects after sleep, clears

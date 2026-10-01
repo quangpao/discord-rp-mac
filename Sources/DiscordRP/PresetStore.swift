@@ -13,31 +13,72 @@ public struct Preset: Codable, Equatable, Sendable, Identifiable {
 }
 
 public struct PresenceCard: Codable, Equatable, Sendable, Identifiable {
+    public enum Source: String, Codable, CaseIterable, Sendable, Identifiable {
+        case preset
+        case browser
+
+        public var id: Self { self }
+    }
+
     public var id: UUID
     public var name: String
     public var presetID: UUID
     public var applicationID: String
     public var isOn: Bool
+    public var source: Source
 
     public init(
         id: UUID = UUID(),
         name: String,
         presetID: UUID,
         applicationID: String,
-        isOn: Bool
+        isOn: Bool,
+        source: Source = .preset
     ) {
         self.id = id
         self.name = name
         self.presetID = presetID
         self.applicationID = applicationID
         self.isOn = isOn
+        self.source = source
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, presetID, applicationID, isOn, source
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        presetID = try container.decode(UUID.self, forKey: .presetID)
+        applicationID = try container.decode(String.self, forKey: .applicationID)
+        isOn = try container.decode(Bool.self, forKey: .isOn)
+        source = try container.decodeIfPresent(Source.self, forKey: .source) ?? .preset
+    }
+}
+
+public struct BrowserPrivacySettings: Codable, Equatable, Sendable {
+    public static let defaultBlocklist = ["localhost", "127.0.0.1", "mail.google.com", "*.icloud.com"]
+
+    public var isPaused: Bool = false
+    public var showsPageTitle: Bool = false
+    public var blocklist: [String] = Self.defaultBlocklist
+
+    public init(isPaused: Bool = false,
+                showsPageTitle: Bool = false,
+                blocklist: [String] = Self.defaultBlocklist) {
+        self.isPaused = isPaused
+        self.showsPageTitle = showsPageTitle
+        self.blocklist = blocklist
     }
 }
 
 public struct AppSettings: Codable, Equatable, Sendable {
-    public var schemaVersion: Int = 2
+    public var schemaVersion: Int = 3
     public var pipeIndex: Int = 0
     public var cards: [PresenceCard] = []
+    public var browser: BrowserPrivacySettings = BrowserPrivacySettings()
     /// Mirror of the real login-item state (SMAppService / LaunchAgent), never optimistic.
     public var launchAtLogin: Bool = false
 
@@ -49,7 +90,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, pipeIndex, cards, launchAtLogin
+        case schemaVersion, pipeIndex, cards, browser, launchAtLogin
         case appID, activePresetID
     }
 
@@ -58,6 +99,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         pipeIndex = try container.decodeIfPresent(Int.self, forKey: .pipeIndex) ?? 0
         cards = try container.decodeIfPresent([PresenceCard].self, forKey: .cards) ?? []
+        browser = try container.decodeIfPresent(BrowserPrivacySettings.self, forKey: .browser) ?? BrowserPrivacySettings()
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
         appID = try container.decodeIfPresent(String.self, forKey: .appID) ?? DefaultApplication.id
         activePresetID = try container.decodeIfPresent(UUID.self, forKey: .activePresetID)
@@ -68,13 +110,14 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try container.encode(schemaVersion, forKey: .schemaVersion)
         try container.encode(pipeIndex, forKey: .pipeIndex)
         try container.encode(cards, forKey: .cards)
+        try container.encode(browser, forKey: .browser)
         try container.encode(launchAtLogin, forKey: .launchAtLogin)
     }
 
     public static func migrated(_ decoded: AppSettings, presets: [Preset]) -> AppSettings {
         guard decoded.cards.isEmpty else {
             var settings = decoded
-            settings.schemaVersion = 2
+            settings.schemaVersion = 3
             // The shadow fields must mirror what a pre-cards build would have pushed: the first card
             // that is actually ON. With every card off, an old build has to push nothing, which is
             // what the empty application id means.
@@ -85,7 +128,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         }
 
         var settings = decoded
-        settings.schemaVersion = 2
+        settings.schemaVersion = 3
 
         let presetID = decoded.activePresetID ?? presets.first?.id
         guard let presetID else { return settings }
