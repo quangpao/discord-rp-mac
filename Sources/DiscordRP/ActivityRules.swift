@@ -78,6 +78,13 @@ public enum ActivityRules {
         return "\u{200B}" + text
     }
 
+    /// Fits text into Discord's character-counted details/state limit without splitting a Swift
+    /// `Character`, so composed characters and surrogate-pair-backed scalars stay intact.
+    public static func truncatedText(_ text: String, maxLength: Int = ActivityRules.maxTextLength) -> String {
+        guard text.count > maxLength else { return text }
+        return String(text.prefix(maxLength))
+    }
+
     /// Length Discord sees for an external image key (`MainForm.cs:955-958`).
     public static func externalImageBudget(for key: String) -> Int {
         guard let url = URL(string: key) else { return 0 }

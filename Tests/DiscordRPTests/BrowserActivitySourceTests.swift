@@ -327,6 +327,42 @@ final class BrowserActivitySourceTests: XCTestCase {
         XCTAssertNotEqual(specs.first?.activity.largeText, title)
     }
 
+    func testBrowserCardTruncatesLongTitleBeforeValidation() throws {
+        let title = String(repeating: "a", count: 200)
+        let preset = Preset(name: "Web", activity: Activity(name: "Browsing", details: "preset"))
+        let card = PresenceCard(name: "Browser", presetID: preset.id, applicationID: "123", isOn: true, source: .browser)
+        let value = BrowserActivityValue(domain: "github.com", title: title, browserName: "Google Chrome", isIncognito: false)
+
+        let (specs, issues) = PresenceCardPlanner.validate(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(value)
+        )
+        let activity = try XCTUnwrap(specs.first?.activity)
+
+        XCTAssertTrue(issues.isEmpty)
+        XCTAssertEqual(activity.details.count, ActivityRules.maxTextLength)
+        XCTAssertTrue(ActivityRules.errors(in: ActivityRules.validate(activity, appID: "123")).isEmpty)
+    }
+
+    func testBrowserTitleTruncationDoesNotSplitCharacters() throws {
+        let title = String(repeating: "a", count: ActivityRules.maxTextLength - 1) + "🎧" + "tail"
+        let preset = Preset(name: "Web", activity: Activity(name: "Browsing", details: "preset"))
+        let card = PresenceCard(name: "Browser", presetID: preset.id, applicationID: "123", isOn: true, source: .browser)
+        let value = BrowserActivityValue(domain: "github.com", title: title, browserName: "Google Chrome", isIncognito: false)
+
+        let (specs, _) = PresenceCardPlanner.validate(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(value)
+        )
+        let details = try XCTUnwrap(specs.first?.activity.details)
+
+        XCTAssertEqual(details.count, ActivityRules.maxTextLength)
+        XCTAssertTrue(details.hasSuffix("🎧"))
+        XCTAssertTrue(ActivityRules.errors(in: ActivityRules.validate(specs[0].activity, appID: "123")).isEmpty)
+    }
+
     func testBrowserCardKeepsPresetLargeTextWhenSiteIconIsOff() {
         var activity = Activity(name: "Work", details: "preset", state: "old")
         activity.largeKey = "preset_logo"

@@ -341,6 +341,49 @@ final class PresenceEngineTests: XCTestCase {
         engine.stop()
     }
 
+    func testValidationFailureKeepsPreviouslyPublishedCardUntilExplicitClear() async throws {
+        let engine = PresenceEngine(appID: "unused")
+        let cardID = UUID()
+        let applicationID = "111111111111111111"
+
+        let firstIssues = engine.apply([
+            CardRunSpec(cardID: cardID, applicationID: applicationID, activity: Activity(name: "A", details: "first")),
+        ])
+        XCTAssertTrue(firstIssues.isEmpty)
+
+        let firstPushed = await waitUntil(timeout: 10) {
+            self.server.connectionActivities.values.contains { activities in
+                activities.contains { activity in
+                    (activity as? [String: Any])?["details"] as? String == "first"
+                }
+            }
+        }
+        XCTAssertTrue(firstPushed)
+
+        let invalid = Activity(name: "A", details: String(repeating: "x", count: ActivityRules.maxTextLength + 1))
+        let invalidIssues = engine.apply([
+            CardRunSpec(cardID: cardID, applicationID: applicationID, activity: invalid),
+        ])
+
+        XCTAssertEqual(invalidIssues.map(\.kind), [.invalidActivity])
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        XCTAssertFalse(
+            server.connectionActivities.values.contains { activities in
+                activities.contains { $0 is NSNull }
+            },
+            "validation failure must not clear the existing Discord activity"
+        )
+
+        engine.clear(cardID: cardID)
+        let cleared = await waitUntil(timeout: 5) {
+            self.server.connectionActivities.values.contains { activities in
+                activities.contains { $0 is NSNull }
+            }
+        }
+        XCTAssertTrue(cleared, "explicit clear must still remove the activity")
+        engine.stop()
+    }
+
     func testTwoCardsUseTwoConnectionsAndSendTwoActivities() async throws {
         let engine = PresenceEngine(appID: "unused")
         let firstID = UUID()

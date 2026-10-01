@@ -286,10 +286,10 @@ public enum PresenceCardPlanner {
                     } else {
                         var activity = preset.activity
                         if browserSettings.showsPageTitle, let title = value.title, !title.isEmpty {
-                            activity.details = title
-                            activity.state = value.domain
+                            activity.details = ActivityRules.truncatedText(title)
+                            activity.state = ActivityRules.truncatedText(value.domain)
                         } else {
-                            activity.details = value.domain
+                            activity.details = ActivityRules.truncatedText(value.domain)
                             activity.state = ""
                         }
                         if browserSettings.usesSiteIcon {
@@ -422,10 +422,16 @@ public final class PresenceEngine: ObservableObject {
         let issues = PresenceCardPlanner.validate(specs: specs)
         cardIssues = issues
         // A misconfigured card must not hold back the others: run every spec that validated and
-        // report the rest. A card that *became* invalid is no longer in `desired`, so the diff below
-        // clears and stops it.
+        // report the rest. If a running card's next value is invalid, keep the previous published
+        // value alive; only explicit user actions that remove the desired card clear it.
         let unrunnable = Set(issues.map(\.cardID))
-        let runnable = specs.filter { !unrunnable.contains($0.cardID) }
+        var runnable = specs.filter { !unrunnable.contains($0.cardID) }
+        for cardID in unrunnable {
+            if let existing = cardSpecs[cardID],
+               !runnable.contains(where: { $0.cardID == cardID }) {
+                runnable.append(existing)
+            }
+        }
 
         let running = cardSpecs.values.map {
             RunningCardSnapshot(cardID: $0.cardID, applicationID: $0.applicationID, activity: $0.activity)

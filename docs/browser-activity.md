@@ -21,7 +21,8 @@ What is published:
 - By default, the lowercased domain is sent to Discord, with a leading `www.` removed.
 - Page title publishing is on by default and can be turned off. Page titles can include sensitive
   text from the focused tab. When a title is published it is the prominent activity line, with the
-  domain underneath.
+  domain underneath. Browser-supplied title and domain fields are truncated to Discord's
+  128-character `details`/`state` limit before publishing.
 - Site icon publishing is on by default and can be turned off. The app puts
   `https://www.google.com/s2/favicons?domain=<domain>&sz=128` in the Discord payload, built from the
   domain only. The app does not fetch that icon, but Discord may request it, sending the domain to
