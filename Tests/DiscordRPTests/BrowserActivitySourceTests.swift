@@ -299,10 +299,54 @@ final class BrowserActivitySourceTests: XCTestCase {
         XCTAssertEqual(specs.first?.activity.details, "Pull request")
         XCTAssertEqual(specs.first?.activity.state, "github.com")
         XCTAssertEqual(specs.first?.activity.largeKey, "https://www.google.com/s2/favicons?domain=github.com&sz=128")
-        XCTAssertEqual(specs.first?.activity.largeText, "Pull request")
+        XCTAssertEqual(specs.first?.activity.largeText, "Chrome")
         XCTAssertEqual(specs.first?.activity.smallKey, "small_logo")
         XCTAssertEqual(specs.first?.activity.smallText, "Small Logo")
         XCTAssertEqual(specs.first?.activity.buttons, [Button(label: "Docs", url: "https://example.com/docs")])
+    }
+
+    func testBrowserCardDoesNotRepeatPageTitleInLargeText() {
+        let title = "LƯU NIÊN - NGUYỄN ĐÌNH VŨ | JACK J97 | TAM THÁI TỬ | COVER - YouTube"
+        var activity = Activity(name: "Watching", details: "preset", state: "old")
+        activity.largeKey = "preset_logo"
+        activity.largeText = "Preset Logo"
+        let preset = Preset(name: "Web", activity: activity)
+        let card = PresenceCard(name: "Browser", presetID: preset.id, applicationID: "123", isOn: true, source: .browser)
+        let value = BrowserActivityValue(domain: "youtube.com", title: title, browserName: "Google Chrome", isIncognito: false)
+
+        let (specs, issues) = PresenceCardPlanner.validate(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(value)
+        )
+
+        XCTAssertTrue(issues.isEmpty)
+        XCTAssertEqual(specs.first?.activity.details, title)
+        XCTAssertEqual(specs.first?.activity.state, "youtube.com")
+        XCTAssertEqual(specs.first?.activity.largeText, "Google Chrome")
+        XCTAssertNotEqual(specs.first?.activity.largeText, title)
+    }
+
+    func testBrowserCardKeepsPresetLargeTextWhenSiteIconIsOff() {
+        var activity = Activity(name: "Work", details: "preset", state: "old")
+        activity.largeKey = "preset_logo"
+        activity.largeText = "Preset Hover"
+        let preset = Preset(name: "Web", activity: activity)
+        let card = PresenceCard(name: "Browser", presetID: preset.id, applicationID: "123", isOn: true, source: .browser)
+        let value = BrowserActivityValue(domain: "github.com", title: "Pull request", browserName: "Google Chrome", isIncognito: false)
+
+        let (specs, issues) = PresenceCardPlanner.validate(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(value),
+            browserSettings: BrowserPrivacySettings(usesSiteIcon: false)
+        )
+
+        XCTAssertTrue(issues.isEmpty)
+        XCTAssertEqual(specs.first?.activity.details, "Pull request")
+        XCTAssertEqual(specs.first?.activity.state, "github.com")
+        XCTAssertEqual(specs.first?.activity.largeKey, "preset_logo")
+        XCTAssertEqual(specs.first?.activity.largeText, "Preset Hover")
     }
 
     func testBrowserCardWithTitleDisabledUsesDomainAndEmptyState() {

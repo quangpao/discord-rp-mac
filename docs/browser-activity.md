@@ -4,7 +4,8 @@ Browser activity is local-only until you enable it on a card in Settings > Cards
 card still uses its preset for the Discord activity name, type, small image and buttons. When page
 title publishing is enabled and a title was read, the browser supplies `details` as the page title
 and `state` as the focused tab domain. When title publishing is off, or no title was read,
-`details` is the domain and `state` is empty. The large image is the site's icon when enabled.
+`details` is the domain and `state` is empty. The large image is the site's icon when enabled, with
+the browser display name as its hover text.
 
 What is read:
 
