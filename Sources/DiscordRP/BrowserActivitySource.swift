@@ -16,7 +16,7 @@ public struct BrowserActivityValue: Equatable, Sendable {
 }
 
 public func browserSiteIconURL(forDomain domain: String) -> String {
-    "https://icons.duckduckgo.com/ip3/\(domain).ico"
+    "https://www.google.com/s2/favicons?domain=\(domain)&sz=128"
 }
 
 public enum BrowserActivityFailure: Equatable, Error, Sendable {

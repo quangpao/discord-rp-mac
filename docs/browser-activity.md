@@ -20,8 +20,9 @@ What is published:
 - Page title publishing is on by default and can be turned off. Page titles can include sensitive
   text from the focused tab.
 - Site icon publishing is on by default and can be turned off. The app puts
-  `https://icons.duckduckgo.com/ip3/<domain>.ico` in the Discord payload, built from the domain only.
-  The app does not fetch that icon, but Discord may request it and DuckDuckGo can learn the domain.
+  `https://www.google.com/s2/favicons?domain=<domain>&sz=128` in the Discord payload, built from the
+  domain only. The app does not fetch that icon, but Discord may request it, sending the domain to
+  Google's favicon service through Discord.
 - URL paths and queries are never sent to Discord and are never written to the log.
 - Incognito windows are never published.
 

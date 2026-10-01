@@ -28,8 +28,9 @@ elapsed timer and up to two link buttons, kept alive while you work. Written fro
 - **Manual update check** — Settings compares your version with the latest GitHub release when you ask
   it to; nothing polls on a timer.
 - **No telemetry, no account, no bundled keys** — presence travels over the local Discord IPC socket.
-  Browser site icons are sent as DuckDuckGo icon URLs in the Discord payload by default; the app does
-  not fetch them, but Discord may request them and DuckDuckGo can learn the domain. You can turn this off.
+  Browser site icons are sent as Google favicon service URLs in the Discord payload by default; the app
+  does not fetch them, but Discord may request them, sending the domain to Google's favicon service
+  through Discord. You can turn this off.
 
 ## Requirements
 

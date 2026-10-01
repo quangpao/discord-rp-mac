@@ -96,7 +96,7 @@ final class BrowserActivitySourceTests: XCTestCase {
         )))
 
         if case .value(let value) = result {
-            XCTAssertEqual(browserSiteIconURL(forDomain: value.domain), "https://icons.duckduckgo.com/ip3/github.com.ico")
+            XCTAssertEqual(browserSiteIconURL(forDomain: value.domain), "https://www.google.com/s2/favicons?domain=github.com&sz=128")
         }
     }
 
@@ -298,7 +298,7 @@ final class BrowserActivitySourceTests: XCTestCase {
         XCTAssertEqual(specs.first?.activity.kind, .watching)
         XCTAssertEqual(specs.first?.activity.details, "github.com")
         XCTAssertEqual(specs.first?.activity.state, "Pull request")
-        XCTAssertEqual(specs.first?.activity.largeKey, "https://icons.duckduckgo.com/ip3/github.com.ico")
+        XCTAssertEqual(specs.first?.activity.largeKey, "https://www.google.com/s2/favicons?domain=github.com&sz=128")
         XCTAssertEqual(specs.first?.activity.largeText, "Pull request")
         XCTAssertEqual(specs.first?.activity.smallKey, "small_logo")
         XCTAssertEqual(specs.first?.activity.smallText, "Small Logo")

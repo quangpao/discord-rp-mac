@@ -602,7 +602,7 @@ struct SettingsView: View {
                 .labelsHidden()
                 .accessibilityLabel("Show browser page title")
             }
-            row("Site icon", help: "On by default. Discord receives a DuckDuckGo icon URL built from the domain only; the app does not fetch it, but Discord may request it and DuckDuckGo can learn the domain.") {
+            row("Site icon", help: "On by default. Discord receives a Google favicon service URL built from the domain only; the app does not fetch it, but Discord may request it, sending the domain to Google's favicon service through Discord.") {
                 Toggle("", isOn: Binding(
                     get: { model.settings.browser.usesSiteIcon },
                     set: { model.setBrowserUsesSiteIcon($0) }
