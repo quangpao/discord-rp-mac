@@ -590,24 +590,26 @@ final class PresenceEngineTests: XCTestCase {
         }
         XCTAssertTrue(bothPushed)
 
+        let clearRequestedAt = server.appendEvent("test requested clear cardID=\(firstID)")
         engine.clear(cardID: firstID)
 
         let cleared = await waitUntil(timeout: 5) {
-            self.server.latestConnectionContainsClear(
+            self.server.anyConnectionContainsClear(
                 forClientID: "111111111111111111",
+                afterEventIndex: clearRequestedAt,
                 reason: "testClearingOneCardOnlyClearsThatConnection clear assertion"
             )
         }
+        let secondCleared = server.anyConnectionContainsClear(
+            forClientID: "222222222222222222",
+            afterEventIndex: clearRequestedAt,
+            reason: "testClearingOneCardOnlyClearsThatConnection second assertion"
+        )
         let trace = server.events.joined(separator: "\n")
         print("FakeDiscordServer trace for testClearingOneCardOnlyClearsThatConnection:\n\(trace)")
         XCTAssertTrue(cleared, "first card never sent activity:null; server events:\n\(trace)")
-
-        let secondActivities = try XCTUnwrap(server.latestConnectionActivities(
-            forClientID: "222222222222222222",
-            reason: "testClearingOneCardOnlyClearsThatConnection second assertion"
-        ))
-        XCTAssertFalse(secondActivities.contains { $0 is NSNull },
-                       "clearing the first card must not clear the second socket")
+        XCTAssertFalse(secondCleared,
+                       "clearing the first card must not clear the second client; server events:\n\(trace)")
         engine.stop()
     }
 
