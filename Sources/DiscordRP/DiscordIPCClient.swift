@@ -1,11 +1,24 @@
 import Darwin
 import Foundation
 
+public protocol IPCClientProtocol: AnyObject, Sendable {
+    var readyUser: DiscordIPCClient.ReadyUser? { get }
+    var lastReply: DiscordIPCClient.Reply? { get }
+    var isConnected: Bool { get }
+    var diagnosticsFD: Int32 { get }
+
+    @discardableResult
+    func connect(pipeIndex: Int) throws -> String
+    func close()
+    func setActivityWithReply(_ activityJSON: Data?) throws -> DiscordIPCClient.Reply
+    func pingLeavingConnectionOpenOnFailure() -> Bool
+}
+
 /// Synchronous Discord IPC client over `AF_UNIX`.
 ///
 /// Thread-safety: **not** internally synchronised — the caller confines an instance to one
 /// serial queue (see `PresenceEngine`). Hence `@unchecked Sendable`.
-public final class DiscordIPCClient: @unchecked Sendable {
+public final class DiscordIPCClient: IPCClientProtocol, @unchecked Sendable {
     public struct ReadyUser: Equatable, Sendable {
         public let username: String
         public let id: String
@@ -51,7 +64,7 @@ public final class DiscordIPCClient: @unchecked Sendable {
     }
 
     public var isConnected: Bool { fd >= 0 }
-    var diagnosticsFD: Int32 { fd }
+    public var diagnosticsFD: Int32 { fd }
 
     deinit { close() }
 
@@ -162,7 +175,7 @@ public final class DiscordIPCClient: @unchecked Sendable {
         _ = try setActivityWithReply(activityJSON)
     }
 
-    func setActivityWithReply(_ activityJSON: Data?) throws -> Reply {
+    public func setActivityWithReply(_ activityJSON: Data?) throws -> Reply {
         var args: [String: Any] = ["pid": ProcessInfo.processInfo.processIdentifier]
         if let activityJSON, let object = try? JSONSerialization.jsonObject(with: activityJSON) {
             args["activity"] = object
@@ -221,7 +234,7 @@ public final class DiscordIPCClient: @unchecked Sendable {
         ping(closeOnFailure: true)
     }
 
-    func pingLeavingConnectionOpenOnFailure() -> Bool {
+    public func pingLeavingConnectionOpenOnFailure() -> Bool {
         ping(closeOnFailure: false)
     }
 

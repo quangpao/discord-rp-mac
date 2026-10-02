@@ -577,42 +577,6 @@ final class PresenceEngineTests: XCTestCase {
         engine.stop()
     }
 
-    func testClearingOneCardOnlyClearsThatConnection() async throws {
-        let engine = PresenceEngine(appID: "unused")
-        let firstID = UUID()
-        let secondID = UUID()
-        engine.apply([
-            CardRunSpec(cardID: firstID, applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
-            CardRunSpec(cardID: secondID, applicationID: "222222222222222222", activity: Activity(name: "B", details: "second")),
-        ])
-        let bothPushed = await waitUntil(timeout: 10) {
-            self.server.connectionActivities.values.filter { !$0.isEmpty }.count == 2
-        }
-        XCTAssertTrue(bothPushed)
-
-        let clearRequestedAt = server.appendEvent("test requested clear cardID=\(firstID)")
-        engine.clear(cardID: firstID)
-
-        let cleared = await waitUntil(timeout: 5) {
-            self.server.anyConnectionContainsClear(
-                forClientID: "111111111111111111",
-                afterEventIndex: clearRequestedAt,
-                reason: "testClearingOneCardOnlyClearsThatConnection clear assertion"
-            )
-        }
-        let secondCleared = server.anyConnectionContainsClear(
-            forClientID: "222222222222222222",
-            afterEventIndex: clearRequestedAt,
-            reason: "testClearingOneCardOnlyClearsThatConnection second assertion"
-        )
-        let trace = server.events.joined(separator: "\n")
-        print("FakeDiscordServer trace for testClearingOneCardOnlyClearsThatConnection:\n\(trace)")
-        XCTAssertTrue(cleared, "first card never sent activity:null; server events:\n\(trace)")
-        XCTAssertFalse(secondCleared,
-                       "clearing the first card must not clear the second client; server events:\n\(trace)")
-        engine.stop()
-    }
-
     func testRejectedHandshakeOnOneCardLeavesTheOtherConnected() async throws {
         server.rejectedClientIDs["222222222222222222"] = (4000, "Invalid Client ID")
         let engine = PresenceEngine(appID: "unused")
@@ -643,5 +607,150 @@ final class PresenceEngineTests: XCTestCase {
         }
         XCTAssertTrue(failed, "expected one-card failure to be summarized, got \(engine.multiStatus)")
         engine.stop()
+    }
+}
+
+@MainActor
+final class PresenceEngineInjectedIPCClientTests: XCTestCase {
+    private func waitUntil(timeout: TimeInterval = 3, _ condition: () -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return true }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return condition()
+    }
+
+    func testClearingOneCardSendsClearBeforeCloseOnThatCardsClient() async throws {
+        let firstID = UUID()
+        let secondID = UUID()
+        let firstClient = RecordingIPCClient(appID: "111111111111111111")
+        let secondClient = RecordingIPCClient(appID: "222222222222222222")
+        let clients = [
+            "111111111111111111": firstClient,
+            "222222222222222222": secondClient,
+        ]
+        let engine = PresenceEngine(appID: "unused", ipcClientFactory: { appID in
+            clients[appID] ?? RecordingIPCClient(appID: appID)
+        })
+
+        engine.apply([
+            CardRunSpec(cardID: firstID, applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
+            CardRunSpec(cardID: secondID, applicationID: "222222222222222222", activity: Activity(name: "B", details: "second")),
+        ])
+
+        let connected = await waitUntil {
+            firstClient.events.contains(.connect(pipeIndex: 0))
+            && secondClient.events.contains(.connect(pipeIndex: 0))
+        }
+        XCTAssertTrue(connected, "both card workers should connect through the injected clients")
+
+        engine.clear(cardID: firstID)
+
+        let closed = await waitUntil {
+            firstClient.events.contains(.setActivity(nil)) && firstClient.events.contains(.close)
+        }
+        let firstEvents = firstClient.events
+        let secondEvents = secondClient.events
+        print(
+            "RecordingIPCClient trace for testClearingOneCardSendsClearBeforeCloseOnThatCardsClient:\n"
+                + "first: \(firstEvents)\nsecond: \(secondEvents)"
+        )
+        XCTAssertTrue(closed, "explicit clear must call setActivity(nil) and then close; events: \(firstEvents)")
+        let clearIndex = firstEvents.firstIndex(of: .setActivity(nil))
+        let closeIndex = firstEvents.firstIndex(of: .close)
+        XCTAssertNotNil(clearIndex, "explicit clear skipped setActivity(nil); events: \(firstEvents)")
+        XCTAssertNotNil(closeIndex, "explicit clear never closed the client; events: \(firstEvents)")
+        if let clearIndex, let closeIndex {
+            XCTAssertFalse(firstEvents[..<clearIndex].contains(.close),
+                           "close() must not happen before setActivity(nil); events: \(firstEvents)")
+            XCTAssertLessThan(clearIndex, closeIndex,
+                              "setActivity(nil) must happen before close(); events: \(firstEvents)")
+        }
+        XCTAssertEqual(firstEvents.suffix(2), [.setActivity(nil), .close])
+        XCTAssertFalse(secondClient.events.contains(.setActivity(nil)),
+                       "clearing one card must not clear the other card's client; events: \(secondEvents)")
+
+        engine.stop()
+    }
+}
+
+private final class RecordingIPCClient: IPCClientProtocol, @unchecked Sendable {
+    enum Event: Equatable, CustomStringConvertible {
+        case connect(pipeIndex: Int)
+        case setActivity(String?)
+        case close
+        case ping
+
+        var description: String {
+            switch self {
+            case .connect(let pipeIndex): "connect(\(pipeIndex))"
+            case .setActivity(let payload): "setActivity(\(payload ?? "nil"))"
+            case .close: "close"
+            case .ping: "ping"
+            }
+        }
+    }
+
+    private let lock = NSLock()
+    private let appID: String
+    private var connected = false
+    private var recordedEvents: [Event] = []
+
+    init(appID: String) {
+        self.appID = appID
+    }
+
+    var readyUser: DiscordIPCClient.ReadyUser? {
+        DiscordIPCClient.ReadyUser(username: "tester-\(appID)", id: appID)
+    }
+
+    var lastReply: DiscordIPCClient.Reply?
+
+    var isConnected: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return connected
+    }
+
+    var diagnosticsFD: Int32 { 42 }
+
+    var events: [Event] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedEvents
+    }
+
+    @discardableResult
+    func connect(pipeIndex: Int) throws -> String {
+        lock.lock()
+        connected = true
+        recordedEvents.append(.connect(pipeIndex: pipeIndex))
+        lock.unlock()
+        return "/recording/discord-ipc-\(pipeIndex)"
+    }
+
+    func close() {
+        lock.lock()
+        connected = false
+        recordedEvents.append(.close)
+        lock.unlock()
+    }
+
+    func setActivityWithReply(_ activityJSON: Data?) throws -> DiscordIPCClient.Reply {
+        let payload = activityJSON.map { String(decoding: $0, as: UTF8.self) }
+        lock.lock()
+        recordedEvents.append(.setActivity(payload))
+        lock.unlock()
+        let reply = DiscordIPCClient.Reply(opcode: .frame, frame: ["evt": ""])
+        lastReply = reply
+        return reply
+    }
+
+    func pingLeavingConnectionOpenOnFailure() -> Bool {
+        lock.lock()
+        recordedEvents.append(.ping)
+        lock.unlock()
+        return true
     }
 }

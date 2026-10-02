@@ -158,6 +158,8 @@ public enum CardWorkerChange: Equatable, Sendable {
     case stop(UUID)
 }
 
+public typealias IPCClientFactory = @Sendable (_ appID: String) -> any IPCClientProtocol
+
 public enum PresenceCardPlanner {
     /// Cards that are enabled and whose preset activity names collide. Discord renders one activity
     /// per name, so the extra cards never appear on the profile.
@@ -376,14 +378,25 @@ public final class PresenceEngine: ObservableObject {
     @Published public private(set) var cardIssues: [CardValidationIssue] = []
 
     private let worker: Worker
+    private let ipcClientFactory: IPCClientFactory
     private var cardWorkers: [UUID: Worker] = [:]
     private var cardStatuses: [UUID: PresenceStatus] = [:]
     private var cardSpecs: [UUID: CardRunSpec] = [:]
 
-    public init(appID: String, pipeIndex: Int = 0, appStarted: Date = Date()) {
+    public init(appID: String,
+                pipeIndex: Int = 0,
+                appStarted: Date = Date(),
+                ipcClientFactory: @escaping IPCClientFactory = { DiscordIPCClient(appID: $0) }) {
         let box = StatusBox()
-        let worker = Worker(appID: appID, pipeIndex: pipeIndex, appStarted: appStarted, traceLabel: "primary")
+        let worker = Worker(
+            appID: appID,
+            pipeIndex: pipeIndex,
+            appStarted: appStarted,
+            traceLabel: "primary",
+            ipcClientFactory: ipcClientFactory
+        )
         self.worker = worker
+        self.ipcClientFactory = ipcClientFactory
         box.engine = self
         worker.onStatus = { status in
             Task { @MainActor in box.engine?.status = status }
@@ -556,7 +569,8 @@ public final class PresenceEngine: ObservableObject {
             appID: spec.applicationID,
             pipeIndex: self.worker.pipeIndex,
             appStarted: Date(),
-            traceLabel: "card=\(spec.cardID.uuidString)"
+            traceLabel: "card=\(spec.cardID.uuidString)",
+            ipcClientFactory: ipcClientFactory
         )
         worker.onStatus = { [weak self] status in
             Task { @MainActor in
@@ -584,12 +598,13 @@ private final class Worker: @unchecked Sendable {
     private let queue = DispatchQueue(label: "dev.quangpao.discordrp.ipc")
     private let stateLock = NSLock()
     private var timer: DispatchSourceTimer?
-    private var client: DiscordIPCClient?
+    private var client: (any IPCClientProtocol)?
 
     private(set) var appID: String
     private(set) var pipeIndex: Int
     private let appStarted: Date
     private let traceLabel: String
+    private let ipcClientFactory: IPCClientFactory
 
     private var currentActivity: Activity?
     private var needsPush = false
@@ -611,11 +626,16 @@ private final class Worker: @unchecked Sendable {
 
     private static let retryDelays: [TimeInterval] = [2, 5, 10, 30]
 
-    init(appID: String, pipeIndex: Int, appStarted: Date, traceLabel: String) {
+    init(appID: String,
+         pipeIndex: Int,
+         appStarted: Date,
+         traceLabel: String,
+         ipcClientFactory: @escaping IPCClientFactory) {
         self.appID = appID
         self.pipeIndex = pipeIndex
         self.appStarted = appStarted
         self.traceLabel = traceLabel
+        self.ipcClientFactory = ipcClientFactory
     }
 
     // MARK: commands (called from the main actor)
@@ -760,7 +780,7 @@ private final class Worker: @unchecked Sendable {
         guard !isStopped, !isClosing else { return }
         emit(.connecting)
         trace("connect attempt appID=\(appID) pipeIndex=\(pipeIndex)")
-        let candidate = DiscordIPCClient(appID: appID)
+        let candidate = ipcClientFactory(appID)
         do {
             try candidate.connect(pipeIndex: pipeIndex)
             guard !isStopped, !isClosing else {
@@ -808,7 +828,7 @@ private final class Worker: @unchecked Sendable {
         }
     }
 
-    private func present(client: DiscordIPCClient, at now: Date) {
+    private func present(client: any IPCClientProtocol, at now: Date) {
         guard let activity = currentActivity else {
             trace("send clear fd=\(client.diagnosticsFD) appID=\(appID)")
             do {
