@@ -17,9 +17,12 @@ final class AppModel: ObservableObject {
     @Published var issues: [ActivityIssue] = []
     @Published var launchAtLogin: Bool = false
     @Published var updateStatus: UpdateStatus = .idle
+    @Published private(set) var browserReadResult: BrowserActivityReadResult?
+    @Published private(set) var publishedBrowserValue: BrowserActivityValue?
 
     let engine: PresenceEngine
     private let store: PresetStore
+    private let browserSource: BrowserActivityReading
     private var settingsWindow: SettingsWindowController?
     /// Held for the app's lifetime: App Nap suspends a menu bar app's timers, which silently killed
     /// the RPC keepalive (measured: pings stopped ~2 minutes after launch, so Discord saw a dead
@@ -27,10 +30,15 @@ final class AppModel: ObservableObject {
     /// still allowing the system itself to sleep.
     private var activityToken: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
+    private var browserActivationObserver: NSObjectProtocol?
+    private var browserPollTimer: Timer?
+    private var browserPublication = BrowserActivityPublicationState()
 
     /// `store` is injectable so the screenshot renderer can draw the built-in demo preset set from
     /// a throwaway directory instead of the developer's own presets.
-    init(startEngine: Bool = true, store injected: PresetStore? = nil) {
+    init(startEngine: Bool = true,
+         store injected: PresetStore? = nil,
+         browserSource: BrowserActivityReading = BrowserActivitySource()) {
         // Before anything reads presets/settings: move the data files over from the pre-rename names
         // (`CustomRP` → `Discord RP`). Files only — the Keychain half runs later, off the main
         // thread, because a Keychain prompt on this path used to hang the launch (see
@@ -64,6 +72,7 @@ final class AppModel: ObservableObject {
         let engine = PresenceEngine(appID: settings.appID, pipeIndex: settings.pipeIndex)
 
         self.store = store
+        self.browserSource = browserSource
         self.settings = settings
         self.presets = presets
         self.engine = engine
@@ -112,11 +121,20 @@ final class AppModel: ObservableObject {
         ) { [engine] _ in
             Task { @MainActor in engine.reassert() }
         }
+
+        browserActivationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.frontmostApplicationChanged() }
+        }
+        updateBrowserPolling(readImmediately: hasEnabledBrowserCard)
     }
 
     deinit {
         if let activityToken { ProcessInfo.processInfo.endActivity(activityToken) }
         if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
+        if let browserActivationObserver { NSWorkspace.shared.notificationCenter.removeObserver(browserActivationObserver) }
+        browserPollTimer?.invalidate()
     }
 
     // MARK: presets
@@ -208,6 +226,10 @@ final class AppModel: ObservableObject {
         enabledCards.contains { !$0.applicationID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
+    var hasEnabledBrowserCard: Bool {
+        enabledCards.contains { $0.source == .browser }
+    }
+
     /// Cancels what is being shown without changing the configuration: Reapply (or picking a preset)
     /// brings every enabled card straight back.
     func clearPresence() {
@@ -224,8 +246,15 @@ final class AppModel: ObservableObject {
                                            applicationID: cardAppID, isOn: !cardAppID.isEmpty)]
         }
         syncShadowSettings()
-        cardIssues = engine.apply(cards: settings.cards, presets: presets)
+        clearBrowserPublicationIfUserDisabledBrowser()
+        cardIssues = engine.apply(
+            cards: settings.cards,
+            presets: presets,
+            browserResult: browserPublication.publishedReadResult,
+            browserSettings: settings.browser
+        )
         persistSettings()
+        updateBrowserPolling(readImmediately: false)
     }
 
     /// The application id and active preset a pre-cards build reads must mirror the first card that
@@ -261,6 +290,34 @@ final class AppModel: ObservableObject {
     func toggleCard(id: UUID, isOn: Bool) {
         guard let index = settings.cards.firstIndex(where: { $0.id == id }) else { return }
         settings.cards[index].isOn = isOn
+        applyCards()
+    }
+
+    func setBrowserPaused(_ paused: Bool) {
+        guard settings.browser.isPaused != paused else { return }
+        settings.browser.isPaused = paused
+        if paused { clearBrowserPublication() }
+        applyCards()
+        updateBrowserPolling(readImmediately: !paused)
+    }
+
+    func setBrowserShowsPageTitle(_ showsTitle: Bool) {
+        guard settings.browser.showsPageTitle != showsTitle else { return }
+        settings.browser.showsPageTitle = showsTitle
+        applyCards()
+        refreshBrowserActivity()
+    }
+
+    func setBrowserUsesSiteIcon(_ usesSiteIcon: Bool) {
+        guard settings.browser.usesSiteIcon != usesSiteIcon else { return }
+        settings.browser.usesSiteIcon = usesSiteIcon
+        applyCards()
+    }
+
+    func setBrowserBlocklist(_ blocklist: [String]) {
+        settings.browser.blocklist = blocklist
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
         applyCards()
     }
 
@@ -400,9 +457,79 @@ final class AppModel: ObservableObject {
     }
 
     func shutdown() {
+        browserPollTimer?.invalidate()
+        clearBrowserPublication()
         engine.stop()
         persistSettings()
         persistPresets()
+    }
+
+    private func frontmostApplicationChanged() {
+        if BrowserActivitySource.frontmostSupportedBrowser() == nil {
+            browserPollTimer?.invalidate()
+            browserPollTimer = nil
+            if hasEnabledBrowserCard {
+                recordBrowserRead(.failure(.browserNotFrontmost))
+                applyCards()
+            }
+            return
+        }
+        updateBrowserPolling(readImmediately: true)
+    }
+
+    private func updateBrowserPolling(readImmediately: Bool) {
+        browserPollTimer?.invalidate()
+        browserPollTimer = nil
+        guard hasEnabledBrowserCard, !settings.browser.isPaused else { return }
+        guard BrowserActivitySource.frontmostSupportedBrowser() != nil else { return }
+
+        let timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshBrowserActivity() }
+        }
+        timer.tolerance = 2
+        browserPollTimer = timer
+        if readImmediately { refreshBrowserActivity() }
+    }
+
+    private func refreshBrowserActivity() {
+        guard hasEnabledBrowserCard, !settings.browser.isPaused else { return }
+        guard BrowserActivitySource.frontmostSupportedBrowser() != nil else {
+            recordBrowserRead(.failure(.browserNotFrontmost))
+            applyCards()
+            return
+        }
+        browserSource.read(includeTitle: settings.browser.showsPageTitle, timeout: 3.0) { [weak self] result in
+            Task { @MainActor in
+                guard let self else { return }
+                if case .value(let value) = result,
+                   !BrowserActivitySource.isBlocked(domain: value.domain, by: self.settings.browser.blocklist) {
+                    PresenceLog.note("browser source \(value.browserName) domain=\(value.domain)")
+                }
+                let previousRead = self.browserReadResult
+                let previousPublished = self.browserPublication.publishedReadResult
+                self.recordBrowserRead(result)
+                guard previousRead != result || previousPublished != self.browserPublication.publishedReadResult else { return }
+                self.applyCards()
+            }
+        }
+    }
+
+    private func recordBrowserRead(_ result: BrowserActivityReadResult) {
+        browserReadResult = result
+        browserPublication.record(result)
+        publishedBrowserValue = browserPublication.publishedValue
+    }
+
+    private func clearBrowserPublication() {
+        browserPublication.clear()
+        browserReadResult = nil
+        publishedBrowserValue = nil
+    }
+
+    private func clearBrowserPublicationIfUserDisabledBrowser() {
+        if settings.browser.isPaused || !hasEnabledBrowserCard {
+            clearBrowserPublication()
+        }
     }
 }
 

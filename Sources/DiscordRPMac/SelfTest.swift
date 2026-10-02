@@ -7,6 +7,7 @@ import SwiftUI
 /// plus a live probe against the real Discord client.
 ///
 /// `DiscordRPMac --self-test` · `DiscordRPMac --version` · `DiscordRPMac --live --app-id <ID>`
+/// Development-only live probe: `DiscordRPMac --check-browser-source [--browser <bundle-id>]`.
 enum SelfTest {
     private static var failures = 0
 
@@ -123,6 +124,9 @@ enum SelfTest {
         if args.contains("--check-settings-singleton") {
             return checkSettingsSingleton()
         }
+        if args.contains("--check-browser-source") {
+            return checkBrowserSource(browserBundleIdentifierOverride: value(of: "--browser", in: args))
+        }
         if let index = args.firstIndex(of: "--render-menu") {
             let path = index + 1 < args.count && !args[index + 1].hasPrefix("--")
                 ? args[index + 1]
@@ -148,6 +152,8 @@ enum SelfTest {
         checkSocketLocator()
         checkRules()
         checkPresetStore()
+        checkBrowserCompileOnly()
+        benchmarkBrowserStubRead()
         if live {
             checkLive(appID: value(of: "--app-id", in: args) ?? "")
         }
@@ -293,6 +299,32 @@ enum SelfTest {
         expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("presets.json.bak").path),
                "corrupt file quarantined to .bak")
         try? FileManager.default.removeItem(at: directory)
+    }
+
+    private static func checkBrowserCompileOnly() {
+        print("browser source:")
+        let failures = BrowserActivitySource.compileCheck()
+        expect(failures.isEmpty, "AppleScript compiles without sending Apple events",
+               detail: failures.map(\.userMessage).joined(separator: " "))
+    }
+
+    private static func benchmarkBrowserStubRead() {
+        let reader = StubBrowserReader(result: .value(BrowserActivityValue(
+            domain: "example.com",
+            title: nil,
+            browserName: "Stub",
+            isIncognito: false
+        )))
+        let iterations = 10_000
+        let start = DispatchTime.now().uptimeNanoseconds
+        for _ in 0..<iterations {
+            let semaphore = DispatchSemaphore(value: 0)
+            reader.read(includeTitle: false, timeout: 0.35) { _ in semaphore.signal() }
+            semaphore.wait()
+        }
+        let elapsed = DispatchTime.now().uptimeNanoseconds - start
+        let microseconds = Double(elapsed) / Double(iterations) / 1_000
+        print(String(format: "  ok   stub browser read %.3f µs/read", microseconds))
     }
 
     /// `--render-editor <out.png> [width height]` — draws the editor off-screen through the app's
@@ -518,6 +550,36 @@ enum SelfTest {
         return 0
     }
 
+    private static func checkBrowserSource(browserBundleIdentifierOverride: String?) -> Int32 {
+        let semaphore = DispatchSemaphore(value: 0)
+        let box = BrowserResultBox()
+        print("browser source diagnostic:")
+        print("  browser override: \(browserBundleIdentifierOverride ?? "none")")
+        BrowserActivitySource().diagnosticRead(
+            includeTitle: false,
+            timeout: 12.0,
+            browserBundleIdentifierOverride: browserBundleIdentifierOverride,
+            diagnostics: { line in
+                print(line.split(separator: "\n", omittingEmptySubsequences: false).map { "  \($0)" }.joined(separator: "\n"))
+            }
+        ) {
+            box.result = $0
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .now() + 13)
+        switch box.result {
+        case .value(let value):
+            print("\(value.browserName): \(value.domain)")
+            return 0
+        case .failure(let failure):
+            print("browser source unavailable: \(failure.userMessage)")
+            return 1
+        case nil:
+            print("browser source unavailable: timed out")
+            return 1
+        }
+    }
+
     /// `--giphy-upload [file] [--hidden]` — the same code path the editor's button uses, so the
     /// real upload can be verified from the shell.
     private static func uploadToGiphy(file: String, hidden: Bool) -> Int32 {
@@ -586,5 +648,33 @@ enum SelfTest {
             }
         }
         client.close()
+    }
+}
+
+private struct StubBrowserReader: BrowserActivityReading {
+    let result: BrowserActivityReadResult
+
+    func read(includeTitle: Bool,
+              timeout: TimeInterval,
+              completion: @escaping @Sendable (BrowserActivityReadResult) -> Void) {
+        completion(result)
+    }
+}
+
+private final class BrowserResultBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: BrowserActivityReadResult?
+
+    var result: BrowserActivityReadResult? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return stored
+        }
+        set {
+            lock.lock()
+            stored = newValue
+            lock.unlock()
+        }
     }
 }
