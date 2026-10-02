@@ -16,6 +16,8 @@ final class FakeDiscordServer: @unchecked Sendable {
     private var _handshakes: [[String: Any]] = []
     private var _connectionActivities: [Int: [Any]] = [:]
     private var _connectionClientIDs: [Int: String] = [:]
+    private var _connectionFDs: [Int: Int32] = [:]
+    private var _events: [String] = []
     private var nextConnectionID = 0
     private var clientFDs: [Int32] = []
 
@@ -64,6 +66,61 @@ final class FakeDiscordServer: @unchecked Sendable {
     var connectionClientIDs: [Int: String] {
         lock.lock(); defer { lock.unlock() }
         return _connectionClientIDs
+    }
+
+    var connectionFDs: [Int: Int32] {
+        lock.lock(); defer { lock.unlock() }
+        return _connectionFDs
+    }
+
+    var events: [String] {
+        lock.lock(); defer { lock.unlock() }
+        return _events
+    }
+
+    func appendEvent(_ event: String) {
+        lock.lock()
+        _events.append(event)
+        lock.unlock()
+    }
+
+    func latestConnectionID(forClientID clientID: String, reason: String) -> Int? {
+        latestConnectionSnapshot(forClientID: clientID, reason: reason)?.id
+    }
+
+    func latestConnectionContainsClear(forClientID clientID: String, reason: String) -> Bool {
+        latestConnectionSnapshot(forClientID: clientID, reason: reason)?.hasClear == true
+    }
+
+    func latestConnectionActivities(forClientID clientID: String, reason: String) -> [Any]? {
+        latestConnectionSnapshot(forClientID: clientID, reason: reason)?.activities
+    }
+
+    private func latestConnectionSnapshot(
+        forClientID clientID: String,
+        reason: String
+    ) -> (id: Int, activities: [Any], hasClear: Bool)? {
+        lock.lock()
+        let matches = _connectionClientIDs
+            .filter { $0.value == clientID }
+            .map { entry -> (id: Int, fd: Int32, activities: [Any], hasClear: Bool) in
+                let activities = _connectionActivities[entry.key, default: []]
+                return (
+                    id: entry.key,
+                    fd: _connectionFDs[entry.key] ?? -1,
+                    activities: activities,
+                    hasClear: activities.contains { $0 is NSNull }
+                )
+            }
+            .sorted { $0.id < $1.id }
+        let selected = matches.last
+        let summary = matches
+            .map { "connection=\($0.id) fd=\($0.fd) activities=\($0.activities.count) hasClear=\($0.hasClear)" }
+            .joined(separator: ", ")
+        _events.append("clientID lookup clientID=\(clientID) reason=\(reason) policy=latest selected=\(selected.map { String($0.id) } ?? "nil") matches=[\(summary)]")
+        lock.unlock()
+        guard let selected else { return nil }
+        return (id: selected.id, activities: selected.activities, hasClear: selected.hasClear)
     }
 
     // MARK: lifecycle
@@ -131,10 +188,12 @@ final class FakeDiscordServer: @unchecked Sendable {
             let connectionID = nextConnectionID
             nextConnectionID += 1
             clientFDs.append(client)
+            _connectionFDs[connectionID] = client
+            _events.append("accept connection=\(connectionID) fd=\(client)")
             lock.unlock()
             queue.async { [weak self] in
                 self?.serve(client, connectionID: connectionID)
-                self?.removeClient(client)
+                self?.removeClient(client, connectionID: connectionID)
                 close(client)
             }
         }
@@ -152,6 +211,7 @@ final class FakeDiscordServer: @unchecked Sendable {
                 _handshake = payload
                 _handshakes.append(payload)
                 _connectionClientIDs[connectionID] = clientID
+                _events.append("handshake connection=\(connectionID) fd=\(fd) clientID=\(clientID)")
                 lock.unlock()
                 let oneShotRejection: (code: Int, message: String)? = {
                     lock.lock()
@@ -184,6 +244,8 @@ final class FakeDiscordServer: @unchecked Sendable {
                     let activity = args["activity"] ?? NSNull()
                     _activities.append(activity)
                     _connectionActivities[connectionID, default: []].append(activity)
+                    let kind = activity is NSNull ? "null" : "activity"
+                    _events.append("record connection=\(connectionID) fd=\(fd) clientID=\(_connectionClientIDs[connectionID] ?? "") \(kind)")
                 }
                 lock.unlock()
                 if commandReplyDelay > 0 {
@@ -205,8 +267,9 @@ final class FakeDiscordServer: @unchecked Sendable {
         }
     }
 
-    private func removeClient(_ fd: Int32) {
+    private func removeClient(_ fd: Int32, connectionID: Int) {
         lock.lock()
+        _events.append("remove connection=\(connectionID) fd=\(fd)")
         clientFDs.removeAll { $0 == fd }
         lock.unlock()
     }

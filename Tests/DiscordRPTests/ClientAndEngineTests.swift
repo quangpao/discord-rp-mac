@@ -9,6 +9,10 @@ final class DiscordIPCClientTests: XCTestCase {
     override func setUpWithError() throws {
         server = FakeDiscordServer()
         try server.start()
+        let traceServer = server
+        IPCDiagnostics.install { event in
+            traceServer?.appendEvent(event)
+        }
         setenv("DISCORDRP_IPC_PATH", server.path, 1)
         // Never write into the developer's real log directory: a test run used to overwrite
         // ~/Library/Logs/DiscordRP/last-presence.json with the fixture payload.
@@ -18,6 +22,7 @@ final class DiscordIPCClientTests: XCTestCase {
 
     override func tearDownWithError() throws {
         unsetenv("DISCORDRP_IPC_PATH")
+        IPCDiagnostics.install(nil)
         PresenceLog.directoryOverride = nil
         server.stop()
     }
@@ -197,6 +202,10 @@ final class PresenceEngineTests: XCTestCase {
     override func setUpWithError() throws {
         server = FakeDiscordServer()
         try server.start()
+        let traceServer = server
+        IPCDiagnostics.install { event in
+            traceServer?.appendEvent(event)
+        }
         setenv("DISCORDRP_IPC_PATH", server.path, 1)
         // Never write into the developer's real log directory: a test run used to overwrite
         // ~/Library/Logs/DiscordRP/last-presence.json with the fixture payload.
@@ -206,6 +215,7 @@ final class PresenceEngineTests: XCTestCase {
 
     override func tearDownWithError() throws {
         unsetenv("DISCORDRP_IPC_PATH")
+        IPCDiagnostics.install(nil)
         PresenceLog.directoryOverride = nil
         server.stop()
     }
@@ -217,6 +227,17 @@ final class PresenceEngineTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 150_000_000)
         }
         return condition()
+    }
+
+    private func payload(_ value: Any, contains needle: String) -> Bool {
+        if let string = value as? String { return string.contains(needle) }
+        if let dictionary = value as? [String: Any] {
+            return dictionary.values.contains { payload($0, contains: needle) }
+        }
+        if let array = value as? [Any] {
+            return array.contains { payload($0, contains: needle) }
+        }
+        return false
     }
 
     func testEngineConnectsAndPushesActivity() async throws {
@@ -380,7 +401,119 @@ final class PresenceEngineTests: XCTestCase {
                 activities.contains { $0 is NSNull }
             }
         }
-        XCTAssertTrue(cleared, "explicit clear must still remove the activity")
+        let trace = server.events.joined(separator: "\n")
+        print("FakeDiscordServer trace for testValidationFailureKeepsPreviouslyPublishedCardUntilExplicitClear:\n\(trace)")
+        XCTAssertTrue(cleared, "explicit clear must still remove the activity; server events:\n\(trace)")
+        engine.stop()
+    }
+
+    func testBlockedBrowserReadKeepsPreviouslyPublishedCardAndSendsNoBlockedPayload() async throws {
+        let engine = PresenceEngine(appID: "unused")
+        let cardID = UUID()
+        let applicationID = "111111111111111111"
+        var activity = Activity(name: "Browsing", details: "preset", state: "old")
+        activity.largeKey = "preset_logo"
+        let preset = Preset(name: "Web", activity: activity)
+        let card = PresenceCard(
+            id: cardID,
+            name: "Browser",
+            presetID: preset.id,
+            applicationID: applicationID,
+            isOn: true,
+            source: .browser
+        )
+        let allowed = BrowserActivityValue(
+            domain: "github.com",
+            title: "Pull request",
+            browserName: "Google Chrome",
+            isIncognito: false
+        )
+
+        let firstIssues = engine.apply(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(allowed),
+            browserSettings: BrowserPrivacySettings(blocklist: ["blocked.example"])
+        )
+        XCTAssertTrue(firstIssues.isEmpty)
+
+        let firstPushed = await waitUntil(timeout: 10) {
+            self.server.activities.contains { payload in
+                self.payload(payload, contains: "github.com")
+            }
+        }
+        XCTAssertTrue(firstPushed)
+        let activityCountBeforeBlockedRead = server.activities.count
+        let clearCountBeforeBlockedRead = server.activities.filter { $0 is NSNull }.count
+
+        let blocked = BrowserActivityValue(
+            domain: "blocked.example",
+            title: "Private page",
+            browserName: "Google Chrome",
+            isIncognito: false
+        )
+        let blockedIssues = engine.apply(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(blocked),
+            browserSettings: BrowserPrivacySettings(blocklist: ["blocked.example"])
+        )
+
+        XCTAssertEqual(blockedIssues.map(\.kind), [.browserBlocked])
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        XCTAssertEqual(server.activities.count, activityCountBeforeBlockedRead)
+        XCTAssertEqual(server.activities.filter { $0 is NSNull }.count, clearCountBeforeBlockedRead)
+        XCTAssertFalse(server.activities.contains { payload($0, contains: "blocked.example") })
+        XCTAssertFalse(server.activities.contains { payload($0, contains: "Private page") })
+        engine.stop()
+    }
+
+    func testExplicitBrowserPauseAndTurnOffStillClearPublishedCard() async throws {
+        let engine = PresenceEngine(appID: "unused")
+        let cardID = UUID()
+        let applicationID = "111111111111111111"
+        let preset = Preset(name: "Web", activity: Activity(name: "Browsing", details: "preset"))
+        var card = PresenceCard(
+            id: cardID,
+            name: "Browser",
+            presetID: preset.id,
+            applicationID: applicationID,
+            isOn: true,
+            source: .browser
+        )
+        let value = BrowserActivityValue(domain: "github.com", browserName: "Google Chrome", isIncognito: false)
+
+        engine.apply(cards: [card], presets: [preset], browserResult: .value(value))
+        let firstPushed = await waitUntil(timeout: 10) {
+            self.server.activities.contains { payload in self.payload(payload, contains: "github.com") }
+        }
+        XCTAssertTrue(firstPushed)
+
+        let pauseIssues = engine.apply(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(value),
+            browserSettings: BrowserPrivacySettings(isPaused: true)
+        )
+        XCTAssertEqual(pauseIssues.map(\.kind), [.browserPaused])
+        let pauseCleared = await waitUntil(timeout: 5) {
+            self.server.activities.contains { $0 is NSNull }
+        }
+        XCTAssertTrue(pauseCleared)
+
+        let clearsAfterPause = server.activities.filter { $0 is NSNull }.count
+        engine.apply(cards: [card], presets: [preset], browserResult: .value(value))
+        let repushed = await waitUntil(timeout: 10) {
+            self.server.activities.filter { payload in self.payload(payload, contains: "github.com") }.count >= 2
+        }
+        XCTAssertTrue(repushed)
+
+        card.isOn = false
+        engine.apply(cards: [card], presets: [preset], browserResult: .value(value))
+        let turnOffCleared = await waitUntil(timeout: 5) {
+            self.server.activities.filter { $0 is NSNull }.count > clearsAfterPause
+        }
+        XCTAssertTrue(turnOffCleared)
         engine.stop()
     }
 
@@ -460,14 +593,20 @@ final class PresenceEngineTests: XCTestCase {
         engine.clear(cardID: firstID)
 
         let cleared = await waitUntil(timeout: 5) {
-            guard let connectionID = self.server.connectionClientIDs.first(where: { $0.value == "111111111111111111" })?.key,
-                  let activities = self.server.connectionActivities[connectionID] else { return false }
-            return activities.contains { $0 is NSNull }
+            self.server.latestConnectionContainsClear(
+                forClientID: "111111111111111111",
+                reason: "testClearingOneCardOnlyClearsThatConnection clear assertion"
+            )
         }
-        XCTAssertTrue(cleared, "first card never sent activity:null")
+        let trace = server.events.joined(separator: "\n")
+        print("FakeDiscordServer trace for testClearingOneCardOnlyClearsThatConnection:\n\(trace)")
+        XCTAssertTrue(cleared, "first card never sent activity:null; server events:\n\(trace)")
 
-        let secondConnection = try XCTUnwrap(server.connectionClientIDs.first { $0.value == "222222222222222222" }?.key)
-        XCTAssertFalse(server.connectionActivities[secondConnection, default: []].contains { $0 is NSNull },
+        let secondActivities = try XCTUnwrap(server.latestConnectionActivities(
+            forClientID: "222222222222222222",
+            reason: "testClearingOneCardOnlyClearsThatConnection second assertion"
+        ))
+        XCTAssertFalse(secondActivities.contains { $0 is NSNull },
                        "clearing the first card must not clear the second socket")
         engine.stop()
     }
@@ -481,7 +620,10 @@ final class PresenceEngineTests: XCTestCase {
         ])
 
         let firstPushed = await waitUntil(timeout: 10) {
-            guard let connectionID = self.server.connectionClientIDs.first(where: { $0.value == "111111111111111111" })?.key else {
+            guard let connectionID = self.server.latestConnectionID(
+                forClientID: "111111111111111111",
+                reason: "testRejectedHandshakeOnOneCardLeavesTheOtherConnected first push assertion"
+            ) else {
                 return false
             }
             return self.server.connectionActivities[connectionID]?.isEmpty == false

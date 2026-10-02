@@ -51,6 +51,7 @@ public final class DiscordIPCClient: @unchecked Sendable {
     }
 
     public var isConnected: Bool { fd >= 0 }
+    var diagnosticsFD: Int32 { fd }
 
     deinit { close() }
 
@@ -217,6 +218,14 @@ public final class DiscordIPCClient: @unchecked Sendable {
 
     /// Keepalive. Returns false instead of throwing when the peer is gone.
     public func ping() -> Bool {
+        ping(closeOnFailure: true)
+    }
+
+    func pingLeavingConnectionOpenOnFailure() -> Bool {
+        ping(closeOnFailure: false)
+    }
+
+    private func ping(closeOnFailure: Bool) -> Bool {
         do {
             try write(opcode: .ping, body: Data("{}".utf8))
             while true {
@@ -226,7 +235,9 @@ public final class DiscordIPCClient: @unchecked Sendable {
                 if op == .ping { try write(opcode: .pong, body: Data()); continue }
             }
         } catch {
-            close()
+            if closeOnFailure {
+                close()
+            }
             return false
         }
     }
@@ -307,5 +318,23 @@ public final class DiscordIPCClient: @unchecked Sendable {
 
     private func errnoText() -> String {
         String(cString: strerror(errno))
+    }
+}
+
+enum IPCDiagnostics {
+    private static let lock = NSLock()
+    private nonisolated(unsafe) static var sink: (@Sendable (String) -> Void)?
+
+    static func install(_ newSink: (@Sendable (String) -> Void)?) {
+        lock.lock()
+        sink = newSink
+        lock.unlock()
+    }
+
+    static func emit(_ message: String) {
+        lock.lock()
+        let current = sink
+        lock.unlock()
+        current?(message)
     }
 }

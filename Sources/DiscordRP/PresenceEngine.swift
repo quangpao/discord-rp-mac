@@ -332,7 +332,6 @@ public enum PresenceCardPlanner {
         }
 
         for current in running where desiredByID[current.cardID] == nil {
-            if current.activity != nil { changes.append(.clear(current.cardID)) }
             changes.append(.stop(current.cardID))
         }
 
@@ -383,7 +382,7 @@ public final class PresenceEngine: ObservableObject {
 
     public init(appID: String, pipeIndex: Int = 0, appStarted: Date = Date()) {
         let box = StatusBox()
-        let worker = Worker(appID: appID, pipeIndex: pipeIndex, appStarted: appStarted)
+        let worker = Worker(appID: appID, pipeIndex: pipeIndex, appStarted: appStarted, traceLabel: "primary")
         self.worker = worker
         box.engine = self
         worker.onStatus = { status in
@@ -420,6 +419,11 @@ public final class PresenceEngine: ObservableObject {
 
     @discardableResult
     public func apply(_ specs: [CardRunSpec]) -> [CardValidationIssue] {
+        apply(specs, preservingCardIDs: [])
+    }
+
+    @discardableResult
+    private func apply(_ specs: [CardRunSpec], preservingCardIDs: Set<UUID>) -> [CardValidationIssue] {
         let specs = specs.map {
             CardRunSpec(
                 cardID: $0.cardID,
@@ -434,7 +438,7 @@ public final class PresenceEngine: ObservableObject {
         // value alive; only explicit user actions that remove the desired card clear it.
         let unrunnable = Set(issues.map(\.cardID))
         var runnable = specs.filter { !unrunnable.contains($0.cardID) }
-        for cardID in unrunnable {
+        for cardID in unrunnable.union(preservingCardIDs) {
             if let existing = cardSpecs[cardID],
                !runnable.contains(where: { $0.cardID == cardID }) {
                 runnable.append(existing)
@@ -484,7 +488,7 @@ public final class PresenceEngine: ObservableObject {
                 cardWorkers[cardID]?.clear()
                 cardSpecs[cardID] = nil
             case .stop(let cardID):
-                cardWorkers[cardID]?.stop()
+                cardWorkers[cardID]?.clearAndStop()
                 cardWorkers[cardID] = nil
                 cardStatuses[cardID] = nil
                 cardSpecs[cardID] = nil
@@ -505,13 +509,16 @@ public final class PresenceEngine: ObservableObject {
             browserResult: browserResult,
             browserSettings: browserSettings
         )
-        _ = apply(specs)
+        let preservingCardIDs = Set(issues.compactMap { issue in
+            issue.kind == .browserBlocked ? issue.cardID : nil
+        })
+        _ = apply(specs, preservingCardIDs: preservingCardIDs)
         cardIssues = issues
         return issues
     }
 
     public func clear(cardID: UUID) {
-        cardWorkers[cardID]?.stop()
+        cardWorkers[cardID]?.clearAndStop()
         cardWorkers[cardID] = nil
         cardStatuses[cardID] = nil
         cardSpecs[cardID] = nil
@@ -545,7 +552,12 @@ public final class PresenceEngine: ObservableObject {
     }
 
     private func makeCardWorker(for spec: CardRunSpec) -> Worker {
-        let worker = Worker(appID: spec.applicationID, pipeIndex: self.worker.pipeIndex, appStarted: Date())
+        let worker = Worker(
+            appID: spec.applicationID,
+            pipeIndex: self.worker.pipeIndex,
+            appStarted: Date(),
+            traceLabel: "card=\(spec.cardID.uuidString)"
+        )
         worker.onStatus = { [weak self] status in
             Task { @MainActor in
                 self?.cardStatuses[spec.cardID] = status
@@ -577,6 +589,7 @@ private final class Worker: @unchecked Sendable {
     private(set) var appID: String
     private(set) var pipeIndex: Int
     private let appStarted: Date
+    private let traceLabel: String
 
     private var currentActivity: Activity?
     private var needsPush = false
@@ -590,6 +603,7 @@ private final class Worker: @unchecked Sendable {
     /// Set when Discord rejects the Application ID (code 4000): retrying forever is pointless.
     private var paused = false
     private var stopped = false
+    private var closing = false
     private var running = false
 
     var onStatus: (@Sendable (PresenceStatus) -> Void)?
@@ -597,19 +611,21 @@ private final class Worker: @unchecked Sendable {
 
     private static let retryDelays: [TimeInterval] = [2, 5, 10, 30]
 
-    init(appID: String, pipeIndex: Int, appStarted: Date) {
+    init(appID: String, pipeIndex: Int, appStarted: Date, traceLabel: String) {
         self.appID = appID
         self.pipeIndex = pipeIndex
         self.appStarted = appStarted
+        self.traceLabel = traceLabel
     }
 
     // MARK: commands (called from the main actor)
 
     func start() {
         setStopped(false)
+        setClosing(false)
         setRunning(true)
         queue.async { [self] in
-            guard !isStopped else { return }
+            guard !isStopped, !isClosing else { return }
             guard timer == nil else { return }
             let source = DispatchSource.makeTimerSource(queue: queue)
             source.schedule(deadline: .now(), repeating: 0.5)
@@ -622,12 +638,13 @@ private final class Worker: @unchecked Sendable {
 
     func update(appID: String, pipeIndex: Int) {
         queue.async { [self] in
-            guard !isStopped else { return }
+            guard !isStopped, !isClosing else { return }
             guard appID != self.appID || pipeIndex != self.pipeIndex else { return }
+            self.paused = false
+            trace("update closing old connection fd=\(client?.diagnosticsFD ?? -1) oldAppID=\(self.appID) newAppID=\(appID)")
+            clearAndCloseConnectionOnQueue()
             self.appID = appID
             self.pipeIndex = pipeIndex
-            self.paused = false
-            teardown()
             backoffIndex = 0
             nextRetryAt = .distantPast
             emit(.connecting)
@@ -637,14 +654,14 @@ private final class Worker: @unchecked Sendable {
     func forceReconnect() {
         guard isRunning else { return }
         queue.async { [self] in
-            guard !isStopped, timer != nil else { return }
+            guard !isStopped, !isClosing, timer != nil else { return }
             forceReconnectOnQueue()
         }
     }
 
     func push(_ activity: Activity) {
         queue.async { [self] in
-            guard !isStopped else { return }
+            guard !isStopped, !isClosing else { return }
             currentActivity = activity
             needsPush = true
             // Discord rate-limits SET_ACTIVITY: coalesce rapid edits.
@@ -654,11 +671,12 @@ private final class Worker: @unchecked Sendable {
 
     func clear() {
         queue.async { [self] in
-            guard !isStopped else { return }
+            guard !isStopped, !isClosing else { return }
             currentActivity = nil
             needsPush = false
             pushAt = nil
             guard let client, client.isConnected else { return }
+            trace("send clear fd=\(client.diagnosticsFD) appID=\(appID)")
             do {
                 let reply = try client.setActivityWithReply(nil)
                 guard !isStopped else { return }
@@ -672,40 +690,24 @@ private final class Worker: @unchecked Sendable {
 
     func stop() {
         setRunning(false)
-        setStopped(true)
-        logNote("timer stopped")
+        setClosing(true)
         queue.async { [self] in
-            let closingClient = client
-            client = nil
-            connectionStarted = nil
-            currentActivity = nil
-            needsPush = false
-            pushAt = nil
-            paused = false
-            backoffIndex = 0
-            nextRetryAt = .distantPast
-            timer?.cancel()
-            timer = nil
-            emit(.idle)
+            stopOnQueue(markStopped: true)
+        }
+    }
 
-            if let closingClient, closingClient.isConnected {
-                do {
-                    let reply = try closingClient.setActivityWithReply(nil)
-                    logRecord(payload: nil, appID: appID, reply: reply, error: nil)
-                } catch IPCError.discordClosed {
-                    // The peer can disappear during async teardown; closing below is enough.
-                } catch {
-                    logRecord(payload: nil, appID: appID, reply: closingClient.lastReply, error: "\(error)")
-                }
-            }
-            closingClient?.close()
+    func clearAndStop() {
+        setRunning(false)
+        setClosing(true)
+        queue.async { [self] in
+            stopOnQueue(markStopped: true)
         }
     }
 
     /// Ping now and re-send the presence, without waiting for the next timer deadline.
     func reassert() {
         queue.async { [self] in
-            guard !isStopped else { return }
+            guard !isStopped, !isClosing else { return }
             if paused {
                 forceReconnectOnQueue()
                 return
@@ -722,7 +724,7 @@ private final class Worker: @unchecked Sendable {
     // MARK: state machine (queue-confined)
 
     private func tick() {
-        guard !isStopped else { return }
+        guard !isStopped, !isClosing else { return }
         guard !paused else { return }
         let now = Date()
 
@@ -745,25 +747,28 @@ private final class Worker: @unchecked Sendable {
             if pingCount % 4 == 0 {
                 logNote("alive pings=\(pingCount) connected=\(client.isConnected)")
             }
-            if !client.ping() {
+            if !client.pingLeavingConnectionOpenOnFailure() {
                 logNote("ping failed — reconnecting")
-                teardown()
+                trace("ping failed reconnect closing fd=\(client.diagnosticsFD) appID=\(appID)")
+                clearAndCloseConnectionOnQueue()
                 scheduleRetry()
             }
         }
     }
 
     private func connect() {
-        guard !isStopped else { return }
+        guard !isStopped, !isClosing else { return }
         emit(.connecting)
+        trace("connect attempt appID=\(appID) pipeIndex=\(pipeIndex)")
         let candidate = DiscordIPCClient(appID: appID)
         do {
             try candidate.connect(pipeIndex: pipeIndex)
-            guard !isStopped else {
+            guard !isStopped, !isClosing else {
                 candidate.close()
                 return
             }
             client = candidate
+            trace("connected fd=\(candidate.diagnosticsFD) appID=\(appID)")
             connectionStarted = Date()
             lastPing = Date()
             backoffIndex = 0
@@ -778,7 +783,8 @@ private final class Worker: @unchecked Sendable {
             }
         } catch let error as IPCError {
             candidate.close()
-            guard !isStopped else { return }
+            trace("connect failed appID=\(appID) error=\(error)")
+            guard !isStopped, !isClosing else { return }
             switch error {
             case .discordRejected(let code, let message):
                 if code == 4000 {
@@ -795,7 +801,8 @@ private final class Worker: @unchecked Sendable {
             scheduleRetry()
         } catch {
             candidate.close()
-            guard !isStopped else { return }
+            trace("connect failed appID=\(appID) error=\(error)")
+            guard !isStopped, !isClosing else { return }
             emit(.discordNotRunning)
             scheduleRetry()
         }
@@ -803,12 +810,13 @@ private final class Worker: @unchecked Sendable {
 
     private func present(client: DiscordIPCClient, at now: Date) {
         guard let activity = currentActivity else {
+            trace("send clear fd=\(client.diagnosticsFD) appID=\(appID)")
             do {
                 let reply = try client.setActivityWithReply(nil)
-                guard !isStopped else { return }
+                guard !isStopped, !isClosing else { return }
                 logRecord(payload: nil, appID: appID, reply: reply, error: nil)
             } catch {
-                guard !isStopped else { return }
+                guard !isStopped, !isClosing else { return }
                 logRecord(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
             }
             return
@@ -828,13 +836,14 @@ private final class Worker: @unchecked Sendable {
         }
         do {
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
+            trace("send push fd=\(client.diagnosticsFD) appID=\(appID)")
             let reply = try client.setActivityWithReply(data)
-            guard !isStopped else { return }
+            guard !isStopped, !isClosing else { return }
             presenceStarted = now
             logRecord(payload: data, appID: appID, reply: reply, error: nil)
             onIssues?([])
         } catch let error as IPCError {
-            guard !isStopped else { return }
+            guard !isStopped, !isClosing else { return }
             if case .discordRejected(let code, let message) = error {
                 // 4000 is Discord's generic "invalid payload" rejection, NOT necessarily a bad
                 // Application ID: sending type 1 (Streaming) produces exactly this code with
@@ -848,13 +857,15 @@ private final class Worker: @unchecked Sendable {
                 // a bad Application ID, and the old hardcoded text sent us chasing the wrong thing.
                 emit(.failed(code: code, message: message))
             } else {
-                teardown()
+                trace("push failed reconnect closing fd=\(client.diagnosticsFD) appID=\(appID) error=\(error)")
+                clearAndCloseConnectionOnQueue()
                 scheduleRetry()
             }
             logRecord(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
         } catch {
-            guard !isStopped else { return }
-            teardown()
+            guard !isStopped, !isClosing else { return }
+            trace("push failed reconnect closing fd=\(client.diagnosticsFD) appID=\(appID) error=\(error)")
+            clearAndCloseConnectionOnQueue()
             scheduleRetry()
             logRecord(payload: nil, appID: appID, reply: client.lastReply, error: "\(error)")
         }
@@ -862,7 +873,8 @@ private final class Worker: @unchecked Sendable {
 
     private func forceReconnectOnQueue() {
         paused = false
-        teardown()
+        trace("force reconnect closing fd=\(client?.diagnosticsFD ?? -1) appID=\(appID)")
+        clearAndCloseConnectionOnQueue()
         backoffIndex = 0
         nextRetryAt = .distantPast
         lastPing = .distantPast
@@ -876,10 +888,48 @@ private final class Worker: @unchecked Sendable {
         nextRetryAt = Date().addingTimeInterval(delay)
     }
 
-    private func teardown() {
-        client?.close()
-        client = nil
+    private func stopOnQueue(markStopped: Bool) {
         connectionStarted = nil
+        currentActivity = nil
+        needsPush = false
+        pushAt = nil
+        paused = false
+        backoffIndex = 0
+        nextRetryAt = .distantPast
+        timer?.cancel()
+        timer = nil
+
+        clearAndCloseConnectionOnQueue()
+
+        if markStopped {
+            logNote("timer stopped")
+            setStopped(true)
+        }
+        emit(.idle)
+    }
+
+    private func clearAndCloseConnectionOnQueue() {
+        let closingClient = client
+        if let closingClient, closingClient.isConnected {
+            trace("send clear(close) fd=\(closingClient.diagnosticsFD) appID=\(appID)")
+            do {
+                let reply = try closingClient.setActivityWithReply(nil)
+                logRecord(payload: nil, appID: appID, reply: reply, error: nil)
+            } catch IPCError.discordClosed {
+                // The peer can disappear during async teardown; closing below is enough.
+            } catch {
+                logRecord(payload: nil, appID: appID, reply: closingClient.lastReply, error: "\(error)")
+            }
+        }
+        closingClient?.close()
+        if client === closingClient {
+            client = nil
+        }
+        connectionStarted = nil
+    }
+
+    private func trace(_ message: String) {
+        IPCDiagnostics.emit("worker \(traceLabel) \(message)")
     }
 
     private func emit(_ status: PresenceStatus) {
@@ -909,6 +959,11 @@ private final class Worker: @unchecked Sendable {
         return stopped
     }
 
+    private var isClosing: Bool {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return closing
+    }
+
     private var isRunning: Bool {
         stateLock.lock(); defer { stateLock.unlock() }
         return running
@@ -917,6 +972,12 @@ private final class Worker: @unchecked Sendable {
     private func setStopped(_ value: Bool) {
         stateLock.lock()
         stopped = value
+        stateLock.unlock()
+    }
+
+    private func setClosing(_ value: Bool) {
+        stateLock.lock()
+        closing = value
         stateLock.unlock()
     }
 

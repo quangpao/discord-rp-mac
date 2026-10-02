@@ -501,7 +501,8 @@ final class AppModel: ObservableObject {
         browserSource.read(includeTitle: settings.browser.showsPageTitle, timeout: 3.0) { [weak self] result in
             Task { @MainActor in
                 guard let self else { return }
-                if case .value(let value) = result {
+                if case .value(let value) = result,
+                   !BrowserActivitySource.isBlocked(domain: value.domain, by: self.settings.browser.blocklist) {
                     PresenceLog.note("browser source \(value.browserName) domain=\(value.domain)")
                 }
                 let previousRead = self.browserReadResult
