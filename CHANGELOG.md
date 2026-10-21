@@ -1,4 +1,19 @@
-## [Unreleased]
+## [1.3.0] - 2026-10-21
+
+### Added
+
+- **Browser activity.** A card can follow the focused tab of Google Chrome, Brave, Microsoft Edge,
+  Vivaldi or Chromium: the page title is published as the prominent line with the domain underneath, the
+  site's icon becomes the large image and the browser's own icon the small one. Only the domain leaves the
+  machine - never the path or the query - incognito windows are never published, and a blocklist plus a
+  pause switch are available. When a read fails or the site is blocked, the last published activity stays
+  until the user acts, instead of the card going blank. A page title beyond Discord's 128-character limit
+  is truncated rather than rejected, and the read happens in-process with a run-loop worker so an
+  unfocused browser costs nothing.
+- An injected IPC transport seam, so behaviours that depend on call order (clear before close) are tested
+  deterministically instead of racing a real socket.
+
+
 
 ### Added
 

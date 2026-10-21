@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.4</string>
+	<string>1.3.0</string>
 	<key>CFBundleVersion</key>
-	<string>202609231815</string>
+	<string>202610212324</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<!-- Menu bar agent: no Dock icon, no window at launch. -->
