@@ -29,5 +29,7 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT. Not affiliated with Discord Inc.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Discord RP reads the focused Chromium tab domain, and optionally its title, to show browser activity locally and send only the chosen activity fields to Discord.</string>
 </dict>
 </plist>

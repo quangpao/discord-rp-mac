@@ -87,7 +87,7 @@ final class PresetStoreTests: XCTestCase {
 
         let settings = store.loadSettings()
 
-        XCTAssertEqual(settings.schemaVersion, 2)
+        XCTAssertEqual(settings.schemaVersion, 3)
         XCTAssertEqual(settings.pipeIndex, 2)
         XCTAssertEqual(settings.launchAtLogin, true)
         XCTAssertEqual(settings.cards.count, 1)

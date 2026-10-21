@@ -9,6 +9,10 @@ final class DiscordIPCClientTests: XCTestCase {
     override func setUpWithError() throws {
         server = FakeDiscordServer()
         try server.start()
+        let traceServer = server
+        IPCDiagnostics.install { event in
+            traceServer?.appendEvent(event)
+        }
         setenv("DISCORDRP_IPC_PATH", server.path, 1)
         // Never write into the developer's real log directory: a test run used to overwrite
         // ~/Library/Logs/DiscordRP/last-presence.json with the fixture payload.
@@ -18,6 +22,7 @@ final class DiscordIPCClientTests: XCTestCase {
 
     override func tearDownWithError() throws {
         unsetenv("DISCORDRP_IPC_PATH")
+        IPCDiagnostics.install(nil)
         PresenceLog.directoryOverride = nil
         server.stop()
     }
@@ -197,6 +202,10 @@ final class PresenceEngineTests: XCTestCase {
     override func setUpWithError() throws {
         server = FakeDiscordServer()
         try server.start()
+        let traceServer = server
+        IPCDiagnostics.install { event in
+            traceServer?.appendEvent(event)
+        }
         setenv("DISCORDRP_IPC_PATH", server.path, 1)
         // Never write into the developer's real log directory: a test run used to overwrite
         // ~/Library/Logs/DiscordRP/last-presence.json with the fixture payload.
@@ -206,6 +215,7 @@ final class PresenceEngineTests: XCTestCase {
 
     override func tearDownWithError() throws {
         unsetenv("DISCORDRP_IPC_PATH")
+        IPCDiagnostics.install(nil)
         PresenceLog.directoryOverride = nil
         server.stop()
     }
@@ -217,6 +227,17 @@ final class PresenceEngineTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 150_000_000)
         }
         return condition()
+    }
+
+    private func payload(_ value: Any, contains needle: String) -> Bool {
+        if let string = value as? String { return string.contains(needle) }
+        if let dictionary = value as? [String: Any] {
+            return dictionary.values.contains { payload($0, contains: needle) }
+        }
+        if let array = value as? [Any] {
+            return array.contains { payload($0, contains: needle) }
+        }
+        return false
     }
 
     func testEngineConnectsAndPushesActivity() async throws {
@@ -245,39 +266,6 @@ final class PresenceEngineTests: XCTestCase {
         // activity type returns), so the app must not paraphrase it as "Invalid Application ID".
         let failed = await waitUntil { engine.status == .failed(code: 4000, message: "Invalid Client ID") }
         XCTAssertTrue(failed, "status was \(engine.status)")
-        engine.stop()
-    }
-
-    func testForceReconnectRecoversPausedWorkerWithoutChangingApplicationID() async throws {
-        server.rejectNextHandshake = (4000, "Invalid Client ID")
-        let engine = PresenceEngine(appID: "unused")
-        let cardID = UUID()
-        var activity = Activity(name: "Reconnect", details: "same app id")
-        activity.timestampMode = .off
-
-        engine.apply([
-            CardRunSpec(cardID: cardID, applicationID: "123", activity: activity),
-        ])
-
-        let failed = await waitUntil {
-            if case .failed(let message, let failing) = engine.multiStatus {
-                return message == "Invalid Client ID" && failing == 1
-            }
-            return false
-        }
-        XCTAssertTrue(failed, "first handshake should pause the card worker, status was \(engine.multiStatus)")
-
-        engine.forceReconnect()
-
-        let pushed = await waitUntil(timeout: 10) {
-            engine.multiStatus.isConnected && self.server.activities.contains { activity in
-                (activity as? [String: Any])?["details"] as? String == "same app id"
-            }
-        }
-        XCTAssertTrue(pushed, "forceReconnect() with the same app id never recovered; status was \(engine.multiStatus)")
-        let clientIDs = server.handshakes.compactMap { $0["client_id"] as? String }
-        XCTAssertFalse(clientIDs.contains("unused"), "forceReconnect() must not wake the idle primary worker")
-        XCTAssertEqual(clientIDs, ["123", "123"])
         engine.stop()
     }
 
@@ -323,21 +311,52 @@ final class PresenceEngineTests: XCTestCase {
         engine.stop()
     }
 
-    func testInvalidInputNeverReachesSocket() async throws {
-        let engine = PresenceEngine(appID: "123")
-        engine.start()
-        _ = await waitUntil { engine.status.isConnected }
+    func testExplicitBrowserPauseAndTurnOffStillClearPublishedCard() async throws {
+        let engine = PresenceEngine(appID: "unused")
+        let cardID = UUID()
+        let applicationID = "111111111111111111"
+        let preset = Preset(name: "Web", activity: Activity(name: "Browsing", details: "preset"))
+        var card = PresenceCard(
+            id: cardID,
+            name: "Browser",
+            presetID: preset.id,
+            applicationID: applicationID,
+            isOn: true,
+            source: .browser
+        )
+        let value = BrowserActivityValue(domain: "github.com", browserName: "Google Chrome", isIncognito: false)
 
-        var activity = Activity(name: "Bad", details: "x")
-        let issues = engine.apply(activity)
-        XCTAssertTrue(issues.contains { $0.field == .details })
-        try? await Task.sleep(nanoseconds: 500_000_000)
-        XCTAssertTrue(server.activities.isEmpty, "an invalid activity must not be sent")
+        engine.apply(cards: [card], presets: [preset], browserResult: .value(value))
+        let firstPushed = await waitUntil(timeout: 10) {
+            self.server.activities.contains { payload in self.payload(payload, contains: "github.com") }
+        }
+        XCTAssertTrue(firstPushed)
 
-        activity.details = "fine"
-        engine.apply(activity)
-        let pushed = await waitUntil { !self.server.activities.isEmpty }
-        XCTAssertTrue(pushed)
+        let pauseIssues = engine.apply(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(value),
+            browserSettings: BrowserPrivacySettings(isPaused: true)
+        )
+        XCTAssertEqual(pauseIssues.map(\.kind), [.browserPaused])
+        let pauseCleared = await waitUntil(timeout: 5) {
+            self.server.activities.contains { $0 is NSNull }
+        }
+        XCTAssertTrue(pauseCleared)
+
+        let clearsAfterPause = server.activities.filter { $0 is NSNull }.count
+        engine.apply(cards: [card], presets: [preset], browserResult: .value(value))
+        let repushed = await waitUntil(timeout: 10) {
+            self.server.activities.filter { payload in self.payload(payload, contains: "github.com") }.count >= 2
+        }
+        XCTAssertTrue(repushed)
+
+        card.isOn = false
+        engine.apply(cards: [card], presets: [preset], browserResult: .value(value))
+        let turnOffCleared = await waitUntil(timeout: 5) {
+            self.server.activities.filter { $0 is NSNull }.count > clearsAfterPause
+        }
+        XCTAssertTrue(turnOffCleared)
         engine.stop()
     }
 
@@ -357,27 +376,6 @@ final class PresenceEngineTests: XCTestCase {
         XCTAssertTrue(pushed, "expected one SET_ACTIVITY on each connection, got \(server.connectionActivities)")
         XCTAssertEqual(server.connectionClientIDs.values.sorted(), ["111111111111111111", "222222222222222222"])
 
-        engine.stop()
-    }
-
-    /// One application means one card, so the duplicate is refused — but refusing it must not take
-    /// the *other* card down with it: the first card keeps running, exactly one connection exists.
-    func testDuplicateApplicationIDIsBlockedWithoutHoldingBackTheFirstCard() async throws {
-        let engine = PresenceEngine(appID: "unused")
-        let issues = engine.apply([
-            CardRunSpec(cardID: UUID(), applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
-            CardRunSpec(cardID: UUID(), applicationID: "111111111111111111", activity: Activity(name: "B", details: "second")),
-        ])
-
-        XCTAssertEqual(issues.map(\.kind), [.duplicateApplicationID], "the second card must be reported")
-
-        let pushed = await waitUntil(timeout: 10) {
-            self.server.connectionActivities.values.filter { !$0.isEmpty }.count == 1
-        }
-        XCTAssertTrue(pushed, "the first card must still run, got \(server.connectionActivities)")
-        try? await Task.sleep(nanoseconds: 500_000_000)
-        XCTAssertEqual(Set(server.connectionClientIDs.values), ["111111111111111111"],
-                       "one application id must mean one connection")
         engine.stop()
     }
 
@@ -401,34 +399,6 @@ final class PresenceEngineTests: XCTestCase {
         engine.stop()
     }
 
-    func testClearingOneCardOnlyClearsThatConnection() async throws {
-        let engine = PresenceEngine(appID: "unused")
-        let firstID = UUID()
-        let secondID = UUID()
-        engine.apply([
-            CardRunSpec(cardID: firstID, applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
-            CardRunSpec(cardID: secondID, applicationID: "222222222222222222", activity: Activity(name: "B", details: "second")),
-        ])
-        let bothPushed = await waitUntil(timeout: 10) {
-            self.server.connectionActivities.values.filter { !$0.isEmpty }.count == 2
-        }
-        XCTAssertTrue(bothPushed)
-
-        engine.clear(cardID: firstID)
-
-        let cleared = await waitUntil(timeout: 5) {
-            guard let connectionID = self.server.connectionClientIDs.first(where: { $0.value == "111111111111111111" })?.key,
-                  let activities = self.server.connectionActivities[connectionID] else { return false }
-            return activities.contains { $0 is NSNull }
-        }
-        XCTAssertTrue(cleared, "first card never sent activity:null")
-
-        let secondConnection = try XCTUnwrap(server.connectionClientIDs.first { $0.value == "222222222222222222" }?.key)
-        XCTAssertFalse(server.connectionActivities[secondConnection, default: []].contains { $0 is NSNull },
-                       "clearing the first card must not clear the second socket")
-        engine.stop()
-    }
-
     func testRejectedHandshakeOnOneCardLeavesTheOtherConnected() async throws {
         server.rejectedClientIDs["222222222222222222"] = (4000, "Invalid Client ID")
         let engine = PresenceEngine(appID: "unused")
@@ -438,7 +408,10 @@ final class PresenceEngineTests: XCTestCase {
         ])
 
         let firstPushed = await waitUntil(timeout: 10) {
-            guard let connectionID = self.server.connectionClientIDs.first(where: { $0.value == "111111111111111111" })?.key else {
+            guard let connectionID = self.server.latestConnectionID(
+                forClientID: "111111111111111111",
+                reason: "testRejectedHandshakeOnOneCardLeavesTheOtherConnected first push assertion"
+            ) else {
                 return false
             }
             return self.server.connectionActivities[connectionID]?.isEmpty == false
@@ -456,5 +429,385 @@ final class PresenceEngineTests: XCTestCase {
         }
         XCTAssertTrue(failed, "expected one-card failure to be summarized, got \(engine.multiStatus)")
         engine.stop()
+    }
+}
+
+@MainActor
+final class PresenceEngineInjectedIPCClientTests: XCTestCase {
+    override func setUpWithError() throws {
+        PresenceLog.directoryOverride = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("discordrp-log-\(UUID().uuidString)")
+    }
+
+    override func tearDownWithError() throws {
+        PresenceLog.directoryOverride = nil
+    }
+
+    private func waitUntil(timeout: TimeInterval = 3, _ condition: () -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return true }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return condition()
+    }
+
+    func testValidationFailureKeepsPreviouslyPublishedCardUntilExplicitClear() async throws {
+        let clients = RecordingIPCClients()
+        let engine = PresenceEngine(appID: "unused", ipcClientFactory: { clients.client(for: $0) })
+        let cardID = UUID()
+        let applicationID = "111111111111111111"
+
+        let firstIssues = engine.apply([
+            CardRunSpec(cardID: cardID, applicationID: applicationID, activity: Activity(name: "A", details: "first")),
+        ])
+        XCTAssertTrue(firstIssues.isEmpty)
+
+        let firstPushed = await waitUntil(timeout: 10) {
+            clients.client(for: applicationID).payloads.contains { $0.contains("first") }
+        }
+        XCTAssertTrue(firstPushed)
+
+        let invalid = Activity(name: "A", details: String(repeating: "x", count: ActivityRules.maxTextLength + 1))
+        let invalidIssues = engine.apply([
+            CardRunSpec(cardID: cardID, applicationID: applicationID, activity: invalid),
+        ])
+
+        XCTAssertEqual(invalidIssues.map(\.kind), [.invalidActivity])
+        let client = clients.client(for: applicationID)
+        let initialPayloads = client.payloads
+        XCTAssertEqual(initialPayloads.count, 1)
+        // A positive queue round trip proves the retained worker processed the reassertion.
+        engine.reassert()
+        let reasserted = await waitUntil { client.payloads.count == 2 && client.events.contains(.ping) }
+        XCTAssertTrue(reasserted)
+        XCTAssertEqual(client.payloads, initialPayloads + initialPayloads)
+        XCTAssertFalse(client.events.contains(.setActivity(nil)), "validation failure must leave the published activity untouched")
+        XCTAssertFalse(client.events.contains(.close), "validation failure must leave the client open")
+        print("RecordingIPCClient trace after validation failure: \(client.events)")
+
+        engine.clear(cardID: cardID)
+        let cleared = await waitUntil { client.events.contains(.close) }
+        print("RecordingIPCClient trace after explicit clear: \(client.events)")
+        XCTAssertTrue(cleared)
+        XCTAssertEqual(client.events.suffix(2), [.setActivity(nil), .close])
+        engine.stop()
+    }
+
+    func testBlockedBrowserReadKeepsPreviouslyPublishedCardAndSendsNoBlockedPayload() async throws {
+        let clients = RecordingIPCClients()
+        let engine = PresenceEngine(appID: "unused", ipcClientFactory: { clients.client(for: $0) })
+        let cardID = UUID()
+        let applicationID = "111111111111111111"
+        var activity = Activity(name: "Browsing", details: "preset", state: "old")
+        activity.largeKey = "preset_logo"
+        let preset = Preset(name: "Web", activity: activity)
+        let card = PresenceCard(
+            id: cardID,
+            name: "Browser",
+            presetID: preset.id,
+            applicationID: applicationID,
+            isOn: true,
+            source: .browser
+        )
+        let allowed = BrowserActivityValue(
+            domain: "github.com",
+            title: "Pull request",
+            browserName: "Google Chrome",
+            isIncognito: false
+        )
+
+        let firstIssues = engine.apply(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(allowed),
+            browserSettings: BrowserPrivacySettings(blocklist: ["blocked.example"])
+        )
+        XCTAssertTrue(firstIssues.isEmpty)
+
+        let firstPushed = await waitUntil(timeout: 10) {
+            clients.client(for: applicationID).payloads.contains { $0.contains("github.com") }
+        }
+        XCTAssertTrue(firstPushed)
+        let client = clients.client(for: applicationID)
+        let initialPayloads = client.payloads
+        XCTAssertEqual(initialPayloads.count, 1)
+        let blocked = BrowserActivityValue(
+            domain: "blocked.example",
+            title: "Private page",
+            browserName: "Google Chrome",
+            isIncognito: false
+        )
+        let blockedIssues = engine.apply(
+            cards: [card],
+            presets: [preset],
+            browserResult: .value(blocked),
+            browserSettings: BrowserPrivacySettings(blocklist: ["blocked.example"])
+        )
+
+        XCTAssertEqual(blockedIssues.map(\.kind), [.browserBlocked])
+        XCTAssertEqual(client.payloads, initialPayloads)
+        engine.reassert()
+        let reasserted = await waitUntil { client.payloads.count == 2 && client.events.contains(.ping) }
+        XCTAssertTrue(reasserted)
+        XCTAssertEqual(client.payloads, initialPayloads + initialPayloads)
+        XCTAssertFalse(client.events.contains(.setActivity(nil)))
+        XCTAssertFalse(client.events.contains(.close))
+        XCTAssertFalse(client.payloads.contains { $0.contains("blocked.example") })
+        XCTAssertFalse(client.payloads.contains { $0.contains("Private page") })
+        print("RecordingIPCClient trace after blocked read: \(client.events)")
+        engine.stop()
+    }
+
+    func testInvalidInputNeverReachesIPCClient() async throws {
+        let client = RecordingIPCClient(appID: "123")
+        let engine = PresenceEngine(appID: "123", ipcClientFactory: { _ in client })
+        engine.start()
+        _ = await waitUntil { engine.status.isConnected }
+
+        var activity = Activity(name: "Bad", details: "x")
+        let issues = engine.apply(activity)
+        XCTAssertTrue(issues.contains { $0.field == .details })
+        engine.reassert()
+        let processed = await waitUntil { client.events.contains(.ping) }
+        XCTAssertTrue(processed)
+        XCTAssertTrue(client.payloads.isEmpty, "an invalid activity must not be sent")
+        XCTAssertFalse(client.events.contains(.setActivity(nil)))
+        XCTAssertFalse(client.events.contains(.close))
+        print("RecordingIPCClient trace after invalid input: \(client.events)")
+
+        activity.details = "fine"
+        engine.apply(activity)
+        let pushed = await waitUntil { !client.payloads.isEmpty }
+        XCTAssertTrue(pushed)
+        engine.stop()
+    }
+
+    func testDuplicateApplicationIDIsBlockedWithoutHoldingBackTheFirstCard() async throws {
+        let clients = RecordingIPCClients()
+        let engine = PresenceEngine(appID: "unused", ipcClientFactory: { clients.client(for: $0) })
+        let firstID = UUID()
+        let secondID = UUID()
+        let issues = engine.apply([
+            CardRunSpec(cardID: firstID, applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
+            CardRunSpec(cardID: secondID, applicationID: "111111111111111111", activity: Activity(name: "B", details: "second")),
+        ])
+
+        XCTAssertEqual(issues.map(\.kind), [.duplicateApplicationID], "the second card must be reported")
+
+        let pushed = await waitUntil(timeout: 10) {
+            clients.client(for: "111111111111111111").payloads.count == 1
+        }
+        XCTAssertTrue(pushed, "the first card must still run, got \(clients.applicationIDs)")
+        let updatedIssues = engine.apply([
+            CardRunSpec(cardID: firstID, applicationID: "111111111111111111", activity: Activity(name: "A", details: "updated")),
+            CardRunSpec(cardID: secondID, applicationID: "111111111111111111", activity: Activity(name: "B", details: "second")),
+        ])
+        XCTAssertEqual(updatedIssues.map(\.kind), [.duplicateApplicationID])
+        let updated = await waitUntil { clients.client(for: "111111111111111111").payloads.contains { $0.contains("updated") } }
+        XCTAssertTrue(updated)
+        XCTAssertEqual(clients.applicationIDs, ["111111111111111111"], "one application id must mean one client")
+        XCTAssertEqual(clients.client(for: "111111111111111111").events.filter { $0 == .connect(pipeIndex: 0) }.count, 1)
+        print("RecordingIPCClient trace for duplicate application ID: \(clients.client(for: "111111111111111111").events)")
+        engine.stop()
+    }
+
+    func testForceReconnectRecoversPausedWorkerWithoutChangingApplicationID() async throws {
+        let clients = RecordingIPCClients()
+        let engine = PresenceEngine(appID: "unused", ipcClientFactory: { clients.client(for: $0) })
+        clients.client(for: "123").rejectNextHandshake = true
+        let cardID = UUID()
+        var activity = Activity(name: "Reconnect", details: "same app id")
+        activity.timestampMode = .off
+
+        engine.apply([
+            CardRunSpec(cardID: cardID, applicationID: "123", activity: activity),
+        ])
+
+        let failed = await waitUntil {
+            if case .failed(let message, let failing) = engine.multiStatus {
+                return message == "Invalid Client ID" && failing == 1
+            }
+            return false
+        }
+        XCTAssertTrue(failed, "first handshake should pause the card worker, status was \(engine.multiStatus)")
+
+        engine.forceReconnect()
+
+        let pushed = await waitUntil(timeout: 10) {
+            engine.multiStatus.isConnected && clients.client(for: "123").payloads.contains { $0.contains("same app id") }
+        }
+        XCTAssertTrue(pushed, "forceReconnect() with the same app id never recovered; status was \(engine.multiStatus)")
+        XCTAssertEqual(clients.applicationIDs, ["123"], "forceReconnect() must not wake the idle primary worker")
+        let events = clients.client(for: "123").events
+        XCTAssertEqual(events.filter { $0 == .connect(pipeIndex: 0) }.count, 2)
+        print("RecordingIPCClient trace for force reconnect: \(events)")
+        engine.stop()
+    }
+
+    func testClearingOneCardSendsClearBeforeCloseOnThatCardsClient() async throws {
+        let firstID = UUID()
+        let secondID = UUID()
+        let firstClient = RecordingIPCClient(appID: "111111111111111111")
+        let secondClient = RecordingIPCClient(appID: "222222222222222222")
+        let clients = [
+            "111111111111111111": firstClient,
+            "222222222222222222": secondClient,
+        ]
+        let engine = PresenceEngine(appID: "unused", ipcClientFactory: { appID in
+            clients[appID] ?? RecordingIPCClient(appID: appID)
+        })
+
+        engine.apply([
+            CardRunSpec(cardID: firstID, applicationID: "111111111111111111", activity: Activity(name: "A", details: "first")),
+            CardRunSpec(cardID: secondID, applicationID: "222222222222222222", activity: Activity(name: "B", details: "second")),
+        ])
+
+        let connected = await waitUntil {
+            firstClient.events.contains(.connect(pipeIndex: 0))
+            && secondClient.events.contains(.connect(pipeIndex: 0))
+        }
+        XCTAssertTrue(connected, "both card workers should connect through the injected clients")
+
+        engine.clear(cardID: firstID)
+
+        let closed = await waitUntil {
+            firstClient.events.contains(.setActivity(nil)) && firstClient.events.contains(.close)
+        }
+        let firstEvents = firstClient.events
+        let secondEvents = secondClient.events
+        print(
+            "RecordingIPCClient trace for testClearingOneCardSendsClearBeforeCloseOnThatCardsClient:\n"
+                + "first: \(firstEvents)\nsecond: \(secondEvents)"
+        )
+        XCTAssertTrue(closed, "explicit clear must call setActivity(nil) and then close; events: \(firstEvents)")
+        let clearIndex = firstEvents.firstIndex(of: .setActivity(nil))
+        let closeIndex = firstEvents.firstIndex(of: .close)
+        XCTAssertNotNil(clearIndex, "explicit clear skipped setActivity(nil); events: \(firstEvents)")
+        XCTAssertNotNil(closeIndex, "explicit clear never closed the client; events: \(firstEvents)")
+        if let clearIndex, let closeIndex {
+            XCTAssertFalse(firstEvents[..<clearIndex].contains(.close),
+                           "close() must not happen before setActivity(nil); events: \(firstEvents)")
+            XCTAssertLessThan(clearIndex, closeIndex,
+                              "setActivity(nil) must happen before close(); events: \(firstEvents)")
+        }
+        XCTAssertEqual(firstEvents.suffix(2), [.setActivity(nil), .close])
+        XCTAssertFalse(secondClient.events.contains(.setActivity(nil)),
+                       "clearing one card must not clear the other card's client; events: \(secondEvents)")
+
+        engine.stop()
+    }
+}
+
+private final class RecordingIPCClient: IPCClientProtocol, @unchecked Sendable {
+    enum Event: Equatable, CustomStringConvertible {
+        case connect(pipeIndex: Int)
+        case setActivity(String?)
+        case close
+        case ping
+
+        var description: String {
+            switch self {
+            case .connect(let pipeIndex): "connect(\(pipeIndex))"
+            case .setActivity(let payload): "setActivity(\(payload ?? "nil"))"
+            case .close: "close"
+            case .ping: "ping"
+            }
+        }
+    }
+
+    private let lock = NSLock()
+    private let appID: String
+    var rejectNextHandshake = false
+    private var connected = false
+    private var recordedEvents: [Event] = []
+
+    init(appID: String) {
+        self.appID = appID
+    }
+
+    var readyUser: DiscordIPCClient.ReadyUser? {
+        DiscordIPCClient.ReadyUser(username: "tester-\(appID)", id: appID)
+    }
+
+    var lastReply: DiscordIPCClient.Reply?
+
+    var isConnected: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return connected
+    }
+
+    var diagnosticsFD: Int32 { 42 }
+
+    var events: [Event] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedEvents
+    }
+
+    var payloads: [String] {
+        events.compactMap { event in
+            if case .setActivity(let payload) = event { return payload }
+            return nil
+        }
+    }
+
+    @discardableResult
+    func connect(pipeIndex: Int) throws -> String {
+        lock.lock()
+        recordedEvents.append(.connect(pipeIndex: pipeIndex))
+        if rejectNextHandshake {
+            rejectNextHandshake = false
+            lock.unlock()
+            throw IPCError.discordRejected(code: 4000, message: "Invalid Client ID")
+        }
+        connected = true
+        lock.unlock()
+        return "/recording/discord-ipc-\(pipeIndex)"
+    }
+
+    func close() {
+        lock.lock()
+        connected = false
+        recordedEvents.append(.close)
+        lock.unlock()
+    }
+
+    func setActivityWithReply(_ activityJSON: Data?) throws -> DiscordIPCClient.Reply {
+        let payload = activityJSON.map { String(decoding: $0, as: UTF8.self) }
+        lock.lock()
+        recordedEvents.append(.setActivity(payload))
+        lock.unlock()
+        let reply = DiscordIPCClient.Reply(opcode: .frame, frame: ["evt": ""])
+        lastReply = reply
+        return reply
+    }
+
+    func pingLeavingConnectionOpenOnFailure() -> Bool {
+        lock.lock()
+        recordedEvents.append(.ping)
+        lock.unlock()
+        return true
+    }
+}
+
+private final class RecordingIPCClients: @unchecked Sendable {
+    private let lock = NSLock()
+    private var clients: [String: RecordingIPCClient] = [:]
+
+    var applicationIDs: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return clients.keys.sorted()
+    }
+
+    func client(for appID: String) -> RecordingIPCClient {
+        lock.lock()
+        defer { lock.unlock() }
+        if let client = clients[appID] { return client }
+        let client = RecordingIPCClient(appID: appID)
+        clients[appID] = client
+        return client
     }
 }

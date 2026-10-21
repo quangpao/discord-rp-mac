@@ -110,6 +110,7 @@ struct SettingsView: View {
     @State private var keyDraft = ""
     @State private var keySource: GiphyKeySource = .none
     @State private var keyStatus: String?
+    @State private var browserBlocklistDraft = ""
 
     init(model: AppModel, initialPane: SettingsPane = .cards, selectedPresetID: UUID? = nil) {
         self.model = model
@@ -160,6 +161,7 @@ struct SettingsView: View {
         keepPresetSelectionValid()
         renameDraft = selectedPreset?.name ?? ""
         keySource = GiphyKeyStore.source()
+        browserBlocklistDraft = model.settings.browser.blocklist.joined(separator: "\n")
     }
 
     private func textField(_ label: String, text: Binding<String>, placeholder: String = "") -> some View {
@@ -210,6 +212,17 @@ struct SettingsView: View {
                 .labelsHidden()
                 .accessibilityLabel("Preset")
                 .frame(width: cardControlWidth, alignment: .leading)
+            }
+            row("Source",
+                help: "Preset uses the saved activity exactly as edited. Browser keeps the preset name, type, small assets and buttons, but publishes the page title over the focused tab domain when available.") {
+                Picker("", selection: binding.source) {
+                    Text("Preset").tag(PresenceCard.Source.preset)
+                    Text("Browser").tag(PresenceCard.Source.browser)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityLabel("Source")
+                .frame(width: 170)
             }
             row("App ID",
                 help: "Discord shows one card per application id, so a second card needs a second Discord application, with that card's assets uploaded there.") {
@@ -553,12 +566,82 @@ struct SettingsView: View {
             }
             hint(model.multiStatus.shortText)
             Divider().padding(.vertical, 4)
+            browserSettingsBlock
+            Divider().padding(.vertical, 4)
             row("Updates") {
                 Button("Check for Updates…") { Task { await model.checkForUpdates() } }
                     .disabled(model.updateStatus == .checking)
             }
             updateStatusLine
         }
+    }
+
+    private var browserSettingsBlock: some View {
+        Group {
+            row("Browser") {
+                Toggle("Pause", isOn: Binding(
+                    get: { model.settings.browser.isPaused },
+                    set: { model.setBrowserPaused($0) }
+                ))
+                .accessibilityLabel("Pause browser activity")
+            }
+            row("Published", help: browserPublishedHelp) {
+                Text(browserPublishedText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(model.publishedBrowserValue == nil ? .secondary : .primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(width: 260, alignment: .leading)
+                    .accessibilityLabel("Published browser activity")
+            }
+            row("Page title", help: "On by default. The focused tab title becomes the prominent activity line with the domain underneath; page titles can include sensitive text. The URL path and query are still never published.") {
+                Toggle("", isOn: Binding(
+                    get: { model.settings.browser.showsPageTitle },
+                    set: { model.setBrowserShowsPageTitle($0) }
+                ))
+                .labelsHidden()
+                .accessibilityLabel("Show browser page title")
+            }
+            row("Site icon", help: "On by default. Discord receives a Google favicon service URL built from the domain only; the app does not fetch it, but Discord may request it, sending the domain to Google's favicon service through Discord.") {
+                Toggle("", isOn: Binding(
+                    get: { model.settings.browser.usesSiteIcon },
+                    set: { model.setBrowserUsesSiteIcon($0) }
+                ))
+                .labelsHidden()
+                .accessibilityLabel("Use site icon")
+            }
+            row("Blocklist", help: "One domain per line. Use a leading wildcard such as *.icloud.com to block subdomains.") {
+                TextEditor(text: Binding(
+                    get: { browserBlocklistDraft },
+                    set: { value in
+                        browserBlocklistDraft = value
+                        model.setBrowserBlocklist(value.components(separatedBy: .newlines))
+                    }
+                ))
+                .font(.system(size: 12, design: .monospaced))
+                .scrollContentBackground(.hidden)
+                .background(Color(nsColor: .textBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                )
+                .frame(width: 260, height: 74)
+                .accessibilityLabel("Browser blocklist")
+            }
+        }
+    }
+
+    private var browserPublishedText: String {
+        guard let value = model.publishedBrowserValue else { return "Nothing yet" }
+        if model.settings.browser.showsPageTitle, let title = value.title, !title.isEmpty {
+            return "\(title) · \(value.domain)"
+        }
+        return value.domain
+    }
+
+    private var browserPublishedHelp: String? {
+        guard case .failure(let failure) = model.browserReadResult else { return nil }
+        return "Latest read failed: \(failure.userMessage)"
     }
 
     private var giphyPane: some View {

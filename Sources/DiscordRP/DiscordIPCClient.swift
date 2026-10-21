@@ -1,11 +1,24 @@
 import Darwin
 import Foundation
 
+public protocol IPCClientProtocol: AnyObject, Sendable {
+    var readyUser: DiscordIPCClient.ReadyUser? { get }
+    var lastReply: DiscordIPCClient.Reply? { get }
+    var isConnected: Bool { get }
+    var diagnosticsFD: Int32 { get }
+
+    @discardableResult
+    func connect(pipeIndex: Int) throws -> String
+    func close()
+    func setActivityWithReply(_ activityJSON: Data?) throws -> DiscordIPCClient.Reply
+    func pingLeavingConnectionOpenOnFailure() -> Bool
+}
+
 /// Synchronous Discord IPC client over `AF_UNIX`.
 ///
 /// Thread-safety: **not** internally synchronised — the caller confines an instance to one
 /// serial queue (see `PresenceEngine`). Hence `@unchecked Sendable`.
-public final class DiscordIPCClient: @unchecked Sendable {
+public final class DiscordIPCClient: IPCClientProtocol, @unchecked Sendable {
     public struct ReadyUser: Equatable, Sendable {
         public let username: String
         public let id: String
@@ -51,6 +64,7 @@ public final class DiscordIPCClient: @unchecked Sendable {
     }
 
     public var isConnected: Bool { fd >= 0 }
+    public var diagnosticsFD: Int32 { fd }
 
     deinit { close() }
 
@@ -161,7 +175,7 @@ public final class DiscordIPCClient: @unchecked Sendable {
         _ = try setActivityWithReply(activityJSON)
     }
 
-    func setActivityWithReply(_ activityJSON: Data?) throws -> Reply {
+    public func setActivityWithReply(_ activityJSON: Data?) throws -> Reply {
         var args: [String: Any] = ["pid": ProcessInfo.processInfo.processIdentifier]
         if let activityJSON, let object = try? JSONSerialization.jsonObject(with: activityJSON) {
             args["activity"] = object
@@ -217,6 +231,14 @@ public final class DiscordIPCClient: @unchecked Sendable {
 
     /// Keepalive. Returns false instead of throwing when the peer is gone.
     public func ping() -> Bool {
+        ping(closeOnFailure: true)
+    }
+
+    public func pingLeavingConnectionOpenOnFailure() -> Bool {
+        ping(closeOnFailure: false)
+    }
+
+    private func ping(closeOnFailure: Bool) -> Bool {
         do {
             try write(opcode: .ping, body: Data("{}".utf8))
             while true {
@@ -226,7 +248,9 @@ public final class DiscordIPCClient: @unchecked Sendable {
                 if op == .ping { try write(opcode: .pong, body: Data()); continue }
             }
         } catch {
-            close()
+            if closeOnFailure {
+                close()
+            }
             return false
         }
     }
@@ -307,5 +331,23 @@ public final class DiscordIPCClient: @unchecked Sendable {
 
     private func errnoText() -> String {
         String(cString: strerror(errno))
+    }
+}
+
+enum IPCDiagnostics {
+    private static let lock = NSLock()
+    private nonisolated(unsafe) static var sink: (@Sendable (String) -> Void)?
+
+    static func install(_ newSink: (@Sendable (String) -> Void)?) {
+        lock.lock()
+        sink = newSink
+        lock.unlock()
+    }
+
+    static func emit(_ message: String) {
+        lock.lock()
+        let current = sink
+        lock.unlock()
+        current?(message)
     }
 }

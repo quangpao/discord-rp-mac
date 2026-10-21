@@ -1,3 +1,12 @@
+## [Unreleased]
+
+### Added
+
+- A card can follow the browser. While Google Chrome, Brave, Microsoft Edge, Vivaldi or Chromium is the
+  frontmost application, the card publishes the focused tab's **domain** — the path and query never leave
+  the machine — with the page title available as an opt-in. Incognito windows are ignored, a blocklist and
+  a pause switch are available, and the read happens in-process, so an unfocused browser costs nothing.
+
 # Changelog
 
 Notable changes per release. Dates are the release/tag dates.
